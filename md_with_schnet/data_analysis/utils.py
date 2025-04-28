@@ -1,7 +1,5 @@
 import numpy as np
 import logging
-import platform
-import torch
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -17,20 +15,6 @@ logging.basicConfig(
 # Get the logger for this script (one logger per module)
 logger = logging.getLogger(__name__)
 
-
-def set_data_prefix() -> str:
-    """
-    Set the data prefix depending on the system.
-
-    Returns:
-        str: Data prefix path.
-    """
-    if platform.system() == 'Darwin':
-        return '/Users/ferdinandtolkes/whk/data/'
-    elif platform.system() == 'Linux':
-        return '/loctmp/tof54964/data/'
-    else:
-        raise ValueError('Unknown system. Please set data_prefix manually.')
 
 def extract_data_from_MD17(data: MD17, desired_batches: int) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Extract atomic data from a SchNetPack MD17 dataset.

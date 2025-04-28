@@ -1,20 +1,13 @@
-import torch
 import logging
 import argparse
 import yaml
-import schnetpack as spk
-import schnetpack.transform as trn
 import os
-import platform
 import matplotlib.pyplot as plt
 import time
 
 from torch.utils.data import DataLoader
-from tqdm import tqdm
-from schnetpack.datasets import MD17
 
-from utils import set_plotting_config
-from data_analysis.utils import set_data_prefix
+from utils import set_plotting_config, load_md17_dataset, set_data_prefix
 from data_analysis.molecule_analyzer import MoleculeTrajectoryComparer
 
 
@@ -45,65 +38,7 @@ def parse_args() -> dict:
     return vars(parser.parse_args())
 
 
-def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name: str = "rMD17",
-              pin_memory: bool = None, num_workers: int = None) -> MD17:
-    """
-    Load the MD17 dataset for the specified molecule.
-    Args:
-        data_prefix (str): Path to the dataset.
-        molecule (str): Name of the molecule to load. Default is 'ethanol'.
-        dataset_name (str): Name of the dataset. Default is 'rMD17'.
-        pin_memory (bool): Whether to use pinned memory. Default is None.
-        num_workers (int): Number of workers for data loading. Default is None.
-    Returns:
-        MD17: The loaded MD17 dataset.
-    """
-    if pin_memory is None:
-        pin_memory = torch.cuda.is_available()
-    if num_workers is None:
-        num_workers = 0 if platform.system() == "Darwin" else 1 
-    
-    db_path = f'{data_prefix}/{dataset_name}/db_data/{molecule}.db'
 
-    if dataset_name == "rMD17":
-        data = spk.data.AtomsDataModule(
-            db_path,
-            batch_size=10,
-            distance_unit='Ang',
-            property_units={'energy':'kcal/mol', 'forces':'kcal/mol/Ang'},
-            num_train=1000,
-            num_val=100,
-            transforms=[
-                trn.ASENeighborList(cutoff=5.),
-                trn.RemoveOffsets("energy", remove_mean=True, remove_atomrefs=False),
-                trn.CastTo32()
-            ],
-            num_workers=num_workers,
-            pin_memory=pin_memory, # set to false, when not using a GPU
-        )
-    elif dataset_name == "MD17":
-        data = MD17(
-            db_path,
-            molecule=molecule,
-            batch_size=10,
-            num_train=1000,
-            num_val=100,
-            transforms=[
-                trn.ASENeighborList(cutoff=5.),
-                trn.RemoveOffsets(MD17.energy, remove_mean=True, remove_atomrefs=False),
-                trn.CastTo32()
-            ],
-            num_workers=num_workers,
-            pin_memory=pin_memory, # set to false, when not using a GPU
-        )
-    else:
-        raise ValueError(f"Unknown dataset name: {dataset_name}. Use 'rMD17' or 'MD17'.")
-
-    
-    data.prepare_data()
-    data.setup()
-
-    return data
 
 def plot_comparisons(plot_dir: str, plot_type: str, comparer_function: callable, extra_args: dict = {}, show_plots: bool = False):
     """ General function to create subplot grids and call comparison functions. 

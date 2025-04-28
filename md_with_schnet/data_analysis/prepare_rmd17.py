@@ -4,7 +4,7 @@ import numpy as np
 from ase import Atoms
 from schnetpack.data import ASEAtomsData
 
-from data_analysis.main import set_data_prefix
+from utils import set_data_prefix
 
 
 # Example command to run the script from within schnetpack directory:
