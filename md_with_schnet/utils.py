@@ -1,21 +1,49 @@
 import logging
 import matplotlib.pyplot as plt
 import seaborn as sns
+import platform
 import schnetpack as spk
 import schnetpack.transform as trn
-import platform
 import torch
+
 from schnetpack.datasets import MD17
 
-
-# Configure logging at the module level
-logging.basicConfig(
-    level=logging.INFO, 
-    format="%(name)s - %(asctime)s - %(levelname)s - %(message)s"
-)
-
-# Get the logger for this script (one logger per module)
 logger = logging.getLogger(__name__)
+if (logger.hasHandlers()):
+    logger.handlers.clear()
+
+def setup_logger(logging_level: int = logging.INFO, external_level: int = logging.WARNING) -> logging.Logger:
+    """ Set up a logger for the module.
+    Args:
+        logging_level (int, optional): Logging level. Defaults to logging.INFO.
+        external_level (int, optional): Logging level for external libraries like SchNetPack. Defaults to logging.WARNING.
+    Returns:
+        logging.Logger: Configured logger.
+    """
+    # Clear any existing handlers (added by other libraries like schnetpack)
+    logger = logging.getLogger(__name__)
+
+    # Don't propagate to root logger to avoid duplicate messages
+    # which are I think caused by the schnetpack logger (bad practice)
+    logger.propagate = False
+
+    logger.setLevel(logging_level)
+
+    # Create formatter
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(filename)s - line %(lineno)d - %(message)s')
+
+    # Create console handler and set level to debug
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging_level)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
+    # Reduce noise from schnetpack and possibly other libraries
+    for external_module in ["schnetpack"]:
+        logging.getLogger(external_module).setLevel(external_level)
+
+    return logger
 
 
 def set_plotting_config(fontsize: int = 10, aspect_ratio: float = 1.618, width_fraction: float = 1.0, text_usetex: bool = True,
@@ -129,3 +157,4 @@ def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name:
     data.setup()
 
     return data
+

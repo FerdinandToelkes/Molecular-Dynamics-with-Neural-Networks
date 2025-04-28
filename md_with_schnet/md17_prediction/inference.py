@@ -14,7 +14,7 @@ from schnetpack.md.calculators import SchNetPackCalculator
 from schnetpack.md.simulation_hooks import LangevinThermostat, callback_hooks
 
 
-from md_with_schnet.utils import load_md17_dataset, set_data_prefix
+from md_with_schnet.utils import setup_logger, load_md17_dataset, set_data_prefix
 
 
 # Example command to run the script from within code directory:
@@ -22,14 +22,7 @@ from md_with_schnet.utils import load_md17_dataset, set_data_prefix
 python -m md_with_schnet.md17_prediction.inference
 """
 
-# Configure logging at the module level
-logging.basicConfig(
-    level=logging.INFO, 
-    format="%(name)s - %(asctime)s - %(levelname)s - %(message)s"
-)
-
-# Get the logger for this script (one logger per module)
-logger = logging.getLogger(__name__)
+logger = setup_logger(logging.INFO)
 
 def parse_args() -> dict:
     """ Parse command-line arguments. 
