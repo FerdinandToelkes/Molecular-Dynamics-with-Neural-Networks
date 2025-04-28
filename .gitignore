@@ -1,0 +1,47 @@
+# Single MD trajectories #
+##########################
+*.xyz
+*.extxyz
+
+
+# Plots #
+#########
+*.pdf
+*.png 
+*.jpeg
+*.jpg
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+
+# OS generated files #
+######################
+.DS_Store
+Thumbs.db
+
+# Python-related files #
+########################
+*.pyc
+__pycache__/
+*.pth
+*.pt
+*.pkl
+*.egg-info/
+
+# Jupyter Notebooks #
+#####################
+*.ipynb_checkpoints
+*.ipynb 
+
+# CSV and data files #
+######################
+*.csv
+*.db
+*.lock
+
+# Files stored in 'output' directories #
+################################
+**/output/**

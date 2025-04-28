@@ -1,0 +1,17 @@
+name: schnet
+channels:
+  - pytorch
+  - conda-forge
+
+dependencies:
+  - python>=3.12
+  - pytorch>=2.5.0
+  - pytorch-lightning>=2.0.0
+  - numpy>=2.0.0
+  - hydra-core>=1.1.0
+  - ase>=3.21
+  - pip
+  - pip:
+      - schnetpack
+      - seaborn~=0.13.2
+      - statsmodels~=0.14.4
