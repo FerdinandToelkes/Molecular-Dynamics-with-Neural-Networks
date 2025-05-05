@@ -7,13 +7,13 @@ import time
 
 from torch.utils.data import DataLoader
 
-from utils import set_plotting_config, load_md17_dataset, set_data_prefix
-from data_analysis.molecule_analyzer import MoleculeTrajectoryComparer
+from md_with_schnet.utils import set_plotting_config, load_md17_dataset, set_data_prefix
+from md_with_schnet.data_analysis.molecule_analyzer import MoleculeTrajectoryComparer
 
 
-# Example command to run the script from within schnetpack directory:
+# Example command to run the script from within code directory:
 """
-python -m data_analysis.main
+python -m md_with_schnet.data_analysis.main
 """
 
 # Configure logging at the module level
@@ -66,8 +66,8 @@ def plot_comparisons(plot_dir: str, plot_type: str, comparer_function: callable,
 
 def main(molecule_name: str, sorted: bool, show_plots: bool):
     # setup
-    output_dir = os.path.expanduser('~/whk/code/schnetpack/data_analysis/output')
-    os.makedirs(output_dir, exist_ok=True)
+    work_dir = os.path.expanduser('~/whk/code/md_with_schnet/data_analysis')
+    os.makedirs(f"{work_dir}/output", exist_ok=True)
     data_prefix = set_data_prefix()
 
     # load original and revised MD17 dataset (e.g., Ethanol)
@@ -84,7 +84,7 @@ def main(molecule_name: str, sorted: bool, show_plots: bool):
     set_plotting_config(fontsize=10, aspect_ratio=468/525, width_fraction=1)
  
     # Load the YAML configuration
-    with open("data_analysis/plot_configs.yaml", "r") as file:
+    with open(f"{work_dir}/plot_configs.yaml", "r") as file:
         plot_config = yaml.safe_load(file)
 
     for nr_configs_as_str in plot_config.keys():
@@ -93,7 +93,7 @@ def main(molecule_name: str, sorted: bool, show_plots: bool):
         c = plot_config[nr_configs_as_str]
         logger.info(f"Plotting for n_samples: {n_samples}")
 
-        plot_dir = f"plots/MD17_vs_rMD17_sorted={sorted}/{molecule_name}/{nr_configs_as_str}"
+        plot_dir = f"{work_dir}/output/plots/MD17_vs_rMD17_sorted={sorted}/{molecule_name}/{nr_configs_as_str}"
         os.makedirs(plot_dir, exist_ok=True)
 
         batch_size = 1000 if n_samples > 1000 else n_samples

@@ -5,6 +5,7 @@ import torch
 import schnetpack as spk
 
 from ase import Atoms
+from ase.io import read
 from schnetpack import properties
 from schnetpack.md import System, UniformInit, Simulator
 from schnetpack.md.integrators import VelocityVerlet
@@ -22,7 +23,6 @@ from md_with_schnet.utils import setup_logger, load_md17_dataset, set_data_prefi
 python -m md_with_schnet.md17_prediction.inference
 """
 
-logger = setup_logger(logging.INFO)
 
 def parse_args() -> dict:
     """ Parse command-line arguments. 
@@ -35,7 +35,7 @@ def parse_args() -> dict:
     parser.add_argument("--molecule_name", type=str, default="ethanol", help="Name of the molecule to load (default: ethanol)")
     return vars(parser.parse_args())
 
-
+logger = setup_logger("debug")
 
 def main(dataset_name: str, molecule_name: str):
     # setup
@@ -45,27 +45,48 @@ def main(dataset_name: str, molecule_name: str):
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(md_workdir, exist_ok=True)
 
-    # set device and load model
-    device = torch.device("cuda")
-    model_path = os.path.join(output_dir, "best_inference_model")
-    best_model = torch.load(model_path, map_location=device)
 
-    # load original and revised MD17 dataset (e.g., Ethanol)
-    data = load_md17_dataset(data_prefix, molecule=molecule_name, dataset_name=dataset_name)
-    logger.info(f"loaded dataset: {data}")
+    # # set device and load model
+    # model_path = os.path.join(output_dir, "best_inference_model")
 
-    # pick starting structure from test dataset
-    test_dataset = data.test_dataset
-    structure = test_dataset[0]  
+    # # load original and revised MD17 dataset (e.g., Ethanol)
+    # data = load_md17_dataset(data_prefix, molecule=molecule_name, dataset_name=dataset_name)
+    # logger.info(f"loaded dataset: {data}")
 
-    # load molecule with ASE
-    molecule = Atoms(
-        numbers=structure[spk.properties.Z],
-        positions=structure[spk.properties.R]
-    )
+    # # pick starting structure from test dataset
+    # test_dataset = data.test_dataset
+    # structure = test_dataset[0]  
 
+    # # load molecule with ASE
+    # molecule = Atoms(
+    #     numbers=structure[spk.properties.Z],
+    #     positions=structure[spk.properties.R]
+    # )
+
+    
+    # Load model and structure (downloaded from Github)
+    test_path = f"{data_prefix}/schnetpack_test"
+    model_path = os.path.join(test_path, 'md_ethanol.model')
+    molecule_path = os.path.join(test_path, 'md_ethanol.xyz')
+    # Load atoms with ASE
+    molecule = read(molecule_path)
+
+
+    ### SETUP THE MOLECULAR DYNAMICS SIMULATION ###
     # Number of molecular replicas
     n_replicas = 1
+    system_temperature = 300 # Kelvin
+    time_step = 0.5 # fs
+    # set cutoff and buffer region for neighbor list
+    cutoff = 5.0  # Angstrom (units used in model)
+    cutoff_shell = 2.0  # Angstrom
+    md_precision = torch.float32
+    # Set thermostat constant
+    time_constant = 100  # fs
+    # Size of the buffer for the file logger
+    buffer_size = 100
+    # Number of steps to simulate
+    n_steps = 20000
 
     # set up MD system
     md_system = System()
@@ -75,9 +96,6 @@ def main(dataset_name: str, molecule_name: str):
         position_unit_input="Angstrom"
         )
     
-    # choose starting velocities
-    system_temperature = 300 # Kelvin
-
     # Set up the initializer
     md_initializer = UniformInit(
         system_temperature,
@@ -89,15 +107,9 @@ def main(dataset_name: str, molecule_name: str):
     # Initialize the system momenta
     md_initializer.initialize_system(md_system)
 
-    time_step = 0.5 # fs
-
     # Set up the integrator
     md_integrator = VelocityVerlet(time_step)
         
-    # set cutoff and buffer region
-    cutoff = 5.0  # Angstrom (units used in model)
-    cutoff_shell = 2.0  # Angstrom
-
     # initialize neighbor list for MD using the ASENeighborlist as basis
     md_neighborlist = NeighborListMD(
         cutoff,
@@ -115,31 +127,20 @@ def main(dataset_name: str, molecule_name: str):
         required_properties=[],  # additional properties extracted from the model
     )
 
-
     # check if a GPU is available and use a CPU otherwise
     if torch.cuda.is_available():
         md_device = "cuda"
     else:
         md_device = "cpu"
 
-    # use single precision
-    md_precision = torch.float32
-
-    # Set thermostat constant
-    time_constant = 100  # fs
-
-    # Initialize the thermostat
+    # Initialize the thermostat and set it as a simulation hook
     langevin = LangevinThermostat(system_temperature, time_constant)
-
     simulation_hooks = [
         langevin
     ]
 
     # Path to database
-    log_file = os.path.join(md_workdir, "simulation.hdf5")
-
-    # Size of the buffer
-    buffer_size = 100
+    log_file = os.path.join(md_workdir, "simulation_schnet.hdf5")
 
     # Set up data streams to store positions, momenta and the energy
     data_streams = [
@@ -159,33 +160,27 @@ def main(dataset_name: str, molecule_name: str):
     # Update the simulation hooks
     simulation_hooks.append(file_logger)
 
-    #Set the path to the checkpoint file
+    # Set the path to the checkpoint file and create checkpoint logger
     chk_file = os.path.join(md_workdir, 'simulation.chk')
-
-    # Create the checkpoint logger
     checkpoint = callback_hooks.Checkpoint(chk_file, every_n_steps=100)
-
     # Update the simulation hooks
     simulation_hooks.append(checkpoint)
 
     # directory where tensorboard log will be stored to
     tensorboard_dir = os.path.join(md_workdir, 'logs')
-
     tensorboard_logger = callback_hooks.TensorBoardLogger(
         tensorboard_dir,
         ["energy", "temperature"], # properties to log
     )
-
     # update simulation hooks
     simulation_hooks.append(tensorboard_logger)
 
+    # Set up the MD simulator
     md_simulator = Simulator(md_system, md_integrator, md_calculator, simulator_hooks=simulation_hooks)
-
     md_simulator = md_simulator.to(md_precision)
     md_simulator = md_simulator.to(md_device)
 
-    n_steps = 20000
-
+    # Simulate the MD system
     md_simulator.simulate(n_steps)
 
 if __name__ == "__main__":

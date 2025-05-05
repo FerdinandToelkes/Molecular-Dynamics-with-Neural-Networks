@@ -4,12 +4,12 @@ import numpy as np
 from ase import Atoms
 from schnetpack.data import ASEAtomsData
 
-from utils import set_data_prefix
+from md_with_schnet.utils import set_data_prefix
 
 
-# Example command to run the script from within schnetpack directory:
+# Example command to run the script from within code directory:
 """
-python -m data_analysis.prepare_rmd17
+python -m md_with_schnet.data_analysis.prepare_rmd17
 """
 
 def extract_data_from_npz(data: np.ndarray, sort_configs: bool = True) -> tuple:

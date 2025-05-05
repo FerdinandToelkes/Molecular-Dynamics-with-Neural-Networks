@@ -8,42 +8,10 @@ import torch
 
 from schnetpack.datasets import MD17
 
-logger = logging.getLogger(__name__)
-if (logger.hasHandlers()):
-    logger.handlers.clear()
+from md_with_schnet.setup_logger import setup_logger
 
-def setup_logger(logging_level: int = logging.INFO, external_level: int = logging.WARNING) -> logging.Logger:
-    """ Set up a logger for the module.
-    Args:
-        logging_level (int, optional): Logging level. Defaults to logging.INFO.
-        external_level (int, optional): Logging level for external libraries like SchNetPack. Defaults to logging.WARNING.
-    Returns:
-        logging.Logger: Configured logger.
-    """
-    # Clear any existing handlers (added by other libraries like schnetpack)
-    logger = logging.getLogger(__name__)
+logger = setup_logger(logging_level_str="debug")
 
-    # Don't propagate to root logger to avoid duplicate messages
-    # which are I think caused by the schnetpack logger (bad practice)
-    logger.propagate = False
-
-    logger.setLevel(logging_level)
-
-    # Create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(filename)s - line %(lineno)d - %(message)s')
-
-    # Create console handler and set level to debug
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging_level)
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
-
-    # Reduce noise from schnetpack and possibly other libraries
-    for external_module in ["schnetpack"]:
-        logging.getLogger(external_module).setLevel(external_level)
-
-    return logger
 
 
 def set_plotting_config(fontsize: int = 10, aspect_ratio: float = 1.618, width_fraction: float = 1.0, text_usetex: bool = True,
@@ -83,6 +51,11 @@ def set_plotting_config(fontsize: int = 10, aspect_ratio: float = 1.618, width_f
     # Set color palette
     sns.set_palette("colorblind")
 
+    logger.debug("Finished setting up plotting configuration:")
+    logger.debug(f"fontsize: {fontsize}")
+    logger.debug(f"aspect_ratio: {aspect_ratio}")
+    logger.debug(f"width_fraction: {width_fraction}")
+
 def set_data_prefix() -> str:
     """
     Set the data prefix depending on the system.
@@ -90,6 +63,8 @@ def set_data_prefix() -> str:
     Returns:
         str: Data prefix path.
     """
+    logger.debug("Setting data prefix")
+    logger.debug(f"System: {platform.system()}")
     if platform.system() == 'Darwin':
         return '/Users/ferdinandtolkes/whk/data'
     elif platform.system() == 'Linux':
