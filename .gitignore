@@ -42,6 +42,7 @@ __pycache__/
 *.db
 *.lock
 
-# Files stored in 'output' directories #
+# Files stored in 'output' and 'plots' directories #
 ################################
 **/output/**
+**/plots/**
