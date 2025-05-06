@@ -8,7 +8,7 @@ from schnetpack.datasets import MD17
 from statsmodels.graphics.tsaplots import plot_acf
 from matplotlib.ticker import MaxNLocator
 
-from md_with_schnet.data_analysis.utils import extract_data_from_MD17, get_bin_number
+from md_with_schnet.data_analysis.MD17_vs_rMD17.utils import extract_data_from_MD17, get_bin_number
 
 
 

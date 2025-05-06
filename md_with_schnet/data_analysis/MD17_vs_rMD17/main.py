@@ -1,4 +1,3 @@
-import logging
 import argparse
 import yaml
 import os
@@ -7,23 +6,18 @@ import time
 
 from torch.utils.data import DataLoader
 
+from md_with_schnet.setup_logger import setup_logger
 from md_with_schnet.utils import set_plotting_config, load_md17_dataset, set_data_prefix
-from md_with_schnet.data_analysis.molecule_analyzer import MoleculeTrajectoryComparer
+from md_with_schnet.data_analysis.MD17_vs_rMD17.molecule_analyzer import MoleculeTrajectoryComparer
 
+logger = setup_logger(logging_level_str="debug")
 
+# Script to generate plots comparing the original MD17 dataset with the revised MD17 dataset.
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.data_analysis.main
+python -m md_with_schnet.data_analysis.MD17_vs_rMD17.main --molecule_name ethanol --sorted 
 """
 
-# Configure logging at the module level
-logging.basicConfig(
-    level=logging.INFO, 
-    format="%(name)s - %(asctime)s - %(levelname)s - %(message)s"
-)
-
-# Get the logger for this script (one logger per module)
-logger = logging.getLogger(__name__)
 
 def parse_args() -> dict:
     """ Parse command-line arguments. 
@@ -36,8 +30,6 @@ def parse_args() -> dict:
     parser.add_argument("--sorted", action="store_true", help="Use the sorted version of the revised molecule (default: False)")
     parser.add_argument("--show_plots", action="store_true", help="Show plots before saving them (default: False)")
     return vars(parser.parse_args())
-
-
 
 
 def plot_comparisons(plot_dir: str, plot_type: str, comparer_function: callable, extra_args: dict = {}, show_plots: bool = False):

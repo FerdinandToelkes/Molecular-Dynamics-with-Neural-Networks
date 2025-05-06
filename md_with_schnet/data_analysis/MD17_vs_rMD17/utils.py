@@ -1,19 +1,12 @@
 import numpy as np
-import logging
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from schnetpack.datasets import MD17
 
+from md_with_schnet.setup_logger import setup_logger
 
-# Configure logging at the module level
-logging.basicConfig(
-    level=logging.INFO, 
-    format="%(name)s - %(asctime)s - %(levelname)s - %(message)s"
-)
-
-# Get the logger for this script (one logger per module)
-logger = logging.getLogger(__name__)
+logger = setup_logger(logging_level_str="info")
 
 
 def extract_data_from_MD17(data: MD17, desired_batches: int) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

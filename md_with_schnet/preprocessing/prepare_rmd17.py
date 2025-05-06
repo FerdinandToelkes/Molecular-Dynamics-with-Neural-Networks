@@ -1,16 +1,31 @@
 import os
 import numpy as np
+import argparse
 
-from ase import Atoms
 from schnetpack.data import ASEAtomsData
 
+from md_with_schnet.setup_logger import setup_logger
 from md_with_schnet.utils import set_data_prefix
+from md_with_schnet.preprocessing.prepare_xtb import convert_trajectory_to_ase, get_overview_of_dataset
 
+
+logger = setup_logger(logging_level_str="debug")
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.preprocessing.prepare_rmd17
+python -m md_with_schnet.preprocessing.prepare_rmd17 --molecule_name ethanol --sort_configs
 """
+
+def parse_args() -> dict:
+    """ Parse command-line arguments. 
+
+    Returns:
+        dict: Dictionary containing command-line arguments.
+    """
+    parser = argparse.ArgumentParser(description="Prepare rMD17 data for usage in SchNetPack")
+    parser.add_argument("--molecule_name", type=str, default="ethanol", help="Name of the molecule to load (default: ethanol)")
+    parser.add_argument("--sort_configs", action="store_true", help="Whether to sort the data points with the old indices or not (default: False)")
+    return vars(parser.parse_args())
 
 def extract_data_from_npz(data: np.ndarray, sort_configs: bool = True) -> tuple:
     """
@@ -38,35 +53,33 @@ def extract_data_from_npz(data: np.ndarray, sort_configs: bool = True) -> tuple:
 
     return data_coords, data_energies, data_forces
 
-def main():
-    sort_configs = True
-    molecule_name = 'uracil'
+def main(molecule_name: str, sort_configs: bool):
+    """
+    Main function to prepare the rMD17 dataset for usage in SchNetPack.
+    Args:
+        molecule_name (str): Name of the molecule to load.
+        sort_configs (bool): Whether to sort the data points with the old indices or not.
+    """
     data_prefix = set_data_prefix()
-    path = data_prefix + f'/rMD17/npz_data/{molecule_name}.npz'
+    path = os.path.join(data_prefix, f'rMD17/npz_data/{molecule_name}.npz')
     if sort_configs:
-        target_path = data_prefix + f'/rMD17/db_data/{molecule_name}_sorted.db'
+        target_path = os.path.join(data_prefix, f'rMD17/db_data/{molecule_name}_sorted.db')
     else:
-        target_path = data_prefix + f'/rMD17/db_data/{molecule_name}.db'
+        target_path = os.path.join(data_prefix, f'rMD17/db_data/{molecule_name}.db')
+    logger.debug(f"Loading data from {path}")
+    logger.debug(f"Saving data to {target_path}")
 
     # extract data from the .npz file
     data = np.load(path)
-    data_coords, data_energies, data_forces = extract_data_from_npz(data, sort_configs=sort_configs)
-    
+    coords_traj, energy_traj, forces_traj = extract_data_from_npz(data, sort_configs)
     atomic_numbers = data["nuclear_charges"]
 
-    atoms_list = []
-    property_list = []
-    for positions, energies, forces in zip(data_coords, data_energies, data_forces):
-        ats = Atoms(positions=positions, numbers=atomic_numbers)
-        # convert energies to array if it is not already
-        if not isinstance(energies, np.ndarray):
-            energies = np.array([energies]) # compare with shape of data within the tutorial
-
-        properties = {'energy': energies, 'forces': forces}
-        property_list.append(properties)
-        atoms_list.append(ats)
-
-    print('Properties:', property_list[0])
+    atoms_list, property_list = convert_trajectory_to_ase(
+        coords_traj=coords_traj,
+        energy_traj=energy_traj,
+        forces_traj=forces_traj,
+        atomic_numbers=atomic_numbers
+    )
 
     # Create a new dataset in the schnetpack format
     if os.path.exists(target_path):
@@ -84,20 +97,8 @@ def main():
         new_dataset.add_systems(property_list, atoms_list)
 
     # get overview of the dataset
-    print('Number of reference calculations:', len(new_dataset))
-    print('Available properties:')
-
-    for p in new_dataset.available_properties:
-        print('-', p)
-    print()
-
-    print(f"new_dataset: {new_dataset}")
-    example = new_dataset[0]
-    print('Properties of molecule with id 0:')
-
-    for k, v in example.items():
-        print('-', k, ':', v.shape)
+    get_overview_of_dataset(new_dataset)
 
 if __name__=="__main__":
-    
-    main()
+    args = parse_args()
+    main(**args)
