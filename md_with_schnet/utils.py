@@ -6,6 +6,7 @@ import schnetpack.transform as trn
 import torch
 
 from schnetpack.datasets import MD17
+from schnetpack.data import ASEAtomsData
 
 from md_with_schnet.setup_logger import setup_logger
 
@@ -128,6 +129,46 @@ def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name:
     
     data.prepare_data()
     data.setup()
+
+    return data
+
+def load_xtb_dataset(db_path: str, batch_size: int = 10, pin_memory: bool = None, num_workers: int = None) -> ASEAtomsData:
+    """
+    Load anXTB dataset from the specified path.
+    Args:
+        db_path (str): Path to the dataset.
+        batch_size (int): Batch size for the dataset. Default is 10.
+        pin_memory (bool): Whether to use pinned memory. Default is None.
+        num_workers (int): Number of workers for data loading. Default is None.
+    Returns:
+        ASEAtomsData: The loaded XTB dataset.
+    """
+    if pin_memory is None:
+        pin_memory = torch.cuda.is_available()
+    if num_workers is None:
+        num_workers = 0 if platform.system() == "Darwin" else 1 
+
+    # load xtb dataset
+    data = spk.data.AtomsDataModule(
+        db_path,
+        batch_size=batch_size,
+        distance_unit='Ang',
+        property_units={'energy':'Hartree', 'forces':'Hartree/Bohr'},
+        num_train=1000,
+        num_val=1000,
+        transforms=[
+            trn.ASENeighborList(cutoff=5.),
+            trn.RemoveOffsets("energy", remove_mean=True, remove_atomrefs=False),
+            trn.CastTo32()
+        ],
+        num_workers=num_workers,
+        pin_memory=pin_memory, # set to false, when not using a GPU
+    )
+    
+    data.prepare_data()
+    data.setup()
+
+    logger.info(f"loaded xtb dataset: {data}")
 
     return data
 

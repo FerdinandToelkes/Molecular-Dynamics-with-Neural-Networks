@@ -20,8 +20,8 @@ python -m md_with_schnet.preprocessing.prepare_xtb --trajectory_dir MOTOR_MD_XTB
 """
 
 def parse_args() -> dict:
-    """ Parse command-line arguments. 
-
+    """ 
+    Parse command-line arguments. 
     Returns:
         dict: Dictionary containing command-line arguments.
     """

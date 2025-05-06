@@ -1,0 +1,53 @@
+100_configs:
+  # Define what to plot
+  plot_distributions: false
+  plot_values: false
+  plot_values_connected: true
+  plot_autocorrelation: false
+  # Define how to plot
+  autocorrelation_lags: 50
+  values_scatter: false
+  histogram_edgecolor: black
+
+###################################################
+
+250_configs:
+  # Define what to plot
+  plot_distributions: false
+  plot_values: false
+  plot_values_connected: true
+  plot_autocorrelation: false
+  # Define how to plot
+  autocorrelation_lags: 50
+  values_scatter: false
+
+###################################################
+1000_configs:
+  # Define what to plot
+  plot_distributions: true
+  plot_values: true
+  plot_values_connected: false
+  plot_autocorrelation: true
+  # Define how to plot
+  autocorrelation_lags: 50
+
+###################################################
+10000_configs:
+  # Define what to plot
+  plot_distributions: true
+  plot_values: true
+  plot_values_connected: false
+  plot_autocorrelation: true
+  # Define how to plot
+  autocorrelation_lags: 100
+  
+###################################################
+20000_configs:
+  # Define what to plot
+  plot_distributions: true
+  plot_values: false
+  plot_values_connected: false
+  plot_autocorrelation: true
+  # Define how to plot
+  autocorrelation_lags: 1000
+    
