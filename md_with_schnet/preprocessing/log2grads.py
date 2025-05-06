@@ -6,7 +6,7 @@ from md_with_schnet.setup_logger import setup_logger
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.data_analysis.log2grads
+python -m md_with_schnet.preprocessing.log2grads
 """
 
 logger = setup_logger(logging_level_str="debug")

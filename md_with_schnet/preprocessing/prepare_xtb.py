@@ -15,7 +15,7 @@ logger = setup_logger(logging_level_str="debug")
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.data_analysis.prepare_xtb
+python -m md_with_schnet.preprocessing.prepare_xtb
 """
 
 def extract_data_from_xyz(path: str, extra_lines: int, number_of_atoms: any = None) -> tuple:

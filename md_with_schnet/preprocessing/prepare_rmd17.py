@@ -9,7 +9,7 @@ from md_with_schnet.utils import set_data_prefix
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.data_analysis.prepare_rmd17
+python -m md_with_schnet.preprocessing.prepare_rmd17
 """
 
 def extract_data_from_npz(data: np.ndarray, sort_configs: bool = True) -> tuple:
