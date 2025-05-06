@@ -1,64 +1,22 @@
 import os
 import numpy as np
-import logging
 
 from ase import Atoms
 from schnetpack.data import ASEAtomsData
 from io import StringIO
+from ase.data import atomic_numbers as ase_atomic_numbers
 
 from md_with_schnet.utils import set_data_prefix
+from md_with_schnet.setup_logger import setup_logger
 
-# Create a logger
-level = "DEBUG"
-external_level = "WARNING"
-logger = logging.getLogger(__name__)
-logger.setLevel(level)
 
-# Don't propagate to root logger to avoid duplicate messages
-# which are I think caused by the schnetpack logger (bad practice)
-logger.propagate = False
+logger = setup_logger(logging_level_str="debug")
 
-# Create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# Create console handler and set level to debug
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(level)
-stream_handler.setFormatter(formatter)
-logger.addHandler(stream_handler)
-
-# Reduce noise from schnetpack and possibly other libraries
-for external_module in ["schnetpack"]:
-    logging.getLogger(external_module).setLevel(external_level)
 
 # Example command to run the script from within code directory:
 """
 python -m md_with_schnet.data_analysis.prepare_xtb
 """
-
-def extract_data_from_npz(data: np.ndarray, sort_configs: bool = True) -> tuple:
-    """
-    Extract data from a .npz file and return the coordinates, energies, and forces.
-    Args:
-        data (np.ndarray): The data loaded from the .npz file.
-        sort_configs (bool): Whether to sort configurations by old_indices.
-    Returns:
-        tuple: Tuple containing coordinates, energies, and forces.
-    """
-    if sort_configs:
-        # sort the configurations by old_indices
-        old_indices = data["old_indices"]
-        sort_order = np.argsort(old_indices)
-
-        data_coords = data["coords"][sort_order]
-        data_energies = data["old_energies"][sort_order]
-        data_forces = data["old_forces"][sort_order]
-    else:
-        data_coords = data["coords"]
-        data_energies = data["old_energies"]
-        data_forces = data["old_forces"]
-
-    return data_coords, data_energies, data_forces
 
 def extract_data_from_xyz(path: str, extra_lines: int, number_of_atoms: any = None) -> tuple:
     """
@@ -95,31 +53,83 @@ def extract_data_from_xyz(path: str, extra_lines: int, number_of_atoms: any = No
     logger.debug(f'data.shape: {data.shape}')
     return data, number_of_atoms
 
-def main():
-    # setup
-    data_prefix = set_data_prefix() + "/turbo_test"
-    # path = data_prefix + f'MOTOR_MD_XTB/T300_1/traj.xyz'
-    # target_path = data_prefix + f'MOTOR_MD_XTB/T300_1/traj.db'
+def get_atomic_numbers_from_xyz(path: str, number_of_atoms: int, extra_lines: int = 2) -> list:
+    """
+    Extract atomic symbols from a .xyz file and convert them to atomic numbers.
+    Args:
+        path (str): Path to the .xyz file.
+        number_of_atoms (int): Number of atoms in the system.
+        extra_lines (int): Number of extra lines in each coordinates block, e.g., header lines.
+    Returns:
+        list: List of atomic numbers.
+    """
+    with open(path, 'r') as file:
+        lines = file.readlines()
+        atom_lines = lines[extra_lines:extra_lines + number_of_atoms]  # Skip the first two lines
+        symbols = [line.split()[0] for line in atom_lines]
+    logger.debug(f'symbols: {symbols}')
 
-    path = data_prefix + f'turbo_test/traj_1.xyz'
-    target_path = data_prefix + f'turbo_test/traj_1.db'
+    # Convert symbols to atomic numbers
+    atomic_numbers = [ase_atomic_numbers[symbol] for symbol in symbols]
+    logger.debug(f'atomic_numbers: {atomic_numbers}')
 
-    logger.debug("extracting trajectory data from xyz file")
-    traj, number_of_atoms = extract_data_from_xyz(path=f'{data_prefix}/traj_1.xyz', extra_lines=2,)
-    E = np.loadtxt(f'{data_prefix}/energies_1.txt', usecols=(3))    # total energy
-    logger.debug(f'E.shape: {E.shape}')
-    print(f'E header: {E[:5]}')
-
-    logger.debug("extracting gradients data from txt file")
-    grads = extract_data_from_xyz(path=f'{data_prefix}/grads_1.txt', extra_lines=1, number_of_atoms=number_of_atoms)
-
-    exit()
+    if len(atomic_numbers) != number_of_atoms:
+        logger.error(f'Error: Number of atomic_numbers extracted ({len(atomic_numbers)}) does not match the expected number of atoms ({number_of_atoms}).')
+        raise ValueError('Number of atomic_numbers does not match the expected number of atoms.')
     
-    numbers = data["nuclear_charges"]
+    return atomic_numbers
+
+def get_all_energies_from_txt(path: str, traj: np.ndarray) -> np.ndarray:
+    """
+    Extract all (potential) energies from a .txt file and return them as a NumPy array.
+    Args:
+        path (str): Path to the .txt file.
+        traj (np.ndarray): Trajectory data needed for shape validation.
+    Returns:
+        np.ndarray: Array of energies.
+    """
+    all_energies = np.loadtxt(path, usecols=(3))   # 3rd column is potential energy
+    logger.debug(f'E.shape: {all_energies.shape}')
+    if all_energies.shape[0] != traj.shape[0]:
+        logger.error(f'Error: all_energies.shape[0] != traj.shape[0]: {all_energies.shape[0]} != {traj.shape[0]}')
+        raise ValueError('all_energies.shape[0] != traj.shape[0]')
+    return all_energies
+
+def get_all_forces_from_txt(path: str, number_of_atoms: int, number_of_samples: int) -> np.ndarray:
+    """
+    Extract all gradients from a .txt file, convert them to forces and return them as a NumPy array.
+    Args:
+        path (str): Path to the .txt file.
+        number_of_atoms (int): Number of atoms in the system.
+        number_of_samples (int): Number of samples to extract.
+    Returns:
+        np.ndarray: Array of forces.
+    """
+    logger.debug("extracting gradients data from txt file")
+    grads = extract_data_from_xyz(path=path, extra_lines=1, number_of_atoms=number_of_atoms)
+    # only take number_of_samples samples
+    grads = grads[0][:number_of_samples]
+    logger.debug(f'grads.shape after throwing away the last samples not present in traj.xyz: {grads.shape}')
+    # convert grads to forces
+    forces_traj = -grads
+    return forces_traj
+
+def convert_trajectory_to_ase(coord_traj: np.ndarray, energy_traj: np.ndarray, forces_traj: np.ndarray, atomic_numbers: list) -> tuple:
+    """
+    Convert trajectory data to ASE Atoms objects and properties.
+    Args:
+        coord_traj (np.ndarray): Coordinates of the trajectory.
+        energy_traj (np.ndarray): Energies of the trajectory.
+        forces_traj (np.ndarray): Forces of the trajectory.
+        atomic_numbers (list): List of atomic numbers.
+    Returns:
+        tuple: Tuple containing a list of ASE Atoms objects and a list of properties.
+    """
+    logger.debug("Converting trajectory data to ASE Atoms objects and properties")
     atoms_list = []
     property_list = []
-    for positions, energies, forces in zip(data_coords, data_energies, data_forces):
-        ats = Atoms(positions=positions, numbers=numbers)
+    for positions, energies, forces in zip(coord_traj, energy_traj, forces_traj):
+        ats = Atoms(positions=positions, numbers=atomic_numbers)
         # convert energies to array if it is not already
         if not isinstance(energies, np.ndarray):
             energies = np.array([energies]) # compare with shape of data within the tutorial
@@ -127,26 +137,16 @@ def main():
         properties = {'energy': energies, 'forces': forces}
         property_list.append(properties)
         atoms_list.append(ats)
+    logger.debug(f'Properties: property_list[0]')
+    return atoms_list, property_list
 
-    print('Properties:', property_list[0])
-
-    # Create a new dataset in the schnetpack format
-    if os.path.exists(target_path):
-        print(f"File {target_path} already exists, loading it.")
-        new_dataset = ASEAtomsData(target_path)
-    else:
-        print(f"File {target_path} does not exist, creating it.")
-        # create a new dataset
-        new_dataset = ASEAtomsData.create(
-            target_path,
-            distance_unit='Ang',
-            property_unit_dict={'energy':'kcal/mol', 'forces':'kcal/mol/Ang'}
-        )
-        # add systems to the dataset
-        new_dataset.add_systems(property_list, atoms_list)
-
-    # get overview of the dataset
-    print('Number of reference calculations:', len(new_dataset))
+def get_overview_of_dataset(new_dataset: ASEAtomsData):
+    """
+    Get an overview of the dataset.
+    Args:
+        new_dataset (ASEAtomsData): The dataset to analyze.
+    """
+    logger.debug(f'Number of reference calculations: {len(new_dataset)}')
     print('Available properties:')
 
     for p in new_dataset.available_properties:
@@ -159,6 +159,43 @@ def main():
 
     for k, v in example.items():
         print('-', k, ':', v.shape)
+
+def main():
+    # setup
+    data_prefix = set_data_prefix() + "/turbo_test"
+    # path = data_prefix + f'MOTOR_MD_XTB/T300_1/traj.xyz'
+    # target_path = data_prefix + f'MOTOR_MD_XTB/T300_1/traj.db'
+
+    target_path = os.path.join(data_prefix, 'traj.db')
+
+    logger.debug("extracting trajectory data from xyz file")
+    traj_path = f'{data_prefix}/traj.xyz'
+    coord_traj, number_of_atoms = extract_data_from_xyz(path=traj_path, extra_lines=2)
+    atomic_numbers = get_atomic_numbers_from_xyz(path=traj_path, number_of_atoms=number_of_atoms, extra_lines=2)
+    energy_traj = get_all_energies_from_txt(path=f'{data_prefix}/energies.txt', traj=coord_traj)
+    number_of_samples = coord_traj.shape[0]
+    logger.debug(f'number_of_samples: {number_of_samples}')
+    forces_traj = get_all_forces_from_txt(path=f'{data_prefix}/gradients.txt', number_of_atoms=number_of_atoms, 
+                                          number_of_samples=number_of_samples)
+
+    # convert trajectory data to ASE Atoms objects and properties
+    atoms_list, property_list = convert_trajectory_to_ase(coord_traj=coord_traj, energy_traj=energy_traj,
+                                                           forces_traj=forces_traj, atomic_numbers=atomic_numbers)
+
+    # Create a new dataset in the schnetpack format
+    if os.path.exists(target_path):
+        print(f"File {target_path} already exists, loading it.")
+        new_dataset = ASEAtomsData(target_path)
+    else:
+        print(f"File {target_path} does not exist, creating it.")
+        # create a new dataset
+        new_dataset = ASEAtomsData.create(target_path, distance_unit='Ang',
+                                          property_unit_dict={'energy':'Hartree', 'forces':'Hartree/Bohr'})
+        # add systems to the dataset
+        new_dataset.add_systems(property_list, atoms_list)
+
+    # get overview of the dataset
+    get_overview_of_dataset(new_dataset)
 
 if __name__=="__main__":
     

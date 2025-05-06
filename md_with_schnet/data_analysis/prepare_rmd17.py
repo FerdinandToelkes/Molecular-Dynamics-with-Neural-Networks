@@ -29,12 +29,12 @@ def extract_data_from_npz(data: np.ndarray, sort_configs: bool = True) -> tuple:
         sort_order = np.argsort(old_indices)
 
         data_coords = data["coords"][sort_order]
-        data_energies = data["old_energies"][sort_order]
-        data_forces = data["old_forces"][sort_order]
+        data_energies = data["energies"][sort_order]
+        data_forces = data["forces"][sort_order]
     else:
         data_coords = data["coords"]
-        data_energies = data["old_energies"]
-        data_forces = data["old_forces"]
+        data_energies = data["energies"]
+        data_forces = data["forces"]
 
     return data_coords, data_energies, data_forces
 
@@ -42,21 +42,22 @@ def main():
     sort_configs = True
     molecule_name = 'uracil'
     data_prefix = set_data_prefix()
-    path = data_prefix + f'rMD17/npz_data/{molecule_name}.npz'
+    path = data_prefix + f'/rMD17/npz_data/{molecule_name}.npz'
     if sort_configs:
-        target_path = data_prefix + f'rMD17/db_data/{molecule_name}_sorted.db'
+        target_path = data_prefix + f'/rMD17/db_data/{molecule_name}_sorted.db'
     else:
-        target_path = data_prefix + f'rMD17/db_data/{molecule_name}.db'
+        target_path = data_prefix + f'/rMD17/db_data/{molecule_name}.db'
 
     # extract data from the .npz file
     data = np.load(path)
     data_coords, data_energies, data_forces = extract_data_from_npz(data, sort_configs=sort_configs)
     
-    numbers = data["nuclear_charges"]
+    atomic_numbers = data["nuclear_charges"]
+
     atoms_list = []
     property_list = []
     for positions, energies, forces in zip(data_coords, data_energies, data_forces):
-        ats = Atoms(positions=positions, numbers=numbers)
+        ats = Atoms(positions=positions, numbers=atomic_numbers)
         # convert energies to array if it is not already
         if not isinstance(energies, np.ndarray):
             energies = np.array([energies]) # compare with shape of data within the tutorial

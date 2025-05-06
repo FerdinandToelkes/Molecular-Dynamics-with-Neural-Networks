@@ -1,5 +1,4 @@
 import os
-import logging
 import argparse
 
 from md_with_schnet.utils import set_data_prefix
@@ -11,33 +10,26 @@ python -m md_with_schnet.data_analysis.log2grads
 """
 
 logger = setup_logger(logging_level_str="debug")
-# # Create a logger
-# level = "DEBUG"
-# external_level = "WARNING"
-# logger = logging.getLogger(__name__)
-# logger.setLevel(level)
 
-# # Don't propagate to root logger to avoid duplicate messages
-# # which are I think caused by the schnetpack logger (bad practice)
-# logger.propagate = False
+def parse_args() -> dict:
+    """ Parse command-line arguments. 
 
-# # Create formatter
-# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# # Create console handler and set level to debug
-# stream_handler = logging.StreamHandler()
-# stream_handler.setLevel(level)
-# stream_handler.setFormatter(formatter)
-# logger.addHandler(stream_handler)
-
-# # Reduce noise from schnetpack and possibly other libraries
-# for external_module in ["schnetpack"]:
-#     logging.getLogger(external_module).setLevel(external_level)
+    Returns:
+        dict: Dictionary containing command-line arguments.
+    """
+    parser = argparse.ArgumentParser(description="Plotting script for MD17 dataset")
+    parser.add_argument("--target_dir", type=str, default="turbo_test", help="Target directory where the data is found (default: turbo_test)")
+    return vars(parser.parse_args())
 
 
-if __name__ == "__main__":
+def main(target_dir: str):
+    """
+    Main function to extract gradients from log files and save them to a text file.
+    Args:
+        target_dir (str): Directory where the log files are located.
+    """
     # setup
-    data_path = set_data_prefix() + "/turbo_test"
+    data_path = os.path.join(set_data_prefix(), target_dir)
     command_path = os.path.expanduser('~/whk/code/md_with_schnet/data_analysis/extract_gradients.sh')
     output_path = os.path.join(data_path, "gradients.txt")
     if os.path.exists(output_path):
@@ -63,4 +55,9 @@ if __name__ == "__main__":
         
         # execute bash script extract_gradients.sh
         os.system(f"bash {command_path} {log_path} >> {output_path}")
+
+if __name__ == "__main__":
+    args = parse_args()
+    main(**args)
+    
         

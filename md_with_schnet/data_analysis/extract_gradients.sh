@@ -19,7 +19,6 @@ awk '
         # trim leading/trailing spaces
         gsub(/^ +| +$/, "", current_time)  
         printf "t= %s au\n", current_time
-        echo "t= $current_time au" 
         next
     }
 
@@ -27,7 +26,6 @@ awk '
     # record the time stamp and turn on our “in-gradient” flag.
     /^[[:space:]]*[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?[[:space:]]+[+-]?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?[[:space:]]*$/ {
         in_grad = 1
-        echo "detected graaadient"
         next
     }
 
@@ -35,8 +33,7 @@ awk '
     # (element symbol) is a gradient line: print it with its ts.
     in_grad && /^[[:space:]]*[a-z]+[[:space:]]+/ {
         # $1 = element, $2,$3,$4 = gx,gy,gz
-        printf "%s  %s  %s  %s\n", $1, $2, $3, $4
-        echo "printing gradient"
+        printf "%s  %s  %s  %s\n", toupper($1), $2, $3, $4
         next
     }
 

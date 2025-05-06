@@ -1,4 +1,3 @@
-import logging
 import matplotlib.pyplot as plt
 import seaborn as sns
 import platform
@@ -10,8 +9,7 @@ from schnetpack.datasets import MD17
 
 from md_with_schnet.setup_logger import setup_logger
 
-logger = setup_logger(logging_level_str="debug")
-
+logger = setup_logger(logging_level_str="info")
 
 
 def set_plotting_config(fontsize: int = 10, aspect_ratio: float = 1.618, width_fraction: float = 1.0, text_usetex: bool = True,
