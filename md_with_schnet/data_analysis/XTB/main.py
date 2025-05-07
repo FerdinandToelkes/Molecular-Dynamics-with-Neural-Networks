@@ -8,11 +8,11 @@ from torch.utils.data import DataLoader
 
 from md_with_schnet.setup_logger import setup_logger
 from md_with_schnet.utils import set_plotting_config, load_xtb_dataset, set_data_prefix
-from md_with_schnet.data_analysis.MD17_vs_rMD17.molecule_analyzer import MoleculeTrajectoryComparer
+from md_with_schnet.data_analysis.MD17_vs_rMD17.molecule_analyzer import MoleculeTrajectoryAnalyzer
 
 logger = setup_logger(logging_level_str="debug")
 
-# Script to generate plots comparing the original MD17 dataset with the revised MD17 dataset.
+# Script to generate plots comparing different properties of an XTB dataset.
 # Example command to run the script from within code directory:
 """
 python -m md_with_schnet.data_analysis.XTB.main --trajectory_dir MOTOR_MD_XTB/T300_1 --show_plots
@@ -31,7 +31,7 @@ def parse_args() -> dict:
     return vars(parser.parse_args())
 
 
-def plot_comparisons(plot_dir: str, plot_type: str, comparer_function: callable, extra_args: dict = {}, show_plots: bool = False):
+def combine_plots(plot_dir: str, plot_type: str, comparer_function: callable, extra_args: dict = {}, show_plots: bool = False):
     """ General function to create subplot grids and call comparison functions. 
     
     Args:
@@ -44,7 +44,7 @@ def plot_comparisons(plot_dir: str, plot_type: str, comparer_function: callable,
     fig, axes = plt.subplots(3)  
     
     for i, key in enumerate(["energies", "total_forces", "displacements"]):
-        comparer_function(key, axes=axes[i], **extra_args.get(key, {}))
+        comparer_function(key, ax=axes[i], **extra_args.get(key, {}))
 
     plt.tight_layout()
     path = os.path.join(plot_dir, f"{plot_type}.pdf")
@@ -81,9 +81,6 @@ def main(trajectory_dir: str, show_plots: bool):
         path_to_plot_dir = os.path.join(plot_dir, f"XTB/{nr_configs_as_str}")
         os.makedirs(path_to_plot_dir, exist_ok=True)
 
-        if n_samples > 250:
-            break
-
         batch_size = 1000 if n_samples > 1000 else n_samples
 
         loader = DataLoader(
@@ -93,31 +90,29 @@ def main(trajectory_dir: str, show_plots: bool):
             num_workers=0,   # or more depending on your CPU
             pin_memory=False
         )
-        
-        dataloaders = {"XTB": loader}
 
-        # Initialize the trajectory comparer
+        # Initialize the trajectory analyzer
         desired_batches = n_samples // batch_size
-        comparer = MoleculeTrajectoryComparer(dataloaders, desired_batches, path_to_plot_dir)
+        analyzer = MoleculeTrajectoryAnalyzer(loader, "XTB", desired_batches, path_to_plot_dir)
         
         if c["plot_distributions"]:
-            plot_comparisons(
+            combine_plots(
                 path_to_plot_dir,
                 "distributions",
-                comparer.plot_distribution_comparison,
+                analyzer.plot_distribution,
                 extra_args={
-                    "energies": {"xlabel": "Energy (Hartree)", "set_title": True, "nr_of_xticks": 5}, 
+                    "energies": {"xlabel": "Energy (Hartree)", "set_title": True}, 
                     "total_forces": {"xlabel": r"Force Magnitude ($\mathrm{Hartree}/\mathrm{Bohr}$)"},
-                    "displacements": {"xlabel": r"Displacement ($\mathrm{\AA}$)", "legend_location": "upper left"}
+                    "displacements": {"xlabel": r"Displacement ($\mathrm{\AA}$)", "legend_location": "upper right"}
                     },
                 show_plots=show_plots
             )
 
         if c["plot_values"]:
-            plot_comparisons(
+            combine_plots(
                 path_to_plot_dir,
                 "values",
-                comparer.plot_values_comparison,
+                analyzer.plot_values,
                 extra_args={
                     "energies": {"ylabel": "Energy (Hartree)", "set_title": True}, 
                     "total_forces": {"ylabel": r"Force Magnitude ($\mathrm{Hartree}/\mathrm{Bohr}$)"},
@@ -127,10 +122,10 @@ def main(trajectory_dir: str, show_plots: bool):
             )
 
         if c["plot_values_connected"]:
-            plot_comparisons(
+            combine_plots(
                 path_to_plot_dir,
                 "values_connected",
-                comparer.plot_values_connected_comparison,
+                analyzer.plot_values_connected,
                 extra_args={
                     "energies": {"ylabel": "Energy (Hartree)", "set_title": True}, 
                     "total_forces": {"ylabel": r"Force Magnitude ($\mathrm{Hartree}/\mathrm{Bohr}$)"},
@@ -141,10 +136,10 @@ def main(trajectory_dir: str, show_plots: bool):
 
         if c["plot_autocorrelation"]:
             lags = c["autocorrelation_lags"]
-            plot_comparisons(
+            combine_plots(
                 path_to_plot_dir,
                 "autocorrelation",
-                comparer.plot_autocorrelation_comparison,
+                analyzer.plot_autocorrelation,
                 extra_args={
                     "energies": {"set_title": True, "lags": lags},
                     "total_forces": {"lags": lags},

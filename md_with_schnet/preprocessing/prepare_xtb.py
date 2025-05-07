@@ -100,7 +100,7 @@ def get_all_energies_from_txt(path: str, traj: np.ndarray) -> np.ndarray:
         np.ndarray: Array of energies.
     """
     all_energies = np.loadtxt(path, usecols=(3))   # 3rd column is potential energy
-    logger.debug(f'E.shape: {all_energies.shape}')
+    logger.debug(f'all_energies.shape: {all_energies.shape}')
     if all_energies.shape[0] != traj.shape[0]:
         logger.error(f'Error: all_energies.shape[0] != traj.shape[0]: {all_energies.shape[0]} != {traj.shape[0]}')
         raise ValueError('all_energies.shape[0] != traj.shape[0]')
