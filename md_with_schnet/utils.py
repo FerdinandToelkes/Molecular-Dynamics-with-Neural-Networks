@@ -10,7 +10,7 @@ from schnetpack.data import ASEAtomsData
 
 from md_with_schnet.setup_logger import setup_logger
 
-logger = setup_logger(logging_level_str="info")
+logger = setup_logger(logging_level_str="debug")
 
 
 def set_plotting_config(fontsize: int = 10, aspect_ratio: float = 1.618, width_fraction: float = 1.0, text_usetex: bool = True,
@@ -132,7 +132,50 @@ def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name:
 
     return data
 
-def load_xtb_dataset_without_indices(db_path: str, batch_size: int = 10, pin_memory: bool = None, num_workers: int = None) -> ASEAtomsData:
+
+def load_xtb_dataset(db_path: str, batch_size: int, split_file: any = None, pin_memory: any = None, num_workers: int = -1) -> ASEAtomsData:
+    """
+    Load anXTB dataset from the specified path.
+    Args:
+        db_path (str): Path to the dataset.
+        batch_size (int): Batch size for the dataset.
+        split_file (any): Path to the split file. Default is None.
+        pin_memory (bool): Whether to use pinned memory. Default is None.
+        num_workers (int): Number of workers for data loading. Default is None.
+    Returns:
+        ASEAtomsData: The loaded XTB dataset.
+    """
+    logger.debug(f"num_workers when entering: {num_workers}")
+    if pin_memory is None:
+        pin_memory = torch.cuda.is_available()
+    if num_workers == -1:
+        num_workers = 0 if platform.system() == "Darwin" else 31 
+        logger.debug(f"num_workers: {num_workers}")
+
+    # load xtb dataset
+    data = spk.data.AtomsDataModule(
+        db_path,
+        batch_size=batch_size,
+        distance_unit='Ang',
+        property_units={'energy':'Hartree', 'forces':'Hartree/Bohr'},
+        split_file=split_file,
+        transforms=[
+            trn.ASENeighborList(cutoff=5.),
+            trn.RemoveOffsets("energy", remove_mean=True, remove_atomrefs=False),
+            trn.CastTo32()
+        ],
+        num_workers=num_workers,
+        pin_memory=pin_memory, # set to false, when not using a GPU
+    )
+    
+    data.prepare_data()
+    data.setup()
+
+    logger.info(f"loaded xtb dataset: {data}")
+
+    return data
+
+def load_xtb_dataset_without_given_splits(db_path: str, batch_size: int = 10, pin_memory: bool = None, num_workers: int = None) -> ASEAtomsData:
     """
     Load anXTB dataset from the specified path.
     Args:
@@ -146,7 +189,8 @@ def load_xtb_dataset_without_indices(db_path: str, batch_size: int = 10, pin_mem
     if pin_memory is None:
         pin_memory = torch.cuda.is_available()
     if num_workers is None:
-        num_workers = 0 if platform.system() == "Darwin" else 1 
+        num_workers = 0 if platform.system() == "Darwin" else 31 
+        logger.debug(f"num_workers: {num_workers}")
 
     # load xtb dataset
     data = spk.data.AtomsDataModule(
@@ -171,44 +215,3 @@ def load_xtb_dataset_without_indices(db_path: str, batch_size: int = 10, pin_mem
     logger.info(f"loaded xtb dataset: {data}")
 
     return data
-
-def load_xtb_dataset(db_path: str, batch_size: int = 10, pin_memory: bool = None, num_workers: int = None) -> ASEAtomsData:
-    """
-    Load anXTB dataset from the specified path.
-    Args:
-        db_path (str): Path to the dataset.
-        batch_size (int): Batch size for the dataset. Default is 10.
-        pin_memory (bool): Whether to use pinned memory. Default is None.
-        num_workers (int): Number of workers for data loading. Default is None.
-    Returns:
-        ASEAtomsData: The loaded XTB dataset.
-    """
-    if pin_memory is None:
-        pin_memory = torch.cuda.is_available()
-    if num_workers is None:
-        num_workers = 0 if platform.system() == "Darwin" else 1 
-
-    # load xtb dataset
-    data = spk.data.AtomsDataModule(
-        db_path,
-        batch_size=batch_size,
-        distance_unit='Ang',
-        property_units={'energy':'Hartree', 'forces':'Hartree/Bohr'},
-        num_train=1000,
-        num_val=1000,
-        transforms=[
-            trn.ASENeighborList(cutoff=5.),
-            trn.RemoveOffsets("energy", remove_mean=True, remove_atomrefs=False),
-            trn.CastTo32()
-        ],
-        num_workers=num_workers,
-        pin_memory=pin_memory, # set to false, when not using a GPU
-    )
-    
-    data.prepare_data()
-    data.setup()
-
-    logger.info(f"loaded xtb dataset: {data}")
-
-    return data
-

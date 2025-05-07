@@ -4,8 +4,6 @@ import schnetpack as spk
 import schnetpack.transform as trn
 import pytorch_lightning as pl
 import os
-import matplotlib.pyplot as plt
-import numpy as np
 import logging
 import argparse
 

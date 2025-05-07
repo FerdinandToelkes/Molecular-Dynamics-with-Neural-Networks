@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import load_xtb_dataset_without_indices, set_data_prefix
+from md_with_schnet.utils import load_xtb_dataset_without_given_splits, set_data_prefix
 
 logger = setup_logger(logging_level_str="debug")
 
@@ -27,13 +27,13 @@ def parse_args() -> dict:
 
 def main(trajectory_dir: str):
     # setup
-    splits_dir = os.path.expanduser(f'~/whk/code/md_with_schnet/splits/{trajectory_dir}')
+    data_prefix = set_data_prefix()
+    splits_dir = os.path.join(data_prefix, 'splits', trajectory_dir)
     os.makedirs(splits_dir, exist_ok=True)
-    data_prefix = os.path.join(set_data_prefix(), trajectory_dir)
-    target_path = os.path.join(data_prefix, 'md_trajectory.db')
+    path_to_data = os.path.join(data_prefix, trajectory_dir, 'md_trajectory.db')
 
     # load XTB dataset
-    xtb = load_xtb_dataset_without_indices(target_path)
+    xtb = load_xtb_dataset_without_given_splits(path_to_data, batch_size=10)
     total_length = len(xtb.dataset)
     logger.info(f"Total length of dataset: {total_length}")
 
@@ -62,9 +62,9 @@ def main(trajectory_dir: str):
         inner_train_indices = [i for i in outer_train_indices if i not in inner_val_indices]
         # save train, val and test indices as npz file
         inner_splits = {
-            "train": inner_train_indices,
-            "val": inner_val_indices,
-            "test": outer_test_indices
+            "train_idx": inner_train_indices, # naming important for ASE
+            "val_idx": inner_val_indices,
+            "test_idx": outer_test_indices
         }
         inner_splits_path = os.path.join(splits_dir, f"inner_splits_{k}.npz")
         np.savez(inner_splits_path, **inner_splits)
