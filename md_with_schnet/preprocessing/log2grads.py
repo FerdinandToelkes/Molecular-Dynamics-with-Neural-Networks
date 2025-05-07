@@ -31,7 +31,11 @@ def main(target_dir: str):
     """
     # setup
     data_path = os.path.join(set_data_prefix(), target_dir)
-    command_path = os.path.expanduser('~/whk/code/md_with_schnet/data_analysis/extract_gradients.sh')
+    command_path = os.path.expanduser('~/whk/code/md_with_schnet/preprocessing/extract_gradients.sh')
+    if not os.path.exists(command_path):
+        logger.error(f"Command path {command_path} does not exist. Please check the path.")
+        raise FileNotFoundError(f"Command path {command_path} does not exist. Please check the path.")
+
     output_path = os.path.join(data_path, "gradients.txt")
     if os.path.exists(output_path):
         logger.debug("Removing old gradients.txt file")

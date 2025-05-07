@@ -2,7 +2,7 @@
 ##########################
 *.xyz
 *.extxyz
-
+*.db
 
 # Plots #
 #########
@@ -29,6 +29,7 @@ __pycache__/
 *.pth
 *.pt
 *.pkl
+*.npz
 *.egg-info/
 
 # Jupyter Notebooks #
@@ -39,7 +40,6 @@ __pycache__/
 # CSV and data files #
 ######################
 *.csv
-*.db
 *.lock
 
 # Files stored in 'output' and 'plots' directories #
