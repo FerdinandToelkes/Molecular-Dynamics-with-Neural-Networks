@@ -1,10 +1,7 @@
 import os
 import argparse
-import logging
 import torch
-import schnetpack as spk
 
-from ase import Atoms
 from ase.io import read
 from schnetpack import properties
 from schnetpack.md import System, UniformInit, Simulator
@@ -14,8 +11,11 @@ from schnetpack.transform import ASENeighborList
 from schnetpack.md.calculators import SchNetPackCalculator
 from schnetpack.md.simulation_hooks import LangevinThermostat, callback_hooks
 
+from schnetpack.utils import load_model
 
-from md_with_schnet.utils import setup_logger, load_md17_dataset, set_data_prefix
+
+from md_with_schnet.utils import set_data_prefix
+from md_with_schnet.setup_logger import setup_logger
 
 
 # Example command to run the script from within code directory:
@@ -70,6 +70,11 @@ def main(dataset_name: str, molecule_name: str):
     molecule_path = os.path.join(test_path, 'md_ethanol.xyz')
     # Load atoms with ASE
     molecule = read(molecule_path)
+
+    # investigate model structure
+    model = load_model(model_path)
+    logger.info(f"Model: {model}")
+    
 
 
     ### SETUP THE MOLECULAR DYNAMICS SIMULATION ###

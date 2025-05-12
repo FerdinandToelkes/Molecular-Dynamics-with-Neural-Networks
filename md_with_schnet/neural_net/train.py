@@ -7,6 +7,9 @@ import os
 import argparse
 import time
 
+from hydra import initialize, compose
+from omegaconf import OmegaConf
+
 from md_with_schnet.utils import setup_logger, load_xtb_dataset, set_data_prefix
 
 
@@ -49,6 +52,10 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     if not os.path.exists(output_dir):
         logger.info(f"Creating output directory: {output_dir}")
         os.makedirs(output_dir)
+    # Initialize Hydra and compose the configuration
+    with initialize(config_path="."):
+        cfg = compose(config_name="reference_config.yaml")
+        logger.info(f"Configuration: {OmegaConf.to_yaml(cfg)}")
 
     splits_dir = os.path.join(data_prefix, 'splits', trajectory_dir)
     split_file = os.path.join(splits_dir, "inner_splits_0.npz")
@@ -57,36 +64,40 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
         raise FileNotFoundError(f"Split file not found: {split_file}. Please run the create_splits.py script first.")
     path_to_data = os.path.join(data_prefix, trajectory_dir, 'md_trajectory.db')
 
-    # load XTB dataset
-    logger.info(f"num_workers before entering: {num_workers}")
-    data = load_xtb_dataset(path_to_data, batch_size, split_file, num_workers=num_workers)
+    # Load our XTB dataset using parameters from the config
+    data = load_xtb_dataset(path_to_data, cfg, split_file)
 
     # print some information about the dataset
     properties = data.dataset[0]
     properties_str = ''.join(f'{i}\n' for i in properties.keys())
     logger.info(f"Loaded properties:\n{properties_str}")
     logger.info(f'Shape:\n{properties["forces"].shape}')
+    
+    
 
     # BUILD MODEL
     # Define representation
-    cutoff = 5.
-    n_atom_basis = 30
+    cutoff = cfg.globals.cutoff
+    n_atom_basis = cfg.model.representation.n_atom_basis
 
     pairwise_distance = spk.atomistic.PairwiseDistances() # calculates pairwise distances between atoms
-    radial_basis = spk.nn.GaussianRBF(n_rbf=20, cutoff=cutoff)
+    radial_basis = spk.nn.GaussianRBF(
+        n_rbf=cfg.model.representation.radial_basis.n_rbf, 
+        cutoff=cutoff)
     schnet = spk.representation.SchNet(
-        n_atom_basis=n_atom_basis, n_interactions=3,
+        n_atom_basis=n_atom_basis, 
+        n_interactions=cfg.model.representation.n_interactions,
         radial_basis=radial_basis,
         cutoff_fn=spk.nn.CosineCutoff(cutoff)
     )
-
+    exit()
     # Define output modules
     pred_energy = spk.atomistic.Atomwise(n_in=n_atom_basis, output_key="energy")
     pred_forces = spk.atomistic.Forces(energy_key="energy", force_key="forces")
 
     # Combine into a model
     nnpot = spk.model.NeuralNetworkPotential(
-        representation=schnet,
+        representation=schnet, # TODO: try different representations such as ACSF
         input_modules=[pairwise_distance],
         output_modules=[pred_energy, pred_forces],
         postprocessors=[
@@ -99,19 +110,15 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     output_energy = spk.task.ModelOutput(
         name="energy",
         loss_fn=torch.nn.MSELoss(),
-        loss_weight=0.01,
-        metrics={
-            "MAE": torchmetrics.MeanAbsoluteError()
-        }
+        loss_weight=cfg.task.outputs[0].loss_weight,
+        metrics={"MAE": torchmetrics.MeanAbsoluteError()}
     )
 
     output_forces = spk.task.ModelOutput(
         name="forces",
         loss_fn=torch.nn.MSELoss(),
-        loss_weight=0.99,
-        metrics={
-            "MAE": torchmetrics.MeanAbsoluteError()
-        }
+        loss_weight=cfg.task.outputs[1].loss_weight,
+        metrics={"MAE": torchmetrics.MeanAbsoluteError()}
     )
 
     # Define task
