@@ -4,12 +4,14 @@
 # Note that we removed sections that seemed to be unnecessary (workdir, data_dir, etc.) since
 # we set them ourselves in our code
 
+print_config: true
 run:
-  work_dir: ${hydra:runtime.cwd}
-  path: ${run.work_dir}/runs
+  work_dir: null
+  path: null
+  id: ${uuid:1}
   ckpt_path: null
 globals:
-  model_path: best_model
+  model_path: ${run.path}/best_model
   cutoff: 5.0
   lr: 0.001
   energy_key: energy
@@ -45,7 +47,7 @@ callbacks:
     save_last: true
     mode: min
     verbose: false
-    dirpath: checkpoints/
+    dirpath: ${run.path}/checkpoints/
     filename: '{epoch:02d}'
     model_path: ${globals.model_path}
   early_stopping:
@@ -133,11 +135,14 @@ model:
     property: energy
     add_mean: true
 data:
+  _target_: schnetpack.datasets.MD17
+  data_workdir: null
   batch_size: 100
   num_workers: 31
   num_val_workers: null
   num_test_workers: null
   train_sampler_cls: null
+  molecule: uracil
   distance_unit: Ang
   property_units:
     energy: Hartree
@@ -153,5 +158,5 @@ data:
 logger:
   tensorboard:
     _target_: pytorch_lightning.loggers.tensorboard.TensorBoardLogger
-    save_dir: tensorboard/
+    save_dir: ${run.path}/tensorboard/
     name: default

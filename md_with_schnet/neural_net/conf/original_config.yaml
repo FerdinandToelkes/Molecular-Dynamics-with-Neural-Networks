@@ -16,7 +16,7 @@ trainer:
   _target_: pytorch_lightning.Trainer
   devices: 1
   min_epochs: null
-  max_epochs: 100000
+  max_epochs: 1
   enable_model_summary: true
   profiler: null
   gradient_clip_val: 0

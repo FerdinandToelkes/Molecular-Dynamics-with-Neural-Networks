@@ -45,4 +45,7 @@ __pycache__/
 # Files stored in 'output' and 'plots' directories #
 ################################
 **/output/**
+**/runs/**
+**/checkpoints/**
+**/tensorboard/**
 **/plots/**
