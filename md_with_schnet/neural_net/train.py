@@ -1,6 +1,7 @@
 import os
 import pytorch_lightning as pl
 import argparse
+import torch
 
 from hydra import initialize, compose
 from hydra.utils import instantiate, get_class
@@ -9,7 +10,7 @@ from omegaconf import OmegaConf, DictConfig
 
 from md_with_schnet.utils import setup_logger, load_xtb_dataset, set_data_prefix
 
-logger = setup_logger("info")
+logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
@@ -17,8 +18,8 @@ screen -dmS xtb_train sh -c 'python -m md_with_schnet.neural_net.train --traject
 """
 
 def parse_args() -> dict:
-    """ Parse command-line arguments. 
-
+    """ 
+    Parse command-line arguments. 
     Returns:
         dict: Dictionary containing command-line arguments.
     """
@@ -30,11 +31,31 @@ def parse_args() -> dict:
     parser.add_argument("-e", "--num_epochs", type=int, default=1, help="Number of epochs for training (default: 1)")
     parser.add_argument("-lr", "--learning_rate", type=float, default=1e-4, help="Learning rate for the optimizer (default: 1e-4)")
     parser.add_argument("-nw", "--num_workers", type=int, default=-1, help="Number of workers for data loading (default: -1, which sets it to 0 on macOS and 31 on Linux)")
+    # others
+    parser.add_argument("-s", "--seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
     return vars(parser.parse_args())
 
+def set_run_path(trajectory_dir: str, num_epochs: int, batch_size: int, learning_rate: float, seed: int) -> str:
+    """ 
+    Set the run path based on the trajectory directory.
+    Args:
+        trajectory_dir (str): Directory containing the trajectory data.
+        num_epochs (int): Number of epochs for training.
+        batch_size (int): Batch size for training.
+        learning_rate (float): Learning rate for the optimizer.
+        seed (int): Random seed for reproducibility.
+    Returns:
+        str: The run path.
+    """
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    run_name = f"{trajectory_dir}_epochs_{num_epochs}_bs_{batch_size}_lr_{learning_rate}_seed_{seed}"
+    run_name = run_name.replace("/", "_")
+    run_path = os.path.join(current_dir, "runs", run_name)
+    return run_path
+
 def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int) -> DictConfig:
-    """ Update the configuration with command-line arguments.
-    
+    """ 
+    Update the configuration with command-line arguments.
     Args:
         cfg (DictConfig): The original configuration.
         run_path (str): Path to save the run.
@@ -42,7 +63,6 @@ def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: i
         num_epochs (int): Number of epochs for training.
         learning_rate (float): Learning rate for the optimizer.
         num_workers (int): Number of workers for data loading.
-    
     Returns:
         DictConfig: Updated configuration.
     """
@@ -54,18 +74,18 @@ def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: i
     cfg.globals.lr = learning_rate
     return cfg
 
-def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int):
+def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int, seed: int):
+    ####################### Basic setup ###########################
+    pl.seed_everything(seed, workers=True)
+
     ####################### 1) Compose the config ###########################
     with initialize(config_path="conf", job_name="train"):
         cfg: DictConfig = compose(config_name="train_config")
 
     # set run path
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    run_name = f"{trajectory_dir}_epochs_{num_epochs}_bs_{batch_size}_lr_{learning_rate}"
-    run_name = run_name.replace("/", "_")
-    run_path = os.path.join(current_dir, "runs", run_name)
+    run_path = set_run_path(trajectory_dir, num_epochs, batch_size, learning_rate, seed)
+    logger.debug(f"Run path: {run_path}")
     
-
     # update the config with the arguments from the command line
     cfg = update_config(cfg, run_path, batch_size, num_epochs, learning_rate, num_workers)
     logger.info(f"Loaded and updated config:\n{OmegaConf.to_yaml(cfg)}")
@@ -79,17 +99,18 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     output_dir = os.path.join(data_prefix, "output")
     os.makedirs(output_dir, exist_ok=True)
 
-    splits_dir = os.path.join(data_prefix, "splits", trajectory_dir)
-    split_file = os.path.join(splits_dir, "inner_splits_0.npz")
+    split_file = os.path.join(data_prefix, "splits", trajectory_dir,"inner_splits_0.npz")
     if not os.path.exists(split_file):
         raise FileNotFoundError(f"Missing split file: {split_file}")
+    logger.debug(f"Split file: {split_file}")
     path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
+    logger.debug(f"Path to database: {path_to_db}")
 
-    datamodule = load_xtb_dataset(path_to_db, cfg, split_file)
+    datamodule: pl.LightningDataModule = load_xtb_dataset(path_to_db, cfg, split_file)
 
     ####################### 4) Instantiate model & task from YAML ###########
-    model = instantiate(cfg.model)
-    task = instantiate(
+    model: pl.LightningModule = instantiate(cfg.model)
+    task: pl.LightningModule = instantiate(
         cfg.task,
         model=model,
         optimizer_cls=optim_cls,
@@ -97,20 +118,22 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     )
 
     ####################### 5) Logger ################################
-    hparams = OmegaConf.to_container(cfg, resolve=False)
-    # Remove non‐primitive entries
-    hparams["task"].pop("outputs", None)
+    # Convert the config to a basic dict with resolved values, i.e. ${work_dir} -> /path/to/work_dir
+    hparams: DictConfig = OmegaConf.to_container(cfg, resolve=True)
 
-    tb_logger = instantiate(cfg.logger.tensorboard)
+    # instantiate the logger
+    tb_logger : pl.loggers.TensorBoardLogger = instantiate(cfg.logger.tensorboard)
+
     # Manually log your clean hyperparameters
     tb_logger.log_hyperparams(hparams)
 
     # Prevent Lightning from auto‐saving hparams (no‐op override)
+    # use lambda function taking any number of arguments and returning None
     tb_logger.log_hyperparams = lambda *args, **kwargs: None
 
 
     ####################### 6) Callbacks ##############################
-    callbacks = [
+    callbacks: list = [
         instantiate(cfg.callbacks.model_checkpoint),
         instantiate(cfg.callbacks.early_stopping),
         instantiate(cfg.callbacks.lr_monitor),
@@ -122,12 +145,15 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
         cfg.trainer,
         callbacks=callbacks,
         logger=tb_logger,
-        default_root_dir=cfg.run.path,
+        deterministic=True, # set to True for reproducibility
+        #default_root_dir=cfg.run.path, #TODO remove this line
     )
-    print(f"cfg.run.ckpt_path: {cfg.run.ckpt_path}")
-    print(f"cfg.run.path: {cfg.run.path}")
+    
 
     ####################### 8) Launch training ########################
+    # since we have a pl datamodule, it is split automatically into train, val and test sets
+    # depending on which method is called, e.g. fit, validate, test
+    # see https://lightning.ai/docs/pytorch/stable/data/datamodule.html for more details
     trainer.fit(task, datamodule=datamodule)
 
 if __name__ == "__main__":

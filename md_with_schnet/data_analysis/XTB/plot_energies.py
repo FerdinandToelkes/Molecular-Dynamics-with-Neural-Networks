@@ -35,7 +35,7 @@ def main(trajectory_dir: str, show_plots: bool):
     plot_path = os.path.join(plot_dir, f"XTB/kinetic_energy_and_temperature.pdf")
     path = os.path.join(data_prefix, 'energies.txt')
 
-    all_energies = np.loadtxt(path, usecols=(1,2,3,5)) # 1 E_kin, 2 E_tot, 3 E_pot, 5 T
+    all_energies = np.loadtxt(path, usecols=(1, 5)) # 1 E_kin, 2 E_tot, 3 E_pot, 5 T
     logger.debug(f'all_energies.shape: {all_energies.shape}')
     nr_of_configs = 200
     first_config = 0
@@ -46,8 +46,8 @@ def main(trajectory_dir: str, show_plots: bool):
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
     x_values = np.arange(all_energies.shape[0])
-    ax1.plot(x_values, all_energies[:, 1], 'g-')
-    ax2.plot(x_values, all_energies[:, 3], 'b-')
+    ax1.plot(x_values, all_energies[:, 0], 'g-')
+    ax2.plot(x_values, all_energies[:, 1], 'b-')
     ax1.set_xlabel('Configurations')
     ax1.set_ylabel('Kinetic Energy (au)', color='g')
     ax2.set_ylabel('Temperature (K)', color='b')

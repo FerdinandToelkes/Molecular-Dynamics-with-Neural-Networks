@@ -1,0 +1,45 @@
+
+run:
+  # TODO: Make this flexible
+  path: /home/tof54964/whk/code/md_with_schnet/neural_net/runs/MOTOR_MD_XTB_T300_1_epochs_100_bs_100_lr_0.0001
+globals:
+  model_path: ${run.path}/best_model
+model: 
+  energy_key: energy
+  force_key: forces
+  units:
+    energy: Hartree
+    length: Angstrom
+  neighborlist:
+    cutoff: 5.0 # Angstrom
+    cutoff_shell: 2.0 # Angstrom
+    dtype: float32
+md:
+  n_replicas: 1
+  system_temperature: 300 # Kelvin
+  time_step: 0.5 # fs
+  time_constant: 100 # fs
+  n_steps: 20000
+  precision: float32
+data:
+  _target_: schnetpack.datasets.MD17
+  data_workdir: null
+  batch_size: 100
+  num_workers: 8
+  distance_unit: Ang
+  property_units:
+    energy: Hartree
+    forces: Hartree/Bohr
+  transforms:
+  - _target_: schnetpack.transform.SubtractCenterOfMass
+  - _target_: schnetpack.transform.RemoveOffsets
+    property: energy
+    remove_mean: true
+  - _target_: schnetpack.transform.MatScipyNeighborList
+    cutoff: ${globals.cutoff}
+  - _target_: schnetpack.transform.CastTo32
+logger:
+  buffer_size: 100
+  log_every: 1
+  checkpoint_every: 100
+  tensorboard_props: ["energy", "temperature"]
