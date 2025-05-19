@@ -8,16 +8,14 @@ def get_log_level(level_str: str) -> int:
 
 
 def setup_logger(logging_level_str: str = "info",
-                 logger: logging.Logger = None,
+                 logger: logging.Logger | None = None,
                  external_level: int = logging.WARNING) -> logging.Logger:
     """
     Set up a logger for the calling module.
-
     Args:
-        logger (logging.Logger, optional): Logger instance to configure.
-        logging_level_str (str, optional): Logging level string (e.g., "debug").
-        external_level (int, optional): Level for external modules like SchNetPack.
-
+        logging_level_str (str | None, optional): Logging level string (e.g., "debug"). Defaults to "info".
+        logger (logging.Logger | None, optional): Logger instance to configure. Defaults to None.
+        external_level (int, optional): Level for external modules like SchNetPack. Defaults to logging.WARNING.
     Returns:
         logging.Logger: Configured logger.
     """

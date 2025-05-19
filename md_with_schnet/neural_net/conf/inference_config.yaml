@@ -1,7 +1,7 @@
-
 run:
   # TODO: Make this flexible
-  path: /home/tof54964/whk/code/md_with_schnet/neural_net/runs/MOTOR_MD_XTB_T300_1_epochs_100_bs_100_lr_0.0001
+  # path: /home/tof54964/whk/code/md_with_schnet/neural_net/runs/MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42
+  path: /Users/ferdinandtolkes/whk/code/md_with_schnet/neural_net/runs/MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42
 globals:
   model_path: ${run.path}/best_model
 model: 
@@ -17,15 +17,15 @@ model:
 md:
   n_replicas: 1
   system_temperature: 300 # Kelvin
-  time_step: 0.5 # fs
-  time_constant: 100 # fs
+  time_step: 40 # atomic units
+  # time_constant: 100 # fs
   n_steps: 20000
   precision: float32
 data:
   _target_: schnetpack.datasets.MD17
   data_workdir: null
   batch_size: 100
-  num_workers: 8
+  num_workers: 0
   distance_unit: Ang
   property_units:
     energy: Hartree

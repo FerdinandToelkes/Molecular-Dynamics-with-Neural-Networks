@@ -119,10 +119,10 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
 
     ####################### 5) Logger ################################
     # Convert the config to a basic dict with resolved values, i.e. ${work_dir} -> /path/to/work_dir
-    hparams: DictConfig = OmegaConf.to_container(cfg, resolve=True)
+    hparams = OmegaConf.to_container(cfg, resolve=True)
 
     # instantiate the logger
-    tb_logger : pl.loggers.TensorBoardLogger = instantiate(cfg.logger.tensorboard)
+    tb_logger = instantiate(cfg.logger.tensorboard)
 
     # Manually log your clean hyperparameters
     tb_logger.log_hyperparams(hparams)

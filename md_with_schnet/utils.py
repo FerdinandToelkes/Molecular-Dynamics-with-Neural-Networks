@@ -74,7 +74,7 @@ def set_data_prefix() -> str:
 
 
 def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name: str = "rMD17",
-              pin_memory: bool = None, num_workers: int = None) -> MD17:
+              pin_memory: bool | None = None, num_workers: int | None = None) -> spk.data.datamodule.AtomsDataModule | MD17:
     """
     Load the MD17 dataset for the specified molecule.
     Args:
@@ -84,7 +84,7 @@ def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name:
         pin_memory (bool): Whether to use pinned memory. Default is None.
         num_workers (int): Number of workers for data loading. Default is None.
     Returns:
-        MD17: The loaded MD17 dataset.
+        spk.data.datamodule.AtomsDataModule | MD17: The loaded MD17 dataset.
     """
     if pin_memory is None:
         pin_memory = torch.cuda.is_available()
@@ -133,17 +133,17 @@ def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name:
 
     return data
 
-def load_xtb_dataset(db_path: str, config: DictConfig, split_file: any = None, pin_memory: any = None) -> pl.LightningDataModule:
+def load_xtb_dataset(db_path: str, config: DictConfig, split_file: str | None = None, pin_memory: bool | None = None) -> spk.data.datamodule.AtomsDataModule:
     """
     Load anXTB dataset from the specified path. 
     Note: data.prepare_data() and data.setup() do not need to be called here, since they will be called by pl.trainer.fit().
     Args:
         db_path (str): Path to the dataset.
         config (DictConfig): Configuration object containing dataset parameters.
-        split_file (any): Path to the split file. Default is None.
-        pin_memory (bool): Whether to use pinned memory. Default is None.
+        split_file (str | None): Path to the split file. Default is None.
+        pin_memory (bool | None): Whether to use pinned memory. Default is None.
     Returns:
-        pl.LightningDataModule: The loaded XTB dataset.
+        spk.data.datamodule.AtomsDataModule: The loaded XTB dataset.
     """
     if pin_memory is None:
         pin_memory = torch.cuda.is_available()
@@ -179,19 +179,18 @@ def load_xtb_dataset(db_path: str, config: DictConfig, split_file: any = None, p
 
     return data
 
-def load_xtb_dataset_without_config(db_path: str, batch_size: int, split_file: any = None, pin_memory: any = None, num_workers: int = -1) -> pl.LightningDataModule:
+def load_xtb_dataset_without_config(db_path: str, batch_size: int, split_file: str | None = None, pin_memory: bool | None = None, num_workers: int = -1) -> pl.LightningDataModule:
     """
     Load anXTB dataset from the specified path.
     Args:
         db_path (str): Path to the dataset.
         batch_size (int): Batch size for the dataset.
-        split_file (any): Path to the split file. Default is None.
-        pin_memory (bool): Whether to use pinned memory. Default is None.
-        num_workers (int): Number of workers for data loading. Default is None.
+        split_file (str | None): Path to the split file. Default is None.
+        pin_memory (bool | None): Whether to use pinned memory. Default is None.
+        num_workers (int): Number of workers for data loading. Default is -1.
     Returns:
         pl.LightningDataModule: The loaded XTB dataset.
     """
-    logger.debug(f"num_workers when entering: {num_workers}")
     if pin_memory is None:
         pin_memory = torch.cuda.is_available()
     if num_workers == -1:
@@ -222,14 +221,14 @@ def load_xtb_dataset_without_config(db_path: str, batch_size: int, split_file: a
     return data
 
 
-def load_xtb_dataset_without_given_splits(db_path: str, batch_size: int = 10, pin_memory: bool = None, num_workers: int = None) -> pl.LightningDataModule:
+def load_xtb_dataset_without_given_splits(db_path: str, batch_size: int = 10, pin_memory: bool | None = None, num_workers: int | None = None) -> pl.LightningDataModule:
     """
     Load anXTB dataset from the specified path.
     Args:
         db_path (str): Path to the dataset.
         batch_size (int): Batch size for the dataset. Default is 10.
-        pin_memory (bool): Whether to use pinned memory. Default is None.
-        num_workers (int): Number of workers for data loading. Default is None.
+        pin_memory (bool | None): Whether to use pinned memory. Default is None.
+        num_workers (int | None): Number of workers for data loading. Default is None.
     Returns:
         pl.LightningDataModule: The loaded XTB dataset.
     """

@@ -9,6 +9,7 @@ from omegaconf import OmegaConf, DictConfig
 
 from ase import Atoms
 from schnetpack import properties
+from schnetpack import units as spk_units
 from schnetpack.md import System, UniformInit, Simulator
 from schnetpack.md.integrators import VelocityVerlet
 from schnetpack.md.neighborlist_md import NeighborListMD
@@ -49,7 +50,7 @@ def set_simulation_hooks(cfg: DictConfig, md_workdir: str) -> list:
         simulation_hooks (list): List of simulation hooks for the MD simulation.
     """
     # Initialize the thermostat and set it as a simulation hook
-    langevin = LangevinThermostat(cfg.md.system_temperature, cfg.md.time_constant)
+    #langevin = LangevinThermostat(cfg.md.system_temperature, cfg.md.time_constant)
     
     file_logger = set_file_logger(cfg, md_workdir)
 
@@ -65,7 +66,7 @@ def set_simulation_hooks(cfg: DictConfig, md_workdir: str) -> list:
     )
 
     simulation_hooks = [
-        langevin,
+        # langevin,
         file_logger,
         checkpoint,
         tensorboard_logger,
@@ -120,17 +121,6 @@ def main(trajectory_dir: str):
 
     datamodule = load_xtb_dataset(path_to_db, cfg, split_file)
 
-    ####################### 3) Setup device and converter #########################
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    neighborlist_dtype = getattr(torch, cfg.model.neighborlist.dtype)
-    converter = spk.interfaces.AtomsConverter(
-        neighbor_list=ASENeighborList(cutoff=cfg.model.neighborlist.cutoff),
-        dtype=neighborlist_dtype,
-        device=device,
-    )
-
-    # set up converter ## TODO: check if this is needed
-    best_model = torch.load(model_path, map_location=device)
 
     ####################### 4) Prepare molecule ##############################
     structure = datamodule.test_dataset[0]
@@ -180,9 +170,15 @@ def main(trajectory_dir: str):
 
 
     ####################### 8) Setup simulator ##############################
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     md_precision = getattr(torch, cfg.md.precision)
     # TODO use turbomole integrator
-    md_integrator = VelocityVerlet(cfg.md.time_step)
+    # convert time step from atomic units to femto seconds
+    time_step = cfg.md.time_step * 0.024188843265864
+    logger.debug(f"Time step (in atomic units): {cfg.md.time_step}")
+    logger.debug(f"Time step (in fs): {time_step}")
+
+    md_integrator = VelocityVerlet(time_step)
     md_simulator = Simulator(md_system, md_integrator, md_calculator, simulation_hooks)
     md_simulator = md_simulator.to(md_precision)
     md_simulator = md_simulator.to(device)
