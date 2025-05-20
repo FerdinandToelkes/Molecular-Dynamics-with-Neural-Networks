@@ -63,20 +63,30 @@ def plot_energies(data: HDF5Loader, true_energies: np.ndarray, predicted_energie
     time_axis = np.arange(data.entries) * data.time_step / spk_units.fs 
     time_axis = time_axis[:len(true_energies)]
     predicted_energies = predicted_energies[:len(true_energies)]
-    
+
     set_plotting_config()
     plt.figure()
-    # setup twin axes
+    
+    # Plot true energies
     ax1 = plt.gca()
+    line1, = ax1.plot(time_axis, true_energies, label=r"True $E_\mathrm{pot}$", color='tab:orange')
+    ax1.set_ylabel("E [Hartree]", color='tab:orange')
+    ax1.tick_params(axis='y', labelcolor='tab:orange')
+
+    # Plot predicted energies on the twin axis
     ax2 = ax1.twinx()
-    ax1.plot(time_axis, true_energies, label=r"E$_\mathrm{pot}$ (True)", color='orange')
-    ax2.plot(time_axis, predicted_energies, label=r"E$_\mathrm{pot}$ (Predicted)", color='blue')
-    # ax1.set_ylabel("E [Hartree]")
-    # ax2.set_ylabel("E [Hartree]")
-    plt.ylabel("E [Hartree]")
-    plt.xlabel("t [fs]")
-    # plt.xlim(9800,10000)
-    plt.legend()
+    line2, = ax2.plot(time_axis, predicted_energies, label=r"Predicted $E_\mathrm{pot}$", color='tab:blue')
+    ax2.set_ylabel("E [Hartree]", color='tab:blue')
+    ax2.tick_params(axis='y', labelcolor='tab:blue')
+
+    ax1.set_xlabel("Time [fs]")
+
+    # Create a combined legend
+    lines = [line1, line2]
+    labels = [line.get_label() for line in lines]
+    ax1.legend(lines, labels, loc='upper right')
+
+    #plt.legend()
     plt.tight_layout()
     plt.show()
 
@@ -179,10 +189,6 @@ def main(trajectory_dir: str):
             break
         test_energies.append(d["energy"])
     test_energies = np.array(test_energies)
-    logger.debug(f"Shape true energies: {test_energies.shape}")
-    logger.debug(f"Shape predicted energies: {energies_system.shape}")
-    logger.debug(f"Shape predicted energies: {energies_system[:200].shape}")
-    # es = energies_system[:len(test_energies)]
     plot_energies(data, test_energies, energies_system)
     exit()
 

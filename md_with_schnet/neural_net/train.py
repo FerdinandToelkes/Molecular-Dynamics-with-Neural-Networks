@@ -2,6 +2,7 @@ import os
 import pytorch_lightning as pl
 import argparse
 import torch
+import platform
 
 from hydra import initialize, compose
 from hydra.utils import instantiate, get_class
@@ -70,6 +71,8 @@ def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: i
     cfg.data.batch_size = batch_size
     if num_workers != -1:
         cfg.data.num_workers = num_workers
+    else:
+        cfg.data.num_workers = 0 if platform.system() == 'Darwin' else 31
     cfg.trainer.max_epochs = num_epochs
     cfg.globals.lr = learning_rate
     return cfg
@@ -79,7 +82,7 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     pl.seed_everything(seed, workers=True)
 
     ####################### 1) Compose the config ###########################
-    with initialize(config_path="conf", job_name="train"):
+    with initialize(config_path="conf", job_name="train", version_base="1.1"):
         cfg: DictConfig = compose(config_name="train_config")
 
     # set run path

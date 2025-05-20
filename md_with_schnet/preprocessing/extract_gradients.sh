@@ -23,14 +23,14 @@ awk '
     }
 
     # Whenever we see a line with two floats (time step and "-0.377603333108E-04"),
-    # record the time stamp and turn on our “in-gradient” flag.
+    # turn on our “in-gradient” flag.
     /^[[:space:]]*[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?[[:space:]]+[+-]?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?[[:space:]]*$/ {
         in_grad = 1
         next
     }
 
     # While in_grad==1, any line that starts with lowercase letters
-    # (element symbol) is a gradient line: print it with its ts.
+    # (element symbol) is a gradient line: print it with its element symbol in uppercase.
     in_grad && /^[[:space:]]*[a-z]+[[:space:]]+/ {
         # $1 = element, $2,$3,$4 = gx,gy,gz
         printf "%s  %s  %s  %s\n", toupper($1), $2, $3, $4
@@ -75,7 +75,7 @@ awk '
 
 # Note for the regexps catching beginning of gradient blocks:
 # /^[[:space:]]*                # optional leading whitespace
-#   [+-]?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?   # first float
+#   [+-]?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?   # first float: (\.[0-9]+)? -> optional decimal 
 #   [[:space:]]+                # at least one separator space
 #   [+-]?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?   # second float
 #   [[:space:]]*                # optional trailing whitespace

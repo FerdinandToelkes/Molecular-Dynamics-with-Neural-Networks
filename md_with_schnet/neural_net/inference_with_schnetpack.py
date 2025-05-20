@@ -17,14 +17,13 @@ from schnetpack.transform import ASENeighborList
 from schnetpack.md.calculators import SchNetPackCalculator
 from schnetpack.md.simulation_hooks import LangevinThermostat, callback_hooks
 
-
 from md_with_schnet.utils import set_data_prefix, load_xtb_dataset
 from md_with_schnet.setup_logger import setup_logger
 
-
+# TODO: update with the functions of inference_with_ase.py if needed
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference --trajectory_dir MOTOR_MD_XTB/T300_1 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_schnetpack --trajectory_dir MOTOR_MD_XTB/T300_1 ; exec bash'
 """
 
 logger = setup_logger("debug")
@@ -147,7 +146,7 @@ def main(trajectory_dir: str):
     md_initializer.initialize_system(md_system)
 
  
-    ####################### 6) Setup calculator ##############################
+    ####################### 6) Setup calculators ##############################
     # initialize neighbor list for MD using the ASENeighborlist as basis
     md_neighborlist = NeighborListMD(
         cfg.model.neighborlist.cutoff,

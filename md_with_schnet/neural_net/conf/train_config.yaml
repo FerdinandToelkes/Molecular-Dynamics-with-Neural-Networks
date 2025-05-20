@@ -8,7 +8,6 @@ print_config: true
 run:
   work_dir: null
   path: null
-  #id: ${uuid:1} # we do not need a unique id for the run
   ckpt_path: null
 globals:
   model_path: ${run.path}/best_model

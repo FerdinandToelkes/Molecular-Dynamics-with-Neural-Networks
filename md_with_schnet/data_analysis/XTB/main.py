@@ -87,7 +87,7 @@ def main(trajectory_dir: str, show_plots: bool):
             dataset=xtb.dataset,
             batch_size=batch_size,
             shuffle=False,
-            num_workers=0,   # or more depending on your CPU
+            num_workers=0,   # or more depending on current CPU
             pin_memory=False
         )
 
