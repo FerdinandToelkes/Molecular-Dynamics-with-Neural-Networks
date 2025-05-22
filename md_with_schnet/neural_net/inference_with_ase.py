@@ -18,9 +18,10 @@ from schnetpack import properties
 # from schnetpack import units as spk_units
 # from schnetpack.md import System, UniformInit, Simulator
 # from schnetpack.md.integrators import VelocityVerlet
-# from schnetpack.md.neighborlist_md import NeighborListMD
-# from schnetpack.transform import ASENeighborList
+from schnetpack.md.neighborlist_md import NeighborListMD
+from schnetpack.transform import ASENeighborList
 # from schnetpack.md.calculators import SchNetPackCalculator
+
 from schnetpack.md.simulation_hooks import LangevinThermostat, callback_hooks
 from xtb_ase import XTB
 
@@ -110,6 +111,30 @@ def set_file_logger(cfg: DictConfig, md_workdir: str) -> callback_hooks.FileLogg
     )
     return file_logger
 
+def update_config_with_train_config(cfg: DictConfig, cfg_train: DictConfig) -> DictConfig:
+    """
+    Update the configuration with the training configuration to ensure consistency.
+    Args:
+        cfg (DictConfig): The original configuration.
+        cfg_train (DictConfig): The training configuration.
+    Returns:
+        DictConfig: Updated configuration.
+    """
+    # Disable struct mode to allow adding new fields
+    OmegaConf.set_struct(cfg, False)
+
+    # Copy over specific globals
+    cfg.globals.cutoff = cfg_train.globals.cutoff
+    cfg.globals.energy_key = cfg_train.globals.energy_key
+    cfg.globals.forces_key = cfg_train.globals.forces_key
+
+    # Copy over data fields
+    cfg.data = cfg_train.data
+
+    # Re-enable struct mode to enforce the structure
+    OmegaConf.set_struct(cfg, True)
+    return cfg
+
 def update_config(cfg: DictConfig, run_path: str, md_steps: int, num_workers: int) -> DictConfig:
     """ 
     Update the configuration with command-line arguments.
@@ -124,7 +149,6 @@ def update_config(cfg: DictConfig, run_path: str, md_steps: int, num_workers: in
     if num_workers != -1:
         cfg.data.num_workers = num_workers
     else:
-        print("os.name", os.name)
         cfg.data.num_workers = 0 if platform.system() == 'Darwin' else 8
     cfg.md.n_steps = md_steps
 
@@ -135,15 +159,17 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, seed: int, num_work
     with initialize(config_path="conf", job_name="inference", version_base="1.1"):
         cfg: DictConfig = compose(config_name="inference_config")
 
+    # use training config to update the inference config
+    train_cfg_path = os.path.join("runs", model_dir, "tensorboard/default/version_0")
+    with initialize(config_path=train_cfg_path, job_name="train", version_base="1.1"):
+        cfg_train: DictConfig = compose(config_name="hparams.yaml")
+    cfg = update_config_with_train_config(cfg, cfg_train)
+
+    # update config with arguments from command line
     home_dir = os.path.expanduser("~")
-    model_path = os.path.join(home_dir, "whk/code/md_with_schnet/neural_net/runs", model_dir)
-
-
-
-    cfg = update_config(cfg, model_path, md_steps, num_workers)
-
+    model_dir_path = os.path.join(home_dir, "whk/code/md_with_schnet/neural_net/runs", model_dir)
+    cfg = update_config(cfg, model_dir_path, md_steps, num_workers)
     logger.info(f"Loaded and updated config:\n{OmegaConf.to_yaml(cfg)}")
-    exit()
 
     ####################### 2) Prepare Data and Paths #########################
     data_prefix = set_data_prefix()
@@ -176,18 +202,41 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, seed: int, num_work
             rng=np.random.RandomState(seed),
         )
 
-
-    atoms_xtb.set_calculator(XTB())
-
     # make duplicate of the atoms object 
     atoms_nn = atoms_xtb.copy()
 
-    dyn = ASEVelocityVerlet(
+    ####################### 6) Setup calculators ##############################
+    atoms_xtb.set_calculator(XTB())
+    
+    # initialize neighbor list for MD using the ASENeighborlist as basis
+    md_neighborlist = NeighborListMD(
+        cfg.model.neighborlist.cutoff,
+        cfg.model.neighborlist.cutoff_shell,
+        ASENeighborList,
+    )
+    exit()
+    md_calculator = SchNetPackCalculator(
+        model_path,
+        force_key=cfg.globals.forces_key,
+        energy_unit=cfg.data.property_units.energy,
+        position_unit=cfg.data.distance_unit,
+        neighbor_list=md_neighborlist,
+        energy_key=cfg.globals.energy_key,
+        required_properties=[], # additional properties extracted from the model
+    )
+    atoms_nn.set_calculator(md_calculator)
+
+    dyn_xtb = ASEVelocityVerlet(
         atoms_xtb, 
         timestep=0.5 * units.fs, 
         trajectory='traj.traj', 
         logfile='md.log')
-    dyn.run(5)
+    dyn_nn = ASEVelocityVerlet(
+        atoms_nn, 
+        timestep=0.5 * units.fs, 
+        trajectory='traj.traj', 
+        logfile='md.log')
+    dyn_nn.run(5)
 
     # ####################### 5) Setup MD system ##############################
     # md_system = System()
@@ -208,7 +257,7 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, seed: int, num_work
 
  
     # ####################### 6) Setup calculators ##############################
-    # # initialize neighbor list for MD using the ASENeighborlist as basis
+    # initialize neighbor list for MD using the ASENeighborlist as basis
     # md_neighborlist = NeighborListMD(
     #     cfg.model.neighborlist.cutoff,
     #     cfg.model.neighborlist.cutoff_shell,
@@ -216,11 +265,11 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, seed: int, num_work
     # )
     # md_calculator = SchNetPackCalculator(
     #     model_path,
-    #     force_key=cfg.model.force_key,
-    #     energy_unit=cfg.model.units.energy,
-    #     position_unit=cfg.model.units.length,
+    #     force_key=cfg.globals.forces_key,
+    #     energy_unit=cfg.data.property_units.energy,
+    #     position_unit=cfg.data.distance_unit,
     #     neighbor_list=md_neighborlist,
-    #     energy_key=cfg.model.energy_key,
+    #     energy_key=cfg.globals.energy_key,
     #     required_properties=[], # additional properties extracted from the model
     # )
 

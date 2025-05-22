@@ -3,11 +3,6 @@ run:
 globals:
   model_path: ${run.path}/best_model
 model: 
-  energy_key: energy
-  force_key: forces
-  units:
-    energy: Hartree
-    length: Angstrom
   neighborlist:
     cutoff: 5.0 # Angstrom
     cutoff_shell: 2.0 # Angstrom
@@ -18,24 +13,7 @@ md:
   time_step: 40 # atomic units
   # time_constant: 100 # fs
   n_steps: 200
-  precision: float32
-data:
-  _target_: schnetpack.datasets.MD17
-  data_workdir: null
-  batch_size: 100
-  num_workers: 8
-  distance_unit: Ang
-  property_units:
-    energy: Hartree
-    forces: Hartree/Bohr
-  transforms:
-  - _target_: schnetpack.transform.SubtractCenterOfMass
-  - _target_: schnetpack.transform.RemoveOffsets
-    property: energy
-    remove_mean: true
-  - _target_: schnetpack.transform.MatScipyNeighborList
-    cutoff: ${globals.cutoff}
-  - _target_: schnetpack.transform.CastTo32
+  precision: 32
 logger:
   buffer_size: 100
   log_every: 1

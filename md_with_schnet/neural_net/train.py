@@ -4,6 +4,7 @@ import argparse
 import torch
 import platform
 
+
 from hydra import initialize, compose
 from hydra.utils import instantiate, get_class
 from omegaconf import OmegaConf, DictConfig
@@ -122,15 +123,15 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
 
     ####################### 5) Logger ################################
     # Convert the config to a basic dict with resolved values, i.e. ${work_dir} -> /path/to/work_dir
-    hparams = OmegaConf.to_container(cfg, resolve=True)
+    used_config = OmegaConf.to_container(cfg, resolve=True)
 
     # instantiate the logger
     tb_logger = instantiate(cfg.logger.tensorboard)
 
     # Manually log your clean hyperparameters
-    tb_logger.log_hyperparams(hparams)
+    tb_logger.log_hyperparams(used_config) # saves as hparams.yaml (difficult to change)
 
-    # Prevent Lightning from auto‐saving hparams (no‐op override)
+    # Prevent Lightning from auto‐saving used_config (no‐op override)
     # use lambda function taking any number of arguments and returning None
     tb_logger.log_hyperparams = lambda *args, **kwargs: None
 
@@ -148,8 +149,7 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
         cfg.trainer,
         callbacks=callbacks,
         logger=tb_logger,
-        deterministic=True, # set to True for reproducibility
-        #default_root_dir=cfg.run.path, #TODO remove this line
+        deterministic=True, # for reproducibility
     )
     
 
