@@ -7,12 +7,14 @@ model:
     cutoff: 5.0 # Angstrom
     cutoff_shell: 2.0 # Angstrom
     dtype: float32
+  xtb:
+    method: "gfn2-xtb"
 md:
   n_replicas: 1
   system_temperature: 300 # Kelvin
   time_step: 40 # atomic units
   # time_constant: 100 # fs
-  n_steps: 200
+  n_steps: 10
   precision: 32
 logger:
   buffer_size: 100

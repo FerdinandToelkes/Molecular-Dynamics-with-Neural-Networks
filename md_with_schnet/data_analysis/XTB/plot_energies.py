@@ -27,6 +27,36 @@ def parse_args() -> dict:
     parser.add_argument("--show_plots", action="store_true", help="Show plots before saving them (default: False)")
     return vars(parser.parse_args())
 
+def plot_on_two_y_axes(kinetic_energy: np.ndarray, temperature: np.ndarray, ):
+    """
+    Plot kinetic energy and temperature on two y-axes.
+    Args:
+        kinetic_energy (np.ndarray): Array of kinetic energy values.
+        temperature (np.ndarray): Array of temperature values.
+    """
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    x_values = np.arange(kinetic_energy.shape[0])
+    ax1.plot(x_values, kinetic_energy, 'g-')
+    ax2.plot(x_values, temperature, 'b-')
+    ax1.set_xlabel('Configurations')
+    ax1.set_ylabel('Kinetic Energy (au)', color='g')
+    ax2.set_ylabel('Temperature (K)', color='b')
+    ax1.tick_params(axis='y', labelcolor='g')
+    ax2.tick_params(axis='y', labelcolor='b')
+    plt.title('Kinetic Energy and Temperature over Time')
+    plt.tight_layout()
+
+def plot_on_one_y_axis(kinetic_energy: np.ndarray, ekin_from_temp: np.ndarray):
+    fig, ax = plt.subplots()
+    x_values = np.arange(kinetic_energy.shape[0])
+    ax.plot(x_values, kinetic_energy, 'g-')
+    ax.plot(x_values, ekin_from_temp, 'b-')
+    ax.set_xlabel('Configurations')
+    ax.set_ylabel('E_kin / T (eV)')
+    plt.legend(['Kinetic Energy (eV)', r'$\frac{3}{2}(N-6) k_B T$ (eV)'])
+    plt.title('Kinetic Energy and Temperature over Time')
+    plt.tight_layout()
 
 def main(trajectory_dir: str, show_plots: bool):
     # setup
@@ -36,34 +66,29 @@ def main(trajectory_dir: str, show_plots: bool):
     path = os.path.join(data_prefix, 'energies.txt')
 
     all_energies = np.loadtxt(path, usecols=(1, 5)) # 1 E_kin, 2 E_tot, 3 E_pot, 5 T
+
     logger.debug(f'all_energies.shape: {all_energies.shape}')
     nr_of_configs = 200
     first_config = 0
     all_energies = all_energies[first_config:first_config+nr_of_configs]
+    kinetic_energy = all_energies[:, 0]
+    temperature = all_energies[:, 1]
+
+
+    # transform energies to eV
+    kinetic_energy *= 27.2114  # convert kinetic energy from au to eV
+    n_atoms = 48
+    ekin_from_temp = 3/2(n_atoms - 6)  * 8.617333262e-5 * temperature  # convert temperature from K to eV
 
     # plot kinetic energy and temperature with dual y-axis
     set_plotting_config(fontsize=10, aspect_ratio=1.618, width_fraction=1.0, text_usetex=True)
-    fig, ax1 = plt.subplots()
-    ax2 = ax1.twinx()
-    x_values = np.arange(all_energies.shape[0])
-    ax1.plot(x_values, all_energies[:, 0], 'g-')
-    ax2.plot(x_values, all_energies[:, 1], 'b-')
-    ax1.set_xlabel('Configurations')
-    ax1.set_ylabel('Kinetic Energy (au)', color='g')
-    ax2.set_ylabel('Temperature (K)', color='b')
-    ax1.tick_params(axis='y', labelcolor='g')
-    ax2.tick_params(axis='y', labelcolor='b')
-    plt.title('Kinetic Energy and Temperature over Time')
-    plt.tight_layout()
+    plot_on_one_y_axis(kinetic_energy, ekin_from_temp)
     
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     logger.info(f"Saved plot to: {plot_path}")
     if show_plots:
         plt.show()
     plt.close()
-
-    
-    
 
 
 if __name__=="__main__":

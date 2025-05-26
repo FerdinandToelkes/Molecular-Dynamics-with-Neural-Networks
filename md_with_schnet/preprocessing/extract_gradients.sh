@@ -14,8 +14,8 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-# 
-awk -v float='[+-]?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?' '
+# double backslash to escape the backslash in the regex -> otherwise warning from awk
+awk -v float='[+-]?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?' '
     # 1) When we see the time-stamp line (e.g. "t=   0.00000000000"), capture and print it.
     #    Reset our state so we know a new timestep has begun.
     #    (energy_line_seen ensures we skip the "energy" line once per block.)

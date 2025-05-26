@@ -1,9 +1,8 @@
 import os
 import pytorch_lightning as pl
 import argparse
-import torch
 import platform
-
+import time
 
 from hydra import initialize, compose
 from hydra.utils import instantiate, get_class
@@ -16,7 +15,7 @@ logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-screen -dmS xtb_train sh -c 'python -m md_with_schnet.neural_net.train --trajectory_dir MOTOR_MD_XTB/T300_1 -bs 100 -e 2 ; exec bash'
+screen -dmS xtb_train sh -c 'python -m md_with_schnet.neural_net.train --trajectory_dir MOTOR_MD_XTB/T300_1 -e 1000 ; exec bash'
 """
 
 def parse_args() -> dict:
@@ -103,7 +102,7 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     output_dir = os.path.join(data_prefix, "output")
     os.makedirs(output_dir, exist_ok=True)
 
-    split_file = os.path.join(data_prefix, "splits", trajectory_dir,"inner_splits_0.npz")
+    split_file = os.path.join(data_prefix, "splits", trajectory_dir, "inner_splits_0.npz")
     if not os.path.exists(split_file):
         raise FileNotFoundError(f"Missing split file: {split_file}")
     logger.debug(f"Split file: {split_file}")
@@ -161,4 +160,22 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
 
 if __name__ == "__main__":
     args = parse_args()
+    start = time.time()
     main(**args)
+    print(f"Total time: {time.time() - start:.2f} seconds")
+
+
+# TIMINGS 5 EPOCHS (on pc38)
+# MOTOR_MD_XTB/T300_1 with roughly 13000 training samples
+
+# Batch size: 100
+# num_workers: 0  - 139.43s
+# num_workers: 15 - 18.58s
+# num_workers: 31 - 17.40s
+
+# Batch size: 10
+# num_workers: 0  - 191.98s
+# num_workers: 15 - 48.62s
+# num_workers: 31 - 50.66s (and led to errors sometimes)
+
+# Now its somehow much slower, even with 31 workers
