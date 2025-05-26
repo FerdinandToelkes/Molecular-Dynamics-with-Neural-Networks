@@ -20,16 +20,16 @@ def parse_args() -> dict:
     """
     parser = argparse.ArgumentParser(description="Extract gradients or velocities from log files")
     parser.add_argument("--target_dir", type=str, default="MOTOR_MD_XTB/T300_1", help="Target directory where the data is found (default: MOTOR_MD_XTB/T300_1)")
-    parser.add_argument("-p", "--property", type=str, default="gradients", choices=["gradients", "velocities"], help="Property to extract from log files (default: gradients)")
+    parser.add_argument("-p", "--property", type=str, default="gradients", choices=["positions", "gradients", "velocities"], help="Property to extract from log files (default: gradients)")
     return vars(parser.parse_args())
 
 
 def main(target_dir: str, property: str):
     """
-    Main function to extract gradients or velocities from log files and save them to a text file.
+    Main function to extract positions, gradients or velocities from log files and save them to a text file.
     Args:
         target_dir (str): Directory where the log files are located.
-        property (str): Property to extract from log files. Can be "gradients" or "velocities".
+        property (str): Property to extract from log files. Can be "positions", "gradients" or "velocities".
     """
     # setup
     data_path = os.path.join(set_data_prefix(), target_dir)
@@ -51,10 +51,19 @@ def main(target_dir: str, property: str):
     # list all files in data_path
     log_files = os.listdir(data_path)
     log_files = [f for f in log_files if f.startswith("mdlog.")]
+    if "T300_1" in target_dir:
+        # remove mdlog.78 because its where the H atom breaks away
+        logger.info("Removing mdlog.78 from log files since it is where an H atom breaks away")
+        log_files = [f for f in log_files if not f.startswith("mdlog.78")]
 
     # sort log files by their number (after the dot)
     log_files.sort(key=lambda x: int(x.split(".")[1]))
     logger.debug(f"log_files: {log_files}")
+
+    # touch the output file and add header
+    with open(output_path, "w") as f:
+        f.write(f"# Extracted {property} from AIMD log files in {data_path}\n")
+        f.write("# All properties are in atomic units\n")
 
     for log_file in log_files:
         logger.debug(f"Processing {log_file}")
@@ -62,6 +71,7 @@ def main(target_dir: str, property: str):
         
         # execute bash script extract_gradients.sh
         os.system(f"bash {command_path} {log_path} >> {output_path}")
+    logger.info(f"Extracted {property} saved to {output_path}")
 
 if __name__ == "__main__":
     args = parse_args()

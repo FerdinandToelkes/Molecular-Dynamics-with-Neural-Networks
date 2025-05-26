@@ -64,7 +64,7 @@ def extract_data_from_xyz(path: str, extra_lines: int, usecols: tuple, number_of
     logger.debug(f'data.shape: {data.shape}')
     return data, number_of_atoms
 
-def get_atomic_numbers_from_xyz(path: str, number_of_atoms: int, extra_lines: int = 2) -> list:
+def get_atomic_numbers_from_xyz(path: str, number_of_atoms: int, extra_lines: int = 1) -> list:
     """
     Extract atomic symbols from a .xyz file and convert them to atomic numbers.
     Args:
@@ -196,7 +196,7 @@ def main(trajectory_dir: str):
     
     # setup paths to the necessary files
     data_prefix = os.path.join(set_data_prefix(), trajectory_dir)
-    traj_path = os.path.join(data_prefix, 'coordinates.xyz')
+    traj_path = os.path.join(data_prefix, 'positions.txt')
     energy_path = os.path.join(data_prefix, 'energies.txt')
     grads_path = os.path.join(data_prefix, 'gradients.txt')
     vels_path = os.path.join(data_prefix, 'velocities.txt')
@@ -205,10 +205,13 @@ def main(trajectory_dir: str):
     if not os.path.exists(traj_path) or not os.path.exists(energy_path) or not os.path.exists(grads_path) or not os.path.exists(vels_path):
         logger.error(f"One or more files do not exist in the specified directory: {data_prefix}")
         raise FileNotFoundError(f"One or more files do not exist in the specified directory: {data_prefix}\n"
-                                "Try running log2x > coordinates.xyz, log2egy > energies.txt and the extract.py script in the same directory.")
+                                "Try running log2egy > energies.txt and the extract.py script for the different properties in the same directory.")
 
-    logger.debug("Extracting data from .xyz and .txt files")
-    coords_traj, number_of_atoms = extract_data_from_xyz(traj_path, usecols=(1, 2, 3), extra_lines=2)
+    logger.debug("Extracting data from .txt files")
+    coords_traj = np.loadtxt(traj_path, usecols=(1, 2, 3), skiprows=1, comments=["#", "t="])  # Skip the first line (number of atoms)
+    print(f"Extracted coordinates from {traj_path} with shape: {coords_traj.shape}")
+    exit()
+    coords_traj, number_of_atoms = extract_data_from_xyz(traj_path, usecols=(1, 2, 3), extra_lines=1)
     number_of_samples = coords_traj.shape[0]
     atomic_numbers = get_atomic_numbers_from_xyz(traj_path, number_of_atoms, extra_lines=2)
     energy_traj = get_all_energies_from_txt(energy_path, coords_traj)

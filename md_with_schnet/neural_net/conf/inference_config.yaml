@@ -8,11 +8,12 @@ model:
     cutoff_shell: 2.0 # Angstrom
     dtype: float32
   xtb:
-    method: "gfn2-xtb"
+    method: "gfn2-xtb" # is I think default in Turbomole
 md:
   n_replicas: 1
   system_temperature: 300 # Kelvin
-  time_step: 40 # atomic units
+  time_step_au: 40 # atomic units
+  time_step: 0.5 # fs
   # time_constant: 100 # fs
   n_steps: 10
   precision: 32

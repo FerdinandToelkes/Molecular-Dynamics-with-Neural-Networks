@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
 #
-# extract_velocities.sh
+# extract_positions.sh
 #
-# Usage: ./extract_velocities.sh AIMD_logfile >> velocities.txt
+# Usage: ./extract_positions.sh AIMD_logfile >> positions.txt
 
 
 
 # if the script is not run with exactly one argument, print usage and exit
 if [ $# -ne 1 ]; then
-    echo "This script extracts velocities from an AIMD log file."
+    echo "This script extracts positions from an AIMD log file."
     echo "It expects the log file to be passed as an argument."
     echo "The output will be printed to stdout."
     echo "Usage: $0 <AIMD_logfile>"
     exit 1
 fi
-
 
 awk '
     # 1) When we see the time‐stamp line (e.g. "t=    10240.0000000000"), capture and print it.
@@ -25,27 +24,21 @@ awk '
         # trim leading/trailing spaces
         gsub(/^ +| +$/, "", current_time)  
         printf "t= %s au\n", current_time
+        in_pos = 1
         next
     }
 
-    # Whenever we see a line with two floats (time step and "-0.377603333108E-04"),
-    # turn on our “in_pos” flag.
-    /^[[:space:]]*[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?[[:space:]]+[+-]?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?[[:space:]]*$/ {
-        in_vel = 1
-        next
-    }
-
-    # While in_vel==1, any line that starts with lowercase letters
-    # (element symbol) is a position line: print it with its element symbol in uppercase.
-    in_vel && /^[[:space:]]*[a-z]+[[:space:]]+/ {
+    # While in_pos==1, any line that ends with lowercase letters
+    # (element symbol) is a coordinate line: print it with its element symbol in uppercase.
+    in_pos && /[a-z]+[[:space:]]*$/ {
         # $1 = element, $2,$3,$4 = vx,vy,vz
-        print toupper($1), $2, $3, $4
+        print toupper($4), $1, $2, $3
         next
     }
 
-    # As soon as we hit something that isn’t an element line, turn off in_vel.
-    in_vel {
-        in_vel = 0
+    # As soon as we hit something that isn’t an element line, turn off in_pos.
+    in_pos {
+        in_pos = 0
     }
 ' "$1"
 
@@ -91,3 +84,6 @@ awk '
 # $/x {
 #   … your block start logic …
 # }
+# [a-z]+ — matches a single or more lowercase letters.
+# [[:space:]]* — matches zero or more whitespace characters.
+# $ — asserts the end of the line, ensuring that the line ends with a lowercase letter (optionally followed by spaces).
