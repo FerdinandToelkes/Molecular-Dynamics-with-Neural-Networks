@@ -19,13 +19,14 @@ from ase.io import read, write
 
 from xtb_ase import XTB
 
-from md_with_schnet.utils import set_data_prefix, load_xtb_dataset
+from md_with_schnet.utils import set_data_prefix
 from md_with_schnet.setup_logger import setup_logger
+from md_with_schnet.neural_net.train import prepare_and_load_data
 
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase --trajectory_dir MOTOR_MD_XTB/T300_1 --md_steps 1000 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase --trajectory_dir MOTOR_MD_XTB/T300_1 --md_steps 1000 --model_dir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42_weird_units ; exec bash'
 """
 
 
@@ -136,7 +137,6 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
 
     ####################### 2) Prepare Data and Paths #########################
     data_prefix = set_data_prefix()
-    model_path = cfg.globals.model_path
     md_workdir = cfg.run.path
     simulation_name = f"md_sim_steps_{md_steps}_time_step_{time_step}_seed_{seed}"
     target_dir = os.path.join(md_workdir, simulation_name)
@@ -145,17 +145,9 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
         raise FileExistsError(f"Target directory already exists: {target_dir}. Please choose a different name or remove the existing directory.")
     os.makedirs(target_dir)
     os.makedirs(xtb_dir)  
-    logger.debug(f"data_prefix: {data_prefix}")
-    logger.debug(f"Model path: {model_path}")
     logger.debug(f"MD workdir: {md_workdir}")
 
-    split_file = os.path.join(data_prefix, "splits", trajectory_dir, "inner_splits_0.npz")
-    if not os.path.exists(split_file):
-        raise FileNotFoundError(f"Missing split file: {split_file}")
-    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
-    logger.debug(f"Path to database: {path_to_db}")
-
-    datamodule = load_xtb_dataset(path_to_db, cfg, split_file)
+    datamodule = prepare_and_load_data(data_prefix, cfg, trajectory_dir)
 
 
     ####################### 4) Prepare molecule ##############################
@@ -182,13 +174,6 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
     velocities_ase = velocities_au * bohr_to_angstrom / (aut_to_s * units.s) 
     atoms_xtb.set_velocities(velocities_ase)
 
-    # # set initial velocities
-    # MaxwellBoltzmannDistribution(
-    #         atoms_xtb,
-    #         temperature_K=cfg.md.system_temperature,
-    #         rng=np.random.RandomState(seed),
-    #     )
-
     # check if velocities are valid by computing the corresponding temperature
     temperature = atoms_xtb.get_temperature()
     logger.info(f"Initial temperature of the system: {temperature} K")
@@ -205,12 +190,12 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
     )
     
     md_calculator = spk.interfaces.SpkCalculator(
-        model_file=model_path,
+        model_file=cfg.globals.model_path,
         neighbor_list=trn.ASENeighborList(cutoff=cfg.model.neighborlist.cutoff),
         energy_key=cfg.globals.energy_key,
         force_key=cfg.globals.forces_key,
         energy_unit=cfg.data.property_units.energy, # Hartree
-        position_unit="Bohr", 
+        position_unit="Bohr",  # TODO update this
         # position_unit=cfg.data.distance_unit, # Angstrom
     )
     atoms_nn.calc = md_calculator
@@ -275,26 +260,8 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
     # )
     # md_initializer.initialize_system(md_system)
 
- 
 
-    # ####################### 8) Setup simulator ##############################
-    # device = "cuda" if torch.cuda.is_available() else "cpu"
-    # md_precision = getattr(torch, cfg.md.precision)
-    # # TODO use turbomole integrator
-    # # convert time step from atomic units to femto seconds
-    # time_step = cfg.md.time_step * 0.024188843265864
-    # logger.debug(f"Time step (in atomic units): {cfg.md.time_step}")
-    # logger.debug(f"Time step (in fs): {time_step}")
-
-    # md_integrator = VelocityVerlet(time_step)
-    # md_simulator = Simulator(md_system, md_integrator, md_calculator, simulation_hooks)
-    # md_simulator = md_simulator.to(md_precision)
-    # md_simulator = md_simulator.to(device)
-
-    # ####################### 9) Run simulation ##############################
-    # logger.info(f"Starting simulation with {cfg.md.n_steps} steps and saving to {md_workdir}")
-    # md_simulator.simulate(cfg.md.n_steps)
-    # logger.info("Simulation finished successfully.")
+   
 
 
 if __name__ == "__main__":

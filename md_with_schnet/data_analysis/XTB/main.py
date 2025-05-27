@@ -40,7 +40,6 @@ def combine_plots(plot_dir: str, plot_type: str, comparer_function: callable, ex
         comparer_function (function): Function to compare values.
         extra_args (dict, optional): Additional arguments for the comparer function. Defaults to {}.
     """
-    sharey = "autocorrelation" in plot_type or "distributions" in plot_type
     fig, axes = plt.subplots(3)  
     
     for i, key in enumerate(["energies", "total_forces", "displacements"]):
@@ -103,7 +102,7 @@ def main(trajectory_dir: str, show_plots: bool):
                 extra_args={
                     "energies": {"xlabel": "Energy (Hartree)", "set_title": True}, 
                     "total_forces": {"xlabel": r"Force Magnitude ($\mathrm{Hartree}/\mathrm{Bohr}$)"},
-                    "displacements": {"xlabel": r"Displacement ($\mathrm{\AA}$)", "legend_location": "upper right"}
+                    "displacements": {"xlabel": r"Displacement ($\mathrm{Bohr}$)", "legend_location": "upper right"}
                     },
                 show_plots=show_plots
             )
@@ -116,7 +115,7 @@ def main(trajectory_dir: str, show_plots: bool):
                 extra_args={
                     "energies": {"ylabel": "Energy (Hartree)", "set_title": True}, 
                     "total_forces": {"ylabel": r"Force Magnitude ($\mathrm{Hartree}/\mathrm{Bohr}$)"},
-                    "displacements": {"ylabel": r"Displacement ($\mathrm{\AA}$)","set_xlabel": True}
+                    "displacements": {"ylabel": r"Displacement ($\mathrm{Bohr}$)","set_xlabel": True}
                     },
                 show_plots=show_plots
             )
@@ -129,7 +128,7 @@ def main(trajectory_dir: str, show_plots: bool):
                 extra_args={
                     "energies": {"ylabel": "Energy (Hartree)", "set_title": True}, 
                     "total_forces": {"ylabel": r"Force Magnitude ($\mathrm{Hartree}/\mathrm{Bohr}$)"},
-                    "displacements": {"ylabel": r"Displacement ($\mathrm{\AA}$)", "set_xlabel": True}
+                    "displacements": {"ylabel": r"Displacement ($\mathrm{Bohr}$)", "set_xlabel": True}
                     },
                 show_plots=show_plots
             )

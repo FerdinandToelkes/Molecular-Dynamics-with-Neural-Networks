@@ -10,6 +10,7 @@ dependencies:
   - numpy>=2.0.0
   - hydra-core>=1.1.0
   - ase>=3.21
+  - jupyterlab>=4.4.3
   - pip
   - pip:
       - schnetpack

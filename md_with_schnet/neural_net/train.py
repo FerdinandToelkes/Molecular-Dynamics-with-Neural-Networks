@@ -77,6 +77,40 @@ def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: i
     cfg.globals.lr = learning_rate
     return cfg
 
+def get_split_path(data_prefix: str, trajectory_dir: str, fold: int = 0) -> str:
+    """
+    Get the path to the split file for the given trajectory directory and fold.
+    Args:
+        data_prefix (str): The prefix path to the data directory.
+        trajectory_dir (str): The directory containing the trajectory data.
+        fold (int): The fold number for cross-validation (default: 0).
+    Returns:
+        str: The path to the split file.
+    """
+    split_file = os.path.join(data_prefix, "splits", trajectory_dir, f"inner_splits_{fold}.npz")
+    if not os.path.exists(split_file):
+        raise FileNotFoundError(f"Missing split file: {split_file}")
+    logger.debug(f"Split file: {split_file}")
+    return split_file
+
+def prepare_and_load_data(data_prefix: str, cfg: DictConfig, trajectory_dir: str) -> pl.LightningDataModule:
+    """
+    Prepare loading the dataset and then load it.
+    Args:
+        data_prefix (str): The prefix path to the data directory.
+        cfg (DictConfig): The configuration dictionary.
+        trajectory_dir (str): The directory containing the trajectory data.
+    Returns:
+        pl.LightningDataModule: The data module containing the dataset.
+    """
+    split_file = get_split_path(data_prefix, trajectory_dir, fold=0)
+
+    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
+    logger.debug(f"Path to database: {path_to_db}")
+
+    datamodule = load_xtb_dataset(path_to_db, cfg, split_file)
+    return datamodule
+
 def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int, seed: int):
     ####################### Basic setup ###########################
     pl.seed_everything(seed, workers=True)
@@ -99,17 +133,11 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
 
     ####################### 3) Prepare our own data #########################
     data_prefix = set_data_prefix()
+
+    datamodule = prepare_and_load_data(data_prefix, cfg, trajectory_dir)
+
     output_dir = os.path.join(data_prefix, "output")
     os.makedirs(output_dir, exist_ok=True)
-
-    split_file = os.path.join(data_prefix, "splits", trajectory_dir, "inner_splits_0.npz")
-    if not os.path.exists(split_file):
-        raise FileNotFoundError(f"Missing split file: {split_file}")
-    logger.debug(f"Split file: {split_file}")
-    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
-    logger.debug(f"Path to database: {path_to_db}")
-
-    datamodule: pl.LightningDataModule = load_xtb_dataset(path_to_db, cfg, split_file)
 
     ####################### 4) Instantiate model & task from YAML ###########
     model: pl.LightningModule = instantiate(cfg.model)
