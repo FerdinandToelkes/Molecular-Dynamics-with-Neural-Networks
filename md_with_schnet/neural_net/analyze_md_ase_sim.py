@@ -16,6 +16,9 @@ from md_with_schnet.utils import set_data_prefix, set_plotting_config, load_xtb_
 from md_with_schnet.setup_logger import setup_logger
 from md_with_schnet.neural_net.inference_with_ase import update_config_with_train_config
 
+# for interactive plotting
+import plotly.graph_objects as go
+
 logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
@@ -140,7 +143,45 @@ def plot_spectrum(frequencies: np.ndarray, intensities: np.ndarray):
     plt.show()
 
 
+def create_interactive_plot(x: np.ndarray, y1: np.ndarray, y2: np.ndarray, ylabel: str, name_1: str, name_2: str, window_size: int = 200):
+    fig = go.Figure()
+
+    # Add initial traces
+    fig.add_trace(go.Scatter(x=x[:window_size], y=y1[:window_size], mode='lines', name=name_1))
+    fig.add_trace(go.Scatter(x=x[:window_size], y=y2[:window_size], mode='lines', name=name_2))
+
+    # Create steps for the slider
+    steps = []
+    num_windows = len(x) - window_size + 1
+    for i in range(num_windows):
+        step = dict(
+            method="update",
+            args=[{"x": [x[i:i+window_size], x[i:i+window_size]],
+                "y": [y1[i:i+window_size], y2[i:i+window_size]]},
+                {"title": f"Time Series Window: {i} to {i+window_size}"}],
+            label=str(i)
+        )
+        steps.append(step)
+
+    # Create sliders
+    sliders = [dict(
+        active=0,
+        currentvalue={"prefix": "Start Index: "},
+        pad={"t": 50},
+        steps=steps
+    )]
+
+    fig.update_layout(
+        sliders=sliders,
+        title="Interactive Time Series Plot",
+        xaxis_title="Time [ps]",
+        yaxis_title=ylabel
+    )
+
+    fig.show()
+
 def main(trajectory_dir: str, model_dir: str, simulation_name: str, n_samples: int, first_sample: int):
+    ####################### 1) Compose the config ###########################
     with initialize(config_path="conf", job_name="inference", version_base="1.1"):
         cfg: DictConfig = compose(config_name="inference_config")
 
@@ -254,34 +295,46 @@ def main(trajectory_dir: str, model_dir: str, simulation_name: str, n_samples: i
     # plt.tight_layout()
     # plt.show()
 
-    # compute rolling correlation with pandas
-    xtb_df = pd.DataFrame({
-        'time': time_steps,
-        'e_pot': xtb_e_pot,
-        'e_kin': xtb_e_kin,
-        'temp': xtb_temp
-    })
-    nn_df = pd.DataFrame({
-        'time': time_steps,
-        'e_pot': nn_e_pot,
-        'e_kin': nn_e_kin,
-        'temp': nn_temp
-    })
-    # compute rolling correlation with a window of 100
-    window_size = 200
-    xtb_nn_corr = xtb_df.rolling(window=window_size).corr(nn_df).dropna()
-    logger.debug(f"XTB correlation shape: {xtb_nn_corr.shape}")
-    # plot the rolling correlation
-    set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
-    plt.figure()
-    plt.plot(xtb_nn_corr['e_pot'], label='Potential Energies Correlation', color='green')
-    plt.plot(xtb_nn_corr['e_kin'], label='Kinetic Energies Correlation', color='red')
-    plt.xlabel('Time [ps]')
-    plt.ylabel('Rolling Correlation')
-    plt.title('Rolling Correlation between XTB and NN Energies')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    # # compute rolling correlation with pandas
+    # xtb_df = pd.DataFrame({
+    #     'time': time_steps,
+    #     'e_pot': xtb_e_pot,
+    #     'e_kin': xtb_e_kin,
+    #     'temp': xtb_temp
+    # })
+    # nn_df = pd.DataFrame({
+    #     'time': time_steps,
+    #     'e_pot': nn_e_pot,
+    #     'e_kin': nn_e_kin,
+    #     'temp': nn_temp
+    # })
+    # # compute rolling correlation with a window of 100
+    # window_size = 200
+    # xtb_nn_corr = xtb_df.rolling(window=window_size).corr(nn_df).dropna()
+    # logger.debug(f"XTB correlation shape: {xtb_nn_corr.shape}")
+    # # plot the rolling correlation
+    # set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
+    # plt.figure()
+    # plt.plot(xtb_nn_corr['e_pot'], label='Potential Energies Correlation', color='green')
+    # plt.plot(xtb_nn_corr['e_kin'], label='Kinetic Energies Correlation', color='red')
+    # plt.xlabel('Time [ps]')
+    # plt.ylabel('Rolling Correlation')
+    # plt.title('Rolling Correlation between XTB and NN Energies')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
+
+
+    create_interactive_plot(
+        x=time_steps,
+        y1=xtb_e_pot,
+        y2=nn_e_pot,
+        ylabel="Potential Energy [eV]",
+        name_1="XTB Potential Energy",
+        name_2="NN Potential Energy",
+        window_size=200
+    )
+
 
     exit()
 

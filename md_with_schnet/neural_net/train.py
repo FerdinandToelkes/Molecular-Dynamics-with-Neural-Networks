@@ -207,3 +207,7 @@ if __name__ == "__main__":
 # num_workers: 31 - 50.66s (and led to errors sometimes)
 
 # Now its somehow much slower, even with 31 workers
+
+# TIMING 1000 EPOCHS (on pc54)
+# MOTOR_MD_XTB/T300_1 with 12615 training samples, bs=100, num_workers=31
+# Total time: 20825.10 seconds = 5.78 hours

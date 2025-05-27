@@ -10,9 +10,9 @@ dependencies:
   - numpy>=2.0.0
   - hydra-core>=1.1.0
   - ase>=3.21
-  - jupyterlab>=4.4.3
+  - plotly>=6.1.1
   - pip
   - pip:
-      - schnetpack
+      - schnetpack~=2.1.1
       - seaborn~=0.13.2
       - statsmodels~=0.14.4

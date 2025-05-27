@@ -78,7 +78,7 @@ def main(trajectory_dir: str, show_plots: bool):
     # transform energies to eV
     kinetic_energy *= 27.2114  # convert kinetic energy from au to eV
     n_atoms = 48
-    ekin_from_temp = 3/2(n_atoms - 6)  * 8.617333262e-5 * temperature  # convert temperature from K to eV
+    ekin_from_temp = 3/2 * (n_atoms - 2)  * 8.617333262e-5 * temperature  # convert temperature from K to eV
 
     # plot kinetic energy and temperature with dual y-axis
     set_plotting_config(fontsize=10, aspect_ratio=1.618, width_fraction=1.0, text_usetex=True)
