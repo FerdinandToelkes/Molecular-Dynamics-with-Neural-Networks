@@ -1,6 +1,6 @@
 # Molecular Dynamics with Neural Networks
 
-This project was part of a six month research assistant position with Prof. Enrico Tapavicza. The main goal is to speed up the prediction of forces and the energy of a second-generation Feringa-type molecular nanomotor. In our case this is 9-(2’-methyl-2’,3’-dihydro-1’H-cyclopenta[a]naphthalen-1’-ylidene)-9H-xanthene (CPNX). 
+This project was part of a six-month, part-time research assistant position under the supervision of Professor Enrico Tapavicza. The main goal is to speed up the prediction of forces and the energy of a second-generation Feringa-type molecular nanomotor. In our case this is 9-(2’-methyl-2’,3’-dihydro-1’H-cyclopenta[a]naphthalen-1’-ylidene)-9H-xanthene (CPNX). 
 
 ## Outline
 
