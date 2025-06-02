@@ -9,7 +9,7 @@ The general structure of the project is as follows:
 1. [md_with_schnet](#md_with_schnet)
    - [preprocessing](#preprocessing)
    - [data_analysis](#data_analysis)
-   - [neural_net](#neural_net
+   - [neural_net](#neural_net)
 2. [deprecated](#deprecated)
 
 ## md_with_schnet
