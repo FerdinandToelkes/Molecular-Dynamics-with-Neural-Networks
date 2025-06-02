@@ -180,6 +180,328 @@ def create_interactive_plot(x: np.ndarray, y1: np.ndarray, y2: np.ndarray, ylabe
 
     fig.show()
 
+def create_interactive_properties_plot(properties: dict, time_steps: np.ndarray, y_labels: dict):
+    """
+    Create an interactive plot with dropdown buttons to select different properties.
+    Args:
+        properties (dict): Dictionary containing the properties to plot.
+        time_steps (np.ndarray): Array of time steps.
+        y_labels (dict): Dictionary mapping property names to y-axis labels.
+    """
+    #### Build the figure ##################################################
+    fig = go.Figure()
+
+    all_props = list(properties.keys())
+    for i, prop_name in enumerate(all_props):
+        y_xtb = properties[prop_name]["xtb"]
+        y_nn  = properties[prop_name]["nn"]
+        
+        # Add the XTB trace:
+        fig.add_trace(
+            go.Scatter(
+                x=time_steps,
+                y=y_xtb,
+                mode="lines",
+                name=f"XTB {prop_name}",
+                visible=(i == 0),  # only the first property is visible at start
+            )
+        )
+        # Add the NN trace:
+        fig.add_trace(
+            go.Scatter(
+                x=time_steps,
+                y=y_nn,
+                mode="lines",
+                name=f"NN {prop_name}",
+                visible=(i == 0),
+            )
+        )
+
+    #### Create dropdown buttons ###########################################
+    buttons = []
+    for i, prop_name in enumerate(all_props):
+        # Build a visibility mask: 2 traces per property, so length = 2 * num_properties.
+        visibility = [False] * (len(all_props) * 2)
+        visibility[2*i]     = True  # XTB trace for this property
+        visibility[2*i + 1] = True  # NN trace for this property
+
+        buttons.append(
+            dict(
+                label=prop_name,
+                method="update",
+                args=[
+                    {"visible": visibility},     # which traces to show
+                    {
+                        "title": {
+                            "text": f"{prop_name} over Time",
+                            "x": 0.5,
+                            "xanchor": "center",
+                        },
+                        "yaxis": {
+                            "title": {"text": y_labels[prop_name]}
+                        }
+                    },
+                ],
+            )
+        )
+
+    #### Initial layout ##################################################
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                active=0,
+                buttons=buttons,
+                x=0.0,
+                y=1.15,
+                xanchor="left",
+                yanchor="top",
+                direction="down",
+                pad={"r": 10, "t": 10},
+                showactive=True,
+            )
+        ],
+        title={
+            "text": f"{all_props[0]} over Time",
+            "x": 0.5,
+            "xanchor": "center",
+        },
+        xaxis_title="Time [ps]",
+        yaxis_title=y_labels[all_props[0]],  # e.g. “Energy [eV]” for “Potential Energy”
+        margin={"t": 100},  # leave enough room at the top for dropdown + title
+    )
+
+    fig.show()
+
+def create_interactive_window_scatter(xtb_e_pot: np.ndarray,
+                                      nn_e_pot: np.ndarray,
+                                      window_sizes: list):
+    """
+    Create an interactive Plotly scatter where:
+      - A dropdown lets you pick one window size W from window_sizes.
+      - A slider then controls the “first_config” index i, showing the scatter of
+        xtb_e_pot[i : i+W] vs. nn_e_pot[i : i+W].
+
+    Args:
+        xtb_e_pot (np.ndarray): 1D array of XTB potential‐energy values.
+        nn_e_pot  (np.ndarray): 1D array of NN  potential‐energy values.
+        window_sizes (list of int): List of candidate window-sizes to choose from.
+    """
+    # Make sure the inputs are the same length:
+    assert len(xtb_e_pot) == len(nn_e_pot), "xtb_e_pot and nn_e_pot must have equal length"
+    n_points = len(xtb_e_pot)
+
+    # Precompute, for each window_size W, the slider steps array
+    # Each step: method="update", args[0] changes the trace’s "x" and "y" slices.
+    sliders_for_W = {}
+    for W in window_sizes:
+        max_start = n_points - W  # last valid starting index is n_points - W
+        steps = []
+        for i in range(max_start + 1):
+            start = i
+            end = i + W
+            slice_x = xtb_e_pot[start:end]
+            slice_y = nn_e_pot[start:end]
+
+            step = dict(
+                method="update",
+                args=[
+                    # args[0]: update data of the single trace:
+                    {
+                        "x": [slice_x],
+                        "y": [slice_y]
+                    },
+                    # args[1]: we update the title to show current window and indices:
+                    {
+                        "title": {
+                            "text": f"Scatter (W={W}, i={start}…)​",
+                            "x": 0.5,
+                            "xanchor": "center"
+                        }
+                    }
+                ],
+                label=str(i)
+            )
+            steps.append(step)
+
+        sliders_for_W[W] = [
+            dict(
+                active=0,
+                currentvalue={"prefix": "start index: "},
+                pad={"t": 50},
+                steps=steps
+            )
+        ]
+
+    # Create the figure and add one initial Scatter trace (using the first window_size)
+    initial_W = window_sizes[0]
+    init_slice_x = xtb_e_pot[0 : initial_W]
+    init_slice_y = nn_e_pot[0 : initial_W]
+
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=init_slice_x,
+                y=init_slice_y,
+                mode="markers",
+                marker={"size": 3, "color": "black", "opacity": 1.0},
+                name=f"W={initial_W}"
+            )
+        ]
+    )
+
+    # Build dropdown buttons: each button swaps in the appropriate initial slice + slider
+    buttons = []
+    for W in window_sizes:
+        # The “initial” slice for this W is i=0…W
+        init_x = xtb_e_pot[0:W]
+        init_y = nn_e_pot[0:W]
+
+        buttons.append(
+            dict(
+                label=f"Window Size={W}",
+                method="update",
+                args=[
+                    # args[0]: update the trace’s x/y to the new window’s i=0 slice
+                    {
+                        "x": [init_x],
+                        "y": [init_y],
+                        "marker": {"size": 3, "color": "black", "opacity": 1.0}
+                    },
+                    # args[1]: update layout → title & sliders
+                    {
+                        "title": {
+                            "text": f"Scatter (W={W}, i=0…)",
+                            "x": 0.5,
+                            "xanchor": "center"
+                        },
+                        "sliders": sliders_for_W[W]
+                    }
+                ]
+            )
+        )
+
+    # Attach dropdown and the initial slider to layout
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                active=0,
+                buttons=buttons,
+                x=0.0,
+                y=1.15,
+                xanchor="left",
+                yanchor="top",
+                direction="down",
+                pad={"r": 10, "t": 10},
+                showactive=True
+            )
+        ],
+        sliders=sliders_for_W[initial_W],  # attach the initial window_size’s slider
+        title={
+            "text": f"Scatter (W={initial_W}, i=0…)",
+            "x": 0.5,
+            "xanchor": "center"
+        },
+        xaxis_title="XTB Potential Energy [eV]",
+        yaxis_title="NN  Potential Energy [eV]",
+        margin={"t": 100}  # extra top margin for dropdown + title
+    )
+
+    fig.show()
+
+def create_interactive_rolling_corr_plot(rolling_data: dict, window_sizes: list):
+    """
+    Create an interactive Plotly figure showing rolling correlations
+    between XTB and NN for two properties (Potential and Kinetic energy)
+    across multiple window sizes. A dropdown menu allows switching
+    between properties, and each property’s subplot contains one trace
+    per window size.
+    
+    Args:
+        rolling_data (dict): Dictionary containing rolling correlation data.
+        window_sizes (list of int): List of rolling‐window sizes.
+    """
+    
+    
+    # Now build the Plotly figure
+    fig = go.Figure()
+    all_props = ["Potential Energy", "Kinetic Energy"]
+    
+    # Add one trace per (property, window_size). We'll keep them all in the same figure,
+    # but only make one property’s traces visible at a time.
+    for i, prop_name in enumerate(all_props):
+        for j, w in enumerate(window_sizes):
+            t_arr, corr_arr = rolling_data[prop_name][j]
+            fig.add_trace(
+                go.Scatter(
+                    x=t_arr,
+                    y=corr_arr,
+                    mode="lines",
+                    name=f"Window {w}",
+                    visible=(i == 0),  # Only show the first property’s traces initially
+                    legendgroup=str(w),  # group legends by window size if desired
+                )
+            )
+    
+    # Create two dropdown buttons (one for each property)
+    buttons = []
+    num_windows = len(window_sizes)
+    total_traces = len(all_props) * num_windows  # = 2 * len(window_sizes)
+    
+    for i, prop_name in enumerate(all_props):
+        # Build a mask of length total_traces, turning on the i-th block of size num_windows
+        visibility = [False] * total_traces
+        start_index = i * num_windows
+        for k in range(num_windows):
+            visibility[start_index + k] = True
+        
+        buttons.append(
+            dict(
+                label=prop_name,
+                method="update",
+                args=[
+                    {"visible": visibility},
+                    {
+                        "title": {
+                            "text": f"Rolling Correlation: {prop_name}",
+                            "x": 0.5,
+                            "xanchor": "center"
+                        },
+                        "yaxis": {
+                            "title": {"text": "Rolling Correlation"}
+                        }
+                    }
+                ]
+            )
+        )
+    
+    # Final layout tweaks
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                active=0,
+                buttons=buttons,
+                x=0.0,
+                y=1.15,
+                xanchor="left",
+                yanchor="top",
+                direction="down",
+                pad={"r": 10, "t": 10},
+                showactive=True
+            )
+        ],
+        title={
+            "text": f"Rolling Correlation: {all_props[0]}",
+            "x": 0.5,
+            "xanchor": "center"
+        },
+        xaxis_title="Time [ps]",
+        yaxis_title="Rolling Correlation",
+        margin={"t": 100}
+    )
+    
+    fig.show()
+
+
 def main(trajectory_dir: str, model_dir: str, simulation_name: str, n_samples: int, first_sample: int):
     ####################### 1) Compose the config ###########################
     with initialize(config_path="conf", job_name="inference", version_base="1.1"):
@@ -210,13 +532,14 @@ def main(trajectory_dir: str, model_dir: str, simulation_name: str, n_samples: i
     logger.debug(f"Shape of xtb_data: {xtb_data.shape}")
     logger.debug(f"Shape of nn_data: {nn_data.shape}")
 
-    # take first 100 entries for plotting
+    # take first n entries for plotting
     if n_samples + first_sample > xtb_data.shape[0]:
         raise ValueError(f"Requested n_samples ({n_samples}) + first_sample ({first_sample}) exceeds available data length ({xtb_data.shape[0]}).")
     xtb_data = xtb_data[first_sample:first_sample + n_samples, :]  # time[ps], Etot, Epot, Ekin[eV], T[K]
     nn_data = nn_data[first_sample:first_sample + n_samples, :]  # time[ps], Etot, Epot, Ekin[eV], T[K]
 
-    time_steps = xtb_data[:, 0]  # time in ps
+    # ase saves the time in ps
+    time_steps = xtb_data[:, 0] 
     xtb_e_tot = xtb_data[:, 1]  
     xtb_e_pot = xtb_data[:, 2]  
     xtb_e_kin = xtb_data[:, 3]  
@@ -227,98 +550,100 @@ def main(trajectory_dir: str, model_dir: str, simulation_name: str, n_samples: i
     nn_e_kin = nn_data[:, 3]  
     nn_temp = nn_data[:, 4]  
 
+    
 
-    # plot potential energies from xtb and nn
-    set_plotting_config(fontsize=10, aspect_ratio=468/525, width_fraction=1)
-    fig, axes = plt.subplots(3) 
-    axes[0].plot(time_steps, xtb_e_tot, label='XTB Total Energy', color='green')
-    axes[0].plot(time_steps, nn_e_tot, label='NN Total Energy', color='red')
-    axes[0].set_xlabel('Time [ps]')
-    axes[0].set_ylabel('Total Energy [eV]')
-    axes[0].set_title('Total Energy Comparison')
-    axes[0].legend()
-    axes[1].plot(time_steps, xtb_e_pot, label='XTB Potential Energy', color='cyan')
-    axes[1].plot(time_steps, nn_e_pot, label='NN Potential Energy', color='magenta')
-    axes[1].set_xlabel('Time [ps]')
-    axes[1].set_ylabel('Potential Energy [eV]')
-    axes[1].set_title('Potential Energy Comparison')
-    axes[1].legend()
-    axes[2].plot(time_steps, xtb_e_kin, label='XTB Kinetic Energy', color='purple')
-    axes[2].plot(time_steps, nn_e_kin, label='NN Kinetic Energy', color='brown')
-    axes[2].set_xlabel('Time [ps]')
-    axes[2].set_ylabel('Kinetic Energy [eV]')
-    axes[2].set_title('Kinetic Energy Comparison')
-    axes[2].legend()
-    plt.tight_layout()
-    plt.show()
+    window_sizes = [100, 250, 500, 1000]
+    
+    # Create an interactive scatter plot with a dropdown for window sizes
+    create_interactive_window_scatter(
+        xtb_e_pot=xtb_e_pot,
+        nn_e_pot=nn_e_pot,
+        window_sizes=window_sizes
+    )
 
-    # plot potential energies on twin axes
-    set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
-    fig, ax1 = plt.subplots()
-    ax1.plot(time_steps, xtb_e_pot, label='XTB Potential Energy', color='green')
-    ax2 = ax1.twinx()  # create a twin Axes sharing the x-axis
-    ax2.plot(time_steps, nn_e_pot, label='NN Potential Energy', color='red')
-    ax1.set_xlabel('Time [ps]')
-    ax1.set_ylabel('XTB Potential Energy [eV]', color='green')
-    ax2.set_ylabel('NN Potential Energy [eV]', color='red')
-    ax1.set_title('Potential Energy Comparison')
-    ax1.tick_params(axis='y', labelcolor='green')
-    ax2.tick_params(axis='y', labelcolor='red')
-    # Combine legends from both axes
-    lines, labels = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines + lines2, labels + labels2, loc='upper left')
-    plt.tight_layout()
-    plt.show()
+    # set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
+    # plt.figure()
+    # # make small marker size
+    # plt.scatter(xtb_e_pot[first_config:window_sizes[0]], nn_e_pot[first_config:window_sizes[0]], color='purple', marker='.', s=1)
+    # plt.xlabel('XTB Potential Energy [eV]')
+    # plt.ylabel('NN Potential Energy [eV]')
+    # plt.title('Potential Energy Comparison')
+    # plt.tight_layout()
+    # plt.show()
 
-    set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
-    plt.figure()
-    # make small marker size
-    plt.scatter(xtb_e_pot, nn_e_pot, color='purple', marker='.', s=1)
-    plt.xlabel('XTB Potential Energy [eV]')
-    plt.ylabel('NN Potential Energy [eV]')
-    plt.title('Potential Energy Comparison')
-    plt.tight_layout()
-    plt.show()
+    exit()
 
-    # compute rolling correlation with pandas
+    # Build two pandas DataFrames so we can call .rolling().corr()
     xtb_df = pd.DataFrame({
         'time': time_steps,
         'e_pot': xtb_e_pot,
-        'e_kin': xtb_e_kin,
-        'temp': xtb_temp
+        'e_kin': xtb_e_kin
     })
+    
     nn_df = pd.DataFrame({
         'time': time_steps,
         'e_pot': nn_e_pot,
-        'e_kin': nn_e_kin,
-        'temp': nn_temp
+        'e_kin': nn_e_kin
     })
-    # compute rolling correlation with a window of 100
-    window_size = 200
-    xtb_nn_corr = xtb_df.rolling(window=window_size).corr(nn_df).dropna()
-    logger.debug(f"XTB correlation shape: {xtb_nn_corr.shape}")
-    # plot the rolling correlation
-    set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
-    plt.figure()
-    plt.plot(xtb_nn_corr['e_pot'], label='Potential Energies Correlation', color='green')
-    plt.plot(xtb_nn_corr['e_kin'], label='Kinetic Energies Correlation', color='red')
-    plt.xlabel('Time [ps]')
-    plt.ylabel('Rolling Correlation')
-    plt.title('Rolling Correlation between XTB and NN Energies')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    
+    # We'll store, for each property, the list of (time_array, corr_array) tuples,
+    # one entry per window_size.
+    rolling_data = {
+        "Potential Energy": [],
+        "Kinetic Energy": []
+    }
+    
+    for w in window_sizes:
+        # Compute the full rolling‐pairwise correlation. This produces a MultiIndex:
+        # first level = original index (time), second level = column name.
+        # We only need the off‐diagonal (between e_pot of xtb_df and e_pot of nn_df), etc.
+        # However, pandas' rolling().corr() of two DataFrames lines up columns automatically.
+        corr_df = xtb_df['e_pot'].rolling(window=w).corr(nn_df['e_pot']).dropna()
+        corr_df_kin = xtb_df['e_kin'].rolling(window=w).corr(nn_df['e_kin']).dropna()
+
+        # new time steps = time steps - window_size + 1
+        time_corr = time_steps[:-(w-1)]
+        
+        rolling_data["Potential Energy"].append((time_corr, corr_df.values))
+        rolling_data["Kinetic Energy"].append((time_corr, corr_df_kin.values))
 
 
-    create_interactive_plot(
-        x=time_steps,
-        y1=xtb_e_pot,
-        y2=nn_e_pot,
-        ylabel="Potential Energy [eV]",
-        name_1="XTB Potential Energy",
-        name_2="NN Potential Energy",
-        window_size=200
+    create_interactive_rolling_corr_plot(
+        rolling_data=rolling_data,
+        window_sizes=window_sizes
+    )
+
+    
+    exit()
+
+    #### Prepare data for interactive plotting ##############################
+    # scale total energies to [0, 1] range for better visualization
+    xtb_e_tot_scaled = (xtb_e_tot - np.min(xtb_e_tot)) / (np.max(xtb_e_tot) - np.min(xtb_e_tot))
+    nn_e_tot_scaled = (nn_e_tot - np.min(nn_e_tot)) / (np.max(nn_e_tot) - np.min(nn_e_tot))
+
+    # Define properties
+    properties = {
+        "Total Energy": {"xtb": xtb_e_tot, "nn": nn_e_tot},
+        "Scaled Total Energy": {"xtb": xtb_e_tot_scaled, "nn": nn_e_tot_scaled},
+        "Potential Energy": {"xtb": xtb_e_pot, "nn": nn_e_pot},
+        "Kinetic Energy": {"xtb": xtb_e_kin, "nn": nn_e_kin},
+        "Temperature": {"xtb": xtb_temp, "nn": nn_temp},
+    }
+
+    # A small lookup table for y-axis labels:
+    y_labels = {
+        "Total Energy": "Energy [eV]",
+        "Scaled Total Energy": "Normalized Value",
+        "Potential Energy": "Energy [eV]",
+        "Kinetic Energy": "Energy [eV]",
+        "Temperature": "Temperature [K]",
+    }
+
+    # Create interactive plot with dropdown
+    create_interactive_properties_plot(
+        properties=properties,
+        time_steps=time_steps,
+        y_labels=y_labels
     )
 
 
@@ -409,3 +734,91 @@ def main(trajectory_dir: str, model_dir: str, simulation_name: str, n_samples: i
 if __name__ == "__main__":
     args = parse_args()
     main(**args)
+
+
+# code for non interactive plotting
+# # plot potential energies from xtb and nn
+# set_plotting_config(fontsize=10, aspect_ratio=468/525, width_fraction=1)
+# fig, axes = plt.subplots(3) 
+# axes[0].plot(time_steps, xtb_e_tot, label='XTB Total Energy', color='green')
+# axes[0].plot(time_steps, nn_e_tot, label='NN Total Energy', color='red')
+# axes[0].set_xlabel('Time [ps]')
+# axes[0].set_ylabel('Total Energy [eV]')
+# axes[0].set_title('Total Energy Comparison')
+# axes[0].legend()
+# axes[1].plot(time_steps, xtb_e_pot, label='XTB Potential Energy', color='cyan')
+# axes[1].plot(time_steps, nn_e_pot, label='NN Potential Energy', color='magenta')
+# axes[1].set_xlabel('Time [ps]')
+# axes[1].set_ylabel('Potential Energy [eV]')
+# axes[1].set_title('Potential Energy Comparison')
+# axes[1].legend()
+# axes[2].plot(time_steps, xtb_e_kin, label='XTB Kinetic Energy', color='purple')
+# axes[2].plot(time_steps, nn_e_kin, label='NN Kinetic Energy', color='brown')
+# axes[2].set_xlabel('Time [ps]')
+# axes[2].set_ylabel('Kinetic Energy [eV]')
+# axes[2].set_title('Kinetic Energy Comparison')
+# axes[2].legend()
+# plt.tight_layout()
+# plt.show()
+
+# # plot potential energies on twin axes
+# set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
+# fig, ax1 = plt.subplots()
+# ax1.plot(time_steps, xtb_e_pot, label='XTB Potential Energy', color='green')
+# ax2 = ax1.twinx()  # create a twin Axes sharing the x-axis
+# ax2.plot(time_steps, nn_e_pot, label='NN Potential Energy', color='red')
+# ax1.set_xlabel('Time [ps]')
+# ax1.set_ylabel('XTB Potential Energy [eV]', color='green')
+# ax2.set_ylabel('NN Potential Energy [eV]', color='red')
+# ax1.set_title('Potential Energy Comparison')
+# ax1.tick_params(axis='y', labelcolor='green')
+# ax2.tick_params(axis='y', labelcolor='red')
+# # Combine legends from both axes
+# lines, labels = ax1.get_legend_handles_labels()
+# lines2, labels2 = ax2.get_legend_handles_labels()
+# ax1.legend(lines + lines2, labels + labels2, loc='upper left')
+# plt.tight_layout()
+# plt.show()
+
+# # compute rolling correlation with pandas
+# xtb_df = pd.DataFrame({
+#     'time': time_steps,
+#     'e_pot': xtb_e_pot,
+#     'e_kin': xtb_e_kin,
+#     'temp': xtb_temp
+# })
+# nn_df = pd.DataFrame({
+#     'time': time_steps,
+#     'e_pot': nn_e_pot,
+#     'e_kin': nn_e_kin,
+#     'temp': nn_temp
+# })
+# # compute rolling correlation with a window of 100
+# window_sizes = [100, 250, 500]
+# # take first four colors from the default matplotlib color cycle
+# colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][:len(window_sizes)]
+
+# xtb_nn_corrs = []
+# xtb_nn_time = []
+# for window_size in window_sizes:
+#     xtb_nn_corr = xtb_df.rolling(window=window_size).corr(nn_df)
+#     xtb_nn_corr = xtb_nn_corr.dropna()
+#     xtb_nn_corrs.append(xtb_nn_corr)
+#     # new time steps = time steps - window_size + 1
+#     xtb_nn_time.append(xtb_df['time'][:-(window_size-1)]) 
+#     logger.debug(f"XTB correlation shape: {xtb_nn_corr.shape}")
+
+# # plot the rolling correlation
+# set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
+# plt.figure()
+# for i, window_size in enumerate(window_sizes):
+#     xtb_nn_corr = xtb_nn_corrs[i]
+#     xtb_nn_time_i = xtb_nn_time[i]
+#     xtb_nn_time_i = xtb_nn_time[i]
+#     plt.plot(xtb_nn_time_i, xtb_nn_corr['e_pot'], label=f'Window Size {window_size}', color=colors[i])
+# plt.xlabel('Time [ps]')
+# plt.ylabel('Rolling Correlation')
+# plt.title('Rolling Correlation between XTB and NN Potential Energies')
+# plt.legend()
+# plt.tight_layout()
+# plt.show()
