@@ -26,7 +26,7 @@ from md_with_schnet.neural_net.train import prepare_and_load_data
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase --trajectory_dir MOTOR_MD_XTB/T300_1 --md_steps 1000 --model_dir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42_weird_units ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase --md_steps 10 ; exec bash'
 """
 
 
@@ -159,11 +159,9 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
     )
 
     velocities_au = structure["velocities"]
-    # transform from torch tensor to numpy array TODO: float64??
-    if isinstance(velocities_au, np.ndarray):
-        velocities_au = velocities_au.astype(np.float64)
-    elif isinstance(velocities_au, torch.Tensor):
-        velocities_au = velocities_au.detach().cpu().numpy().astype(np.float64)
+    # transform from torch tensor to numpy array 
+    if isinstance(velocities_au, torch.Tensor):
+        velocities_au = velocities_au.detach().cpu().numpy()
     else:
         raise TypeError(f"Unsupported type for velocities: {type(velocities_au)}")
     
@@ -195,8 +193,7 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
         energy_key=cfg.globals.energy_key,
         force_key=cfg.globals.forces_key,
         energy_unit=cfg.data.property_units.energy, # Hartree
-        position_unit="Bohr",  # TODO update this
-        # position_unit=cfg.data.distance_unit, # Angstrom
+        position_unit=cfg.data.distance_unit, # Bohr
     )
     atoms_nn.calc = md_calculator
 
@@ -224,15 +221,19 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
 
     ####################### 9) Run simulations ##############################
     logger.info(f"Starting simulation with {cfg.md.n_steps} steps and saving to {md_workdir}")
-    start = time.time()
+    nn_start = time.time()
     dyn_nn.run(cfg.md.n_steps)
-    print(f"NN time: {time.time() - start:.2f} s")
+    nn_end = time.time()
+    
 
     # Silence the XTB output to avoid cluttering the console
     logging.getLogger('cclib').setLevel(logging.WARNING)
-    start = time.time()
+    xtb_start = time.time()
     dyn_xtb.run(cfg.md.n_steps)
-    print(f"XTB time: {time.time() - start:.2f} s")
+    xtb_end = time.time()
+    
+    print(f"XTB time: {xtb_end - xtb_start:.2f} s")
+    print(f"NN time: {nn_end - nn_start:.2f} s")
 
     # Move the files created by the XTB calculator to the xtb directory
     move_xtb_files_to_xtb_dir(xtb_dir)
@@ -277,3 +278,11 @@ if __name__ == "__main__":
 # 100 steps with 0.5 fs time step on pc54
 # NN time: 6.97 s
 # XTB time: 42.48 s
+
+# 1000 steps with 1 fs time step on pc54
+# NN time: 337.57 s = 5.63 min
+# XTB time:  2193.96 s = 36.57 min
+
+# 10000 steps with 0.5 fs time step on pc54
+# NN time: Not measured
+# XTB time: 4143.98 s
