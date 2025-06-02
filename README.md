@@ -4,36 +4,45 @@ This project was part of a six-month, part-time research assistant position unde
 
 ## Outline
 
-The general structure of the project is as follows:
+1. [Project Structure](#project-structure)
+2. [Installation](#installation)
+3. [Workflow](#workflow)
+4. [Contributing](#contributing)
+5. [License](#license)
 
-1. [md_with_schnet](#md_with_schnet)
-   - [preprocessing](#preprocessing)
-   - [data_analysis](#data_analysis)
-   - [neural_net](#neural_net)
-2. [deprecated](#deprecated)
+## Project Structure
 
-## md_with_schnet
-
-This directory contains everything of the project so far, as we have only worked with SchNetPack so far. 
-
-
-## deprecated
-
-This directory contains every outdated piece of code, that will at some point be removed from this project.
+The "md_with_schnet" directory contains everything of the project, as we have only worked with SchNetPack so far. The "deprecated" directory contains every outdated piece of code, that at some point will be removed from this project.
 
 
 ## Installation
 
-Once you cloned this project you can use the environment.yaml file to build the conda environment needed to execute the project code.
+Once you have cloned this project, you can use the environment.yaml file to build the conda environment needed to execute the project code. The needed commands are as follows:
 
 
 ```bash
-git clone
-conda env create -f environment.yml
+git clone git@github.com:FerdinandToelkes/whk.git
+conda env create -f path/to/environment.yml
 conda activate schnet
 ```
 
+## Workflow
+
+Each script should include an example of how to execute it at the top.
+
+### preprocessing
+
+- Obtain gradients, positions and velocities from mdlog.i files with the extract.py script
+- Transform the extracted properties into a .db file (which is the format used within SchNetPack) by employing the prepare_xtb.py script
+- Define how the data later should be splitted into training, validation and test data via the create_splits.py script
+
 Note that paths need to be updated depending on the local setup especially of the data. 
+
+### neural_net
+
+- Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the train_config.yml if necessary)
+- Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
+- Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
 
 ## Contributing
 
