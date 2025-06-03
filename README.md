@@ -12,7 +12,9 @@ This project was part of a six-month, part-time research assistant position unde
 
 ## Project Structure
 
-The "md_with_schnet" directory contains everything of the project, as we have only worked with SchNetPack so far. The "deprecated" directory contains every outdated piece of code, that at some point will be removed from this project.
+The "md_with_schnet" directory contains everything of the project, as we have only worked with [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) so far. The "deprecated" directory contains every outdated piece of code, that at some point will be removed from this project.
+
+[View Interactive Plot](https://FerdinandToelkes.github.io/whk/interactive_properties_plot.html)
 
 
 ## Installation
