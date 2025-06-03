@@ -9,6 +9,7 @@ dependencies:
   - pytorch-lightning>=2.0.0
   - numpy>=2.0.0
   - hydra-core>=1.1.0
+  - xtb>=0.0.1
   - ase>=3.21
   - plotly>=6.1.1
   - mdanalysis>=2.9.0
