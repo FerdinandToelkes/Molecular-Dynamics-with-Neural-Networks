@@ -345,6 +345,51 @@ def create_interactive_window_scatter(xtb_prop: np.ndarray, nn_prop: np.ndarray,
 
     fig.show()
 
+
+def rolling_corr(a: np.ndarray, b: np.ndarray, window: int) -> np.ndarray:
+    """
+    Compute the rolling Pearson correlation between two 1D arrays.
+
+    Parameters:
+    - a (np.ndarray): First input array.
+    - b (np.ndarray): Second input array.
+    - window (int): Size of the rolling window.
+
+    Returns:
+    - np.ndarray: Array of rolling correlation coefficients.
+    """
+    if len(a) != len(b):
+        raise ValueError("Input arrays must have the same length.")
+    if window > len(a):
+        raise ValueError("Window size must be less than or equal to the length of the input arrays.")
+
+    # Number of rolling windows
+    n = len(a) - window + 1
+
+    # Initialize array to store correlation coefficients
+    corr = np.empty(n)
+
+    for i in range(n):
+        a_window = a[i:i+window]
+        b_window = b[i:i+window]
+
+        # Compute means
+        a_mean = a_window.mean()
+        b_mean = b_window.mean()
+
+        # Compute numerator and denominator for Pearson correlation
+        numerator = np.sum((a_window - a_mean) * (b_window - b_mean))
+        denominator = np.sqrt(np.sum((a_window - a_mean)**2) * np.sum((b_window - b_mean)**2))
+
+        # Handle division by zero
+        if denominator == 0:
+            corr[i] = np.nan
+        else:
+            corr[i] = numerator / denominator
+
+    return corr
+
+
 def compute_rolling_correlations(data: dict, window_sizes: list) -> dict:
     """
     Compute rolling correlations between XTB and NN potential and kinetic energies for given window sizes.
@@ -353,43 +398,23 @@ def compute_rolling_correlations(data: dict, window_sizes: list) -> dict:
         window_sizes (list of int): List of rolling‐window sizes.
     Returns:
         dict: Dictionary containing rolling correlation data for potential and kinetic energies.
-    """
-
-    # Build two pandas DataFrames so we can call .rolling().corr()
-    orginal_time_steps = data["XTB"]["time_steps"]
-    xtb_df = pd.DataFrame({
-        'time': orginal_time_steps,
-        'e_pot': data["XTB"]["e_pot"],
-        'e_kin': data["XTB"]["e_kin"]
-    })
-    
-    nn_df = pd.DataFrame({
-        'time': orginal_time_steps,
-        'e_pot': data["NN"]["e_pot"],
-        'e_kin': data["NN"]["e_kin"]
-    })
-    
-    # We'll store, for each property, the list of (time_array, corr_array) tuples,
-    # one entry per window_size.
+    """    
+    # Store, for each property, the list (time_array, corr_array) tuples, one entry per window_size
     rolling_data = {
         "Potential Energy": [],
         "Kinetic Energy": []
     }
     
+    original_time_steps = data["XTB"]["time_steps"]
     for w in window_sizes:
-        # TODO: look up how rolling().corr() works with two DataFrames.
-        # Compute the full rolling‐pairwise correlation. This produces a MultiIndex:
-        # first level = original index (time), second level = column name.
-        # We only need the off‐diagonal (between e_pot of xtb_df and e_pot of nn_df), etc.
-        # However, pandas' rolling().corr() of two DataFrames lines up columns automatically.
-        corr_df = xtb_df['e_pot'].rolling(window=w).corr(nn_df['e_pot']).dropna()
-        corr_df_kin = xtb_df['e_kin'].rolling(window=w).corr(nn_df['e_kin']).dropna()
+        corr_pot = rolling_corr(data["XTB"]["e_pot"], data["NN"]["e_pot"], w)
+        corr_kin = rolling_corr(data["XTB"]["e_kin"], data["NN"]["e_kin"], w)
 
         # new time steps = time steps - window_size + 1
-        time_corr = orginal_time_steps[:-(w-1)]
-        
-        rolling_data["Potential Energy"].append((time_corr, corr_df.values))
-        rolling_data["Kinetic Energy"].append((time_corr, corr_df_kin.values))
+        time_corr = original_time_steps[:-(w-1)]
+
+        rolling_data["Potential Energy"].append((time_corr, corr_pot))
+        rolling_data["Kinetic Energy"].append((time_corr, corr_kin))
     return rolling_data
 
 

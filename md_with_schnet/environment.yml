@@ -11,6 +11,7 @@ dependencies:
   - hydra-core>=1.1.0
   - ase>=3.21
   - plotly>=6.1.1
+  - mdanalysis>=2.9.0
   - pip
   - pip:
       - schnetpack~=2.1.1
