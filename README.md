@@ -14,8 +14,6 @@ This project was part of a six-month, part-time research assistant position unde
 
 The "md_with_schnet" directory contains everything of the project, as we have only worked with [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) so far. The "deprecated" directory contains every outdated piece of code, that at some point will be removed from this project.
 
-[View Interactive Plot](https://FerdinandToelkes.github.io/whk/interactive_properties_plot.html)
-
 
 ## Installation
 
@@ -45,6 +43,11 @@ Note that paths need to be updated depending on the local setup especially of th
 - Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the train_config.yml if necessary)
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
+
+## Interactive Plots
+
+Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/whk/MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/whk/MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html)
+ 
 
 ## Contributing
 
