@@ -340,7 +340,8 @@ def create_interactive_window_scatter(xtb_prop: np.ndarray, nn_prop: np.ndarray,
         margin={"t": 100}  # extra top margin for dropdown + title
     )
     # Save the figure to a file
-    fig.write_html(f"{plot_dir}/interactive_window_scatter.html")
+    # too large to be displayed without additional configuration
+    #fig.write_html(f"{plot_dir}/interactive_window_scatter.html")
 
     fig.show()
 
@@ -543,7 +544,7 @@ def main(model_dir: str, simulation_name: str, n_samples: int, first_sample: int
         y_labels=y_labels,
         plot_dir=plot_dir
     )
-    
+
     window_sizes = [100, 250, 500, 1000]
     
     # Create an interactive scatter plot with a dropdown for window sizes
