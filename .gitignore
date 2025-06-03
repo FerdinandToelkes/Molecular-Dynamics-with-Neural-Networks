@@ -32,10 +32,9 @@ __pycache__/
 *.npz
 *.egg-info/
 
-# Jupyter Notebooks #
+# Jupyter Checkpoints #
 #####################
 *.ipynb_checkpoints
-*.ipynb 
 
 # CSV and data files #
 ######################

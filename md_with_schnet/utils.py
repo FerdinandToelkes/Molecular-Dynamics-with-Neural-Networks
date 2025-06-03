@@ -4,14 +4,16 @@ import platform
 import schnetpack as spk
 import schnetpack.transform as trn
 import torch
+import numpy as np
 import pytorch_lightning as pl
+
 
 from schnetpack.datasets import MD17
 from omegaconf import DictConfig
 
 from md_with_schnet.setup_logger import setup_logger
 
-logger = setup_logger("info")
+logger = setup_logger("debug")
 
 
 def set_plotting_config(fontsize: int = 10, aspect_ratio: float = 1.618, width_fraction: float = 1.0, text_usetex: bool = True,
@@ -72,6 +74,20 @@ def set_data_prefix() -> str:
     else:
         raise ValueError('Unknown system. Please set data_prefix manually.')
 
+def get_bin_number(data: np.ndarray) -> int:
+    """ 
+    Get number of bins for a histogram using Scott's rule.
+    Args:
+        data (np.ndarray): Array of values.
+
+    Returns:
+        int: Number of bins for histogram.
+    """
+    # Calculate bin width
+    bin_width = 3.5 * np.std(data) / len(data) ** (1/3)
+    num_bins = int((data.max() - data.min()) / bin_width)
+    logger.debug(f"Calculated number of bins: {num_bins} for data with shape {data.shape}")
+    return num_bins
 
 def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name: str = "rMD17",
               pin_memory: bool | None = None, num_workers: int | None = None) -> spk.data.datamodule.AtomsDataModule | MD17:

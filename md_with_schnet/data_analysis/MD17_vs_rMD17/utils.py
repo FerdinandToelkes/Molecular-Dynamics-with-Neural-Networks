@@ -114,7 +114,8 @@ def extract_data_from_MD17_fast(data: MD17) -> tuple[int, np.ndarray, np.ndarray
 
 
 def get_bin_number(data) -> int:
-    """ Get number of bins for energy histogram using Scott's rule.
+    """ 
+    Get number of bins for energy histogram using Scott's rule.
     
     Returns:
         int: Number of bins for histogram.
