@@ -15,6 +15,10 @@ from md_with_schnet.neural_net.inference_with_ase import update_config_with_trai
 import plotly.graph_objects as go
 
 logger = setup_logger("debug")
+PLOT_DIR = "md_with_schnet/neural_net/plots/interactive"
+# Ensure the plot directory exists
+os.makedirs(PLOT_DIR, exist_ok=True)
+logger.debug(f"Plot directory: {PLOT_DIR}")
 
 # Example command to run the script from within code directory:
 """
@@ -202,6 +206,8 @@ def create_interactive_properties_plot(properties: dict, time_steps: np.ndarray,
         yaxis_title=y_labels[all_props[0]],  # e.g. “Energy [eV]” for “Potential Energy”
         margin={"t": 100},  # leave enough room at the top for dropdown + title
     )
+    # save the figure to a file
+    fig.write_html(f"{PLOT_DIR}/interactive_properties_plot.html")
 
     fig.show()
 
@@ -529,7 +535,7 @@ def main(trajectory_dir: str, model_dir: str, simulation_name: str, n_samples: i
         time_steps=log_data["XTB"]["time_steps"],
         y_labels=y_labels
     )
-
+    exit()
     window_sizes = [100, 250, 500, 1000]
     
     # Create an interactive scatter plot with a dropdown for window sizes
