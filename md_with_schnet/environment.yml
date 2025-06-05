@@ -4,17 +4,23 @@ channels:
   - conda-forge
 
 dependencies:
-  - python>=3.12
-  - pytorch>=2.5.0
-  - pytorch-lightning>=2.0.0
-  - numpy>=2.0.0
-  - hydra-core>=1.1.0
-  - xtb>=0.0.1
-  - ase>=3.21
-  - plotly>=6.1.1
-  - mdanalysis>=2.9.0
-  - pip
+  # required for schnetpack
+  - python=3.12
+  # - pytorch>=2.5.0
+  # - pytorch-lightning>=2.0.0
+  # - numpy>=2.0.0
+  # - hydra-core>=1.1.0
+  # - ase>=3.21
+  - pip=25.0
+
   - pip:
-      - schnetpack~=2.1.1
-      - seaborn~=0.13.2
-      - statsmodels~=0.14.4
+      - schnetpack==2.1.1
+      - seaborn==0.13.2
+      - statsmodels==0.14.4
+      - git+https://github.com/Quantum-Accelerators/xtb_ase.git
+
+  # other dependencies
+  # - xtb=0.0.1
+  - xtb=6.6.0
+  - plotly=6.1.1
+  - mdanalysis=2.9.0
