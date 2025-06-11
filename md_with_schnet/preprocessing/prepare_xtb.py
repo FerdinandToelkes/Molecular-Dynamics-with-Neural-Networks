@@ -180,6 +180,12 @@ def main(trajectory_dir: str, num_atoms: int):
     velocities_traj = get_trajectory_from_txt_and_reshape(vels_path, number_of_samples, num_atoms, usecols=(1, 2, 3))
     atomic_numbers = get_atomic_numbers_from_xyz(traj_path, num_atoms, extra_lines=3)
     
+    # compute mean and std of the forces
+    forces_mean = np.mean(forces_traj, axis=0)
+    forces_std = np.std(forces_traj, axis=0)
+    logger.debug(f'forces_mean.shape: {forces_mean.shape}')
+    logger.debug(f'forces_std.shape: {forces_std.shape}')
+    exit()
 
     # convert trajectory data to ASE Atoms objects and properties
     atoms_list, property_list = convert_trajectory_to_ase(coords_traj, energy_traj, forces_traj, velocities_traj, atomic_numbers)

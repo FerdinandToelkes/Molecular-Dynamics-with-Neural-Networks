@@ -134,7 +134,7 @@ model:
     property: energy
     add_mean: true
 data:
-  _target_: schnetpack.datasets.MD17
+  # _target_: schnetpack.datasets.MD17
   data_workdir: null
   batch_size: 100
   num_workers: 31

@@ -6,10 +6,9 @@ import schnetpack.transform as trn
 import torch
 import numpy as np
 import pytorch_lightning as pl
-
+import os
 
 from schnetpack.datasets import MD17
-from omegaconf import DictConfig
 
 from md_with_schnet.setup_logger import setup_logger
 
@@ -89,6 +88,8 @@ def get_bin_number(data: np.ndarray) -> int:
     logger.debug(f"Calculated number of bins: {num_bins} for data with shape {data.shape}")
     return num_bins
 
+####################################################################################
+
 def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name: str = "rMD17",
               pin_memory: bool | None = None, num_workers: int | None = None) -> spk.data.datamodule.AtomsDataModule | MD17:
     """
@@ -149,13 +150,16 @@ def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name:
 
     return data
 
-def load_xtb_dataset(db_path: str, config: DictConfig, split_file: str | None = None, pin_memory: bool | None = None) -> spk.data.datamodule.AtomsDataModule:
+####################################################################################
+
+def load_xtb_dataset(db_path: str, num_workers: int, batch_size: int, split_file: str | None = None, pin_memory: bool | None = None) -> spk.data.datamodule.AtomsDataModule:
     """
-    Load anXTB dataset from the specified path. 
+    Load an XTB dataset from the specified path. 
     Note: data.prepare_data() and data.setup() do not need to be called here, since they will be called by pl.trainer.fit().
     Args:
         db_path (str): Path to the dataset.
-        config (DictConfig): Configuration object containing dataset parameters.
+        num_workers (int): Number of workers for data loading.
+        batch_size (int): Batch size for the dataset.
         split_file (str | None): Path to the split file. Default is None.
         pin_memory (bool | None): Whether to use pinned memory. Default is None.
     Returns:
@@ -164,17 +168,18 @@ def load_xtb_dataset(db_path: str, config: DictConfig, split_file: str | None = 
     if pin_memory is None:
         pin_memory = torch.cuda.is_available()
 
-    if config.data.num_workers == -1:
-        num_workers = 0 if platform.system() == "Darwin" else 31 
+    if num_workers == -1:
+        num_workers = 0 if platform.system() == "Darwin" else 31
     else:
-        num_workers = config.data.num_workers
+        num_workers = num_workers
     logger.debug(f"pin_memory: {pin_memory}")
     logger.debug(f"num_workers: {num_workers}")
 
     # load xtb dataset with subclass of pl.LightningDataModule
+    # TODO: use flexible transforms
     data = spk.data.AtomsDataModule(
         db_path,
-        batch_size=config.data.batch_size,
+        batch_size=batch_size,
         distance_unit='Ang',
         property_units={'energy':'Hartree', 'forces':'Hartree/Bohr'},
         split_file=split_file,
@@ -277,3 +282,48 @@ def load_xtb_dataset_without_given_splits(db_path: str, batch_size: int = 10, pi
     logger.info(f"loaded xtb dataset: {data}")
 
     return data
+
+####################################################################################
+
+def get_split_path(data_prefix: str, trajectory_dir: str, fold: int = 0) -> str:
+    """
+    Get the path to the split file for the given trajectory directory and fold.
+    Args:
+        data_prefix (str): The prefix path to the data directory.
+        trajectory_dir (str): The directory containing the trajectory data.
+        fold (int): The fold number for cross-validation (default: 0).
+    Returns:
+        str: The path to the split file.
+    """
+    split_file = os.path.join(data_prefix, "splits", trajectory_dir, f"inner_splits_{fold}.npz")
+    if not os.path.exists(split_file):
+        raise FileNotFoundError(f"Missing split file: {split_file}")
+    logger.debug(f"Split file: {split_file}")
+    return split_file
+
+def get_splits_and_load_data(data_prefix: str, trajectory_dir: str, num_workers: int, batch_size: int) -> pl.LightningDataModule:
+    """
+    Prepare loading the dataset and then load it.
+    Args:
+        data_prefix (str): The prefix path to the data directory.
+        trajectory_dir (str): The directory containing the trajectory data.
+        num_workers (int): The number of workers for data loading.
+        batch_size (int): The batch size for data loading.
+    Returns:
+        pl.LightningDataModule: The data module containing the dataset.
+    """
+    split_file = get_split_path(data_prefix, trajectory_dir, fold=0)
+
+    if not os.path.exists(split_file):
+        raise FileNotFoundError(f"Split file does not exist: {split_file}, try running the create_splits.py script first.")
+
+    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
+    logger.debug(f"Path to database: {path_to_db}")
+
+    datamodule = load_xtb_dataset(
+        db_path=path_to_db,
+        num_workers=num_workers,
+        batch_size=batch_size,
+        split_file=split_file
+    )
+    return datamodule

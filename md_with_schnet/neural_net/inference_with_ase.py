@@ -19,9 +19,8 @@ from ase.io import read, write
 
 from xtb_ase import XTB
 
-from md_with_schnet.utils import set_data_prefix
+from md_with_schnet.utils import set_data_prefix, get_splits_and_load_data
 from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.neural_net.train import prepare_and_load_data
 
 
 # Example command to run the script from within code directory:
@@ -147,11 +146,14 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
     os.makedirs(xtb_dir)  
     logger.debug(f"MD workdir: {md_workdir}")
 
-    datamodule = prepare_and_load_data(data_prefix, cfg, trajectory_dir)
+    datamodule = get_splits_and_load_data(data_prefix, trajectory_dir,
+                                      cfg.data.batch_size, cfg.data.num_workers)
 
 
     ####################### 4) Prepare molecule ##############################
     structure = datamodule.test_dataset[0]
+    print(f"Structure keys: {structure.keys()}")
+    exit()
     
     atoms_xtb = Atoms(
         numbers=structure[spk.properties.Z],

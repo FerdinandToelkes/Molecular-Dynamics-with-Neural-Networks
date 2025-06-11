@@ -118,7 +118,12 @@ def main(trajectory_dir: str):
     path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
     logger.debug(f"Path to database: {path_to_db}")
 
-    datamodule = load_xtb_dataset(path_to_db, cfg, split_file)
+    datamodule = load_xtb_dataset(
+        db_path=path_to_db,
+        num_workers=cfg.data.num_workers,
+        batch_size=cfg.data.batch_size,
+        split_file=split_file
+    )
 
 
     ####################### 4) Prepare molecule ##############################

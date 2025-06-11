@@ -7,7 +7,7 @@ import time
 from torch.utils.data import DataLoader
 
 from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import set_plotting_config, load_xtb_dataset, set_data_prefix
+from md_with_schnet.utils import set_plotting_config, load_xtb_dataset_without_given_splits, set_data_prefix
 from md_with_schnet.data_analysis.MD17_vs_rMD17.molecule_analyzer import MoleculeTrajectoryAnalyzer
 
 logger = setup_logger(logging_level_str="debug")
@@ -61,7 +61,7 @@ def main(trajectory_dir: str, show_plots: bool):
     target_path = os.path.join(data_prefix, 'md_trajectory.db')
 
     # load XTB dataset
-    xtb = load_xtb_dataset(target_path)
+    xtb = load_xtb_dataset_without_given_splits(target_path)    
  
     # setup plotting use textwidth and height to set aspect ratio
     # Text width: 468.0pt, Text height: 665.5pt
