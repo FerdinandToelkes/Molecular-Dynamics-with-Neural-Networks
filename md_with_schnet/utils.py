@@ -152,7 +152,7 @@ def load_md17_dataset(data_prefix: str, molecule: str = 'ethanol', dataset_name:
 
 ####################################################################################
 
-def load_xtb_dataset(db_path: str, num_workers: int, batch_size: int, split_file: str | None = None, pin_memory: bool | None = None) -> spk.data.datamodule.AtomsDataModule:
+def load_xtb_dataset(db_path: str, num_workers: int, batch_size: int, transforms: list, split_file: str | None = None, pin_memory: bool | None = None) -> spk.data.datamodule.AtomsDataModule:
     """
     Load an XTB dataset from the specified path. 
     Note: data.prepare_data() and data.setup() do not need to be called here, since they will be called by pl.trainer.fit().
@@ -160,6 +160,7 @@ def load_xtb_dataset(db_path: str, num_workers: int, batch_size: int, split_file
         db_path (str): Path to the dataset.
         num_workers (int): Number of workers for data loading.
         batch_size (int): Batch size for the dataset.
+        transforms (list): List of transforms to apply to the dataset.
         split_file (str | None): Path to the split file. Default is None.
         pin_memory (bool | None): Whether to use pinned memory. Default is None.
     Returns:
@@ -176,18 +177,13 @@ def load_xtb_dataset(db_path: str, num_workers: int, batch_size: int, split_file
     logger.debug(f"num_workers: {num_workers}")
 
     # load xtb dataset with subclass of pl.LightningDataModule
-    # TODO: use flexible transforms
     data = spk.data.AtomsDataModule(
         db_path,
         batch_size=batch_size,
-        distance_unit='Ang',
+        distance_unit='Bohr',
         property_units={'energy':'Hartree', 'forces':'Hartree/Bohr'},
         split_file=split_file,
-        transforms=[
-            trn.ASENeighborList(cutoff=5.),
-            trn.RemoveOffsets("energy", remove_mean=True, remove_atomrefs=False),
-            trn.CastTo32()
-        ],
+        transforms=transforms,
         num_workers=num_workers,
         pin_memory=pin_memory, # set to false, when not using a GPU
     )
@@ -222,14 +218,10 @@ def load_xtb_dataset_without_config(db_path: str, batch_size: int, split_file: s
     data = spk.data.AtomsDataModule(
         db_path,
         batch_size=batch_size,
-        distance_unit='Ang',
+        distance_unit='Bohr',
         property_units={'energy':'Hartree', 'forces':'Hartree/Bohr'},
         split_file=split_file,
-        transforms=[
-            trn.ASENeighborList(cutoff=5.),
-            trn.RemoveOffsets("energy", remove_mean=True, remove_atomrefs=False),
-            trn.CastTo32()
-        ],
+        transforms=[],
         num_workers=num_workers,
         pin_memory=pin_memory, # set to false, when not using a GPU
     )
@@ -263,15 +255,11 @@ def load_xtb_dataset_without_given_splits(db_path: str, batch_size: int = 10, pi
     data = spk.data.AtomsDataModule(
         db_path,
         batch_size=batch_size,
-        distance_unit='Ang',
+        distance_unit='Bohr',
         property_units={'energy':'Hartree', 'forces':'Hartree/Bohr'},
         num_train=1000,
         num_val=1000,
-        transforms=[
-            trn.ASENeighborList(cutoff=5.),
-            trn.RemoveOffsets("energy", remove_mean=True, remove_atomrefs=False),
-            trn.CastTo32()
-        ],
+        transforms=[],
         num_workers=num_workers,
         pin_memory=pin_memory, # set to false, when not using a GPU
     )
@@ -301,7 +289,7 @@ def get_split_path(data_prefix: str, trajectory_dir: str, fold: int = 0) -> str:
     logger.debug(f"Split file: {split_file}")
     return split_file
 
-def get_splits_and_load_data(data_prefix: str, trajectory_dir: str, num_workers: int, batch_size: int) -> pl.LightningDataModule:
+def get_splits_and_load_data(data_prefix: str, trajectory_dir: str, num_workers: int, batch_size: int, transforms: list, fold: int = 0) -> pl.LightningDataModule:
     """
     Prepare loading the dataset and then load it.
     Args:
@@ -309,10 +297,14 @@ def get_splits_and_load_data(data_prefix: str, trajectory_dir: str, num_workers:
         trajectory_dir (str): The directory containing the trajectory data.
         num_workers (int): The number of workers for data loading.
         batch_size (int): The batch size for data loading.
+        transforms (list): List of transforms to apply to the dataset.
+        fold (int): The fold number for cross-validation (default: 0).
+    Raises:
+        FileNotFoundError: If the split file does not exist.
     Returns:
         pl.LightningDataModule: The data module containing the dataset.
     """
-    split_file = get_split_path(data_prefix, trajectory_dir, fold=0)
+    split_file = get_split_path(data_prefix, trajectory_dir, fold)
 
     if not os.path.exists(split_file):
         raise FileNotFoundError(f"Split file does not exist: {split_file}, try running the create_splits.py script first.")
@@ -324,6 +316,7 @@ def get_splits_and_load_data(data_prefix: str, trajectory_dir: str, num_workers:
         db_path=path_to_db,
         num_workers=num_workers,
         batch_size=batch_size,
+        transforms=transforms,
         split_file=split_file
     )
     return datamodule

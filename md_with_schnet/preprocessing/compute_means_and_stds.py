@@ -1,15 +1,13 @@
 import argparse
 import os
 import pytorch_lightning as pl
-import schnetpack as spk
 import schnetpack.transform as trn
 import torch
-import platform
 from tqdm import tqdm
 
 from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import set_data_prefix
-from md_with_schnet.preprocessing.standarize_energy_forces import StandardizeEnergy, StandardizeForces
+from md_with_schnet.utils import set_data_prefix, get_splits_and_load_data
+from md_with_schnet.preprocessing.transforms import StandardizeProperty
 
 logger = setup_logger("debug")
 # set batch size to 1, since batches are loaded weirdly (bs*num_atoms, 3) 
@@ -34,98 +32,7 @@ def parse_args() -> dict:
     return vars(parser.parse_args())
 
 
-def get_split_path(data_prefix: str, trajectory_dir: str, fold: int = 0) -> str:
-    """
-    Get the path to the split file for the given trajectory directory and fold.
-    Args:
-        data_prefix (str): The prefix path to the data directory.
-        trajectory_dir (str): The directory containing the trajectory data.
-        fold (int): The fold number for cross-validation (default: 0).
-    Returns:
-        str: The path to the split file.
-    """
-    split_file = os.path.join(data_prefix, "splits", trajectory_dir, f"inner_splits_{fold}.npz")
-    if not os.path.exists(split_file):
-        raise FileNotFoundError(f"Missing split file: {split_file}")
-    logger.debug(f"Split file: {split_file}")
-    return split_file
-
-def load_xtb_dataset(db_path: str, num_workers: int, batch_size: int, transforms: list, split_file: str | None = None, pin_memory: bool | None = None) -> spk.data.datamodule.AtomsDataModule:
-    """
-    Load an XTB dataset from the specified path. 
-    Note: data.prepare_data() and data.setup() do not need to be called here, since they will be called by pl.trainer.fit().
-    Args:
-        db_path (str): Path to the dataset.
-        num_workers (int): Number of workers for data loading.
-        batch_size (int): Batch size for the dataset.
-        split_file (str | None): Path to the split file. Default is None.
-        pin_memory (bool | None): Whether to use pinned memory. Default is None.
-    Returns:
-        spk.data.datamodule.AtomsDataModule: The loaded XTB dataset.
-    """
-    if pin_memory is None:
-        pin_memory = torch.cuda.is_available()
-
-    if num_workers == -1:
-        num_workers = 0 if platform.system() == "Darwin" else 31
-    else:
-        num_workers = num_workers
-    logger.debug(f"pin_memory: {pin_memory}")
-    logger.debug(f"num_workers: {num_workers}")
-
-    # load xtb dataset with subclass of pl.LightningDataModule
-    data = spk.data.AtomsDataModule(
-        db_path,
-        batch_size=batch_size,
-        distance_unit='Ang',
-        property_units={'energy':'Hartree', 'forces':'Hartree/Bohr'},
-        split_file=split_file,
-        transforms=transforms,
-        num_workers=num_workers,
-        pin_memory=pin_memory, # set to false, when not using a GPU
-    )
-    data.prepare_data()
-    data.setup()
-    logger.info(f"loaded xtb dataset: {data}")
-
-    if not isinstance(data, pl.LightningDataModule):
-        raise ValueError("The loaded dataset is not an instance of pl.LightningDataModule. Please check the dataset path and configuration.")
-
-    return data
-
-def get_splits_and_load_data(data_prefix: str, trajectory_dir: str, num_workers: int, batch_size: int, transforms: list, fold: int = 0) -> pl.LightningDataModule:
-    """
-    Prepare loading the dataset and then load it.
-    Args:
-        data_prefix (str): The prefix path to the data directory.
-        trajectory_dir (str): The directory containing the trajectory data.
-        num_workers (int): The number of workers for data loading.
-        batch_size (int): The batch size for data loading.
-        transforms (list): List of transforms to apply to the dataset.
-        fold (int): The fold number for cross-validation (default: 0).
-    Raises:
-        FileNotFoundError: If the split file does not exist.
-    Returns:
-        pl.LightningDataModule: The data module containing the dataset.
-    """
-    split_file = get_split_path(data_prefix, trajectory_dir, fold)
-
-    if not os.path.exists(split_file):
-        raise FileNotFoundError(f"Split file does not exist: {split_file}, try running the create_splits.py script first.")
-
-    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
-    logger.debug(f"Path to database: {path_to_db}")
-
-    datamodule = load_xtb_dataset(
-        db_path=path_to_db,
-        num_workers=num_workers,
-        batch_size=batch_size,
-        transforms=transforms,
-        split_file=split_file
-    )
-    return datamodule
-
-def load_data_and_compute_stats(data_prefix: str, trajectory_dir: str, device: torch.device, fold: int, num_atoms: int) -> tuple:
+def load_data_and_compute_stats(data_prefix: str, trajectory_dir: str, device: torch.device, fold: int, num_atoms: int) -> dict:
     """
     Load the dataset and compute the means and standard deviations of energies and forces.
     Args:
@@ -135,7 +42,7 @@ def load_data_and_compute_stats(data_prefix: str, trajectory_dir: str, device: t
         fold (int): The fold number for cross-validation.
         num_atoms (int): The number of atoms in the system.
     Returns:
-        tuple: A tuple containing the mean and standard deviation of energies and forces.
+        dict: A dictionary containing the mean and standard deviation of energies and forces.
     """
     train_loader = get_splits_and_load_data(
         data_prefix=data_prefix,
@@ -147,21 +54,31 @@ def load_data_and_compute_stats(data_prefix: str, trajectory_dir: str, device: t
     ).train_dataloader()
 
     # Compute means and standard deviations of energies and forces
-    energy_mean, energy_std, forces_mean, forces_std = compute_means_and_stds(
+    stats = compute_means_and_stds(
         device=device,
         train_loader=train_loader,
         num_atoms=num_atoms
     )
-    logger.debug(f"Energy mean: {energy_mean.item()} Hartree")
-    logger.debug(f"Energy std: {energy_std.item()} Hartree")
-    logger.debug(f"Forces mean: {forces_mean.flatten()} Hartree/Å")
-    logger.debug(f"Forces std: {forces_std.flatten()} Hartree/Å")
+    
+    debug_stats(stats)
 
-    return energy_mean, energy_std, forces_mean, forces_std
+    return stats
 
-def load_transformed_data_and_compute_stats(data_prefix: str, trajectory_dir: str, device: torch.device, num_atoms: int, 
-                                            energy_mean: torch.Tensor, energy_std: torch.Tensor, forces_mean: torch.Tensor, 
-                                            forces_std: torch.Tensor) -> tuple:
+def debug_stats(stats: dict):
+    """
+    Print the computed means and standard deviations of energies and forces for debugging.
+    Args:
+        stats (dict): A dictionary containing the mean and standard deviation of energies and forces.
+    """
+    logger.debug(f"Energy mean: {stats['energy_mean'].item()}")
+    logger.debug(f"Energy std: {stats['energy_std'].item()}")
+    logger.debug(f"Forces mean: {stats['forces_mean'].flatten()}")
+    logger.debug(f"Forces std: {stats['forces_std'].flatten()}")
+    logger.debug(f"Positions mean: {stats['positions_mean'].flatten()}")
+    logger.debug(f"Positions std: {stats['positions_std'].flatten()}")
+
+def load_transformed_data_and_compute_stats(data_prefix: str, trajectory_dir: str, device: torch.device, 
+                                            num_atoms: int, stats: dict) -> dict:
     """
     Load the dataset with transforms applied and compute the means and standard deviations of energies and forces.
     Args:
@@ -169,25 +86,26 @@ def load_transformed_data_and_compute_stats(data_prefix: str, trajectory_dir: st
         trajectory_dir (str): The directory containing the trajectory data.
         device (torch.device): The device to perform computations on (CPU or GPU).
         num_atoms (int): The number of atoms in the system.
-        energy_mean (torch.Tensor): Mean value of energy for standardization.
-        energy_std (torch.Tensor): Standard deviation of energy for standardization.
-        forces_mean (torch.Tensor): Mean values of forces for standardization.
-        forces_std (torch.Tensor): Standard deviations of forces for standardization.
+        stats (dict): A dictionary containing the mean and standard deviation of energies and forces.
     Returns:
-        tuple: A tuple containing the mean and standard deviation of energies and forces after applying transforms.
+        dict: A dictionary containing the mean and standard deviation of energies and forces after applying transforms.
     """
     # check if the forces mean and std are correct
     transforms = [
-        trn.ASENeighborList(cutoff=5.),
-        StandardizeEnergy(
-            e_key="energy",
-            mean_E=energy_mean,
-            std_E=energy_std
+        StandardizeProperty(
+            property_key="energy",
+            property_mean=stats['energy_mean'],
+            property_std=stats['energy_std']
         ),
-        StandardizeForces(
-            f_key="forces",
-            mean_F=forces_mean,
-            std_F=forces_std
+        StandardizeProperty(
+            property_key="forces",
+            property_mean=stats['forces_mean'],
+            property_std=stats['forces_std']
+        ),
+        StandardizeProperty(
+            property_key="_positions",
+            property_mean=stats['positions_mean'],
+            property_std=stats['positions_std']
         )
     ]
     train_loader = get_splits_and_load_data(
@@ -199,20 +117,17 @@ def load_transformed_data_and_compute_stats(data_prefix: str, trajectory_dir: st
     ).train_dataloader()
 
     # Initialize accumulators
-    standardized_e_mean, standardized_e_std, standardized_f_mean, standardized_f_std = compute_means_and_stds(
+    standardized_stats = compute_means_and_stds(
         device=device,
         train_loader=train_loader,
         num_atoms=num_atoms
     )
 
-    logger.debug(f"Energy mean: {standardized_e_mean.item()}")
-    logger.debug(f"Energy std: {standardized_e_std.item()}")
-    logger.debug(f"Forces mean: {standardized_f_mean.flatten()}")
-    logger.debug(f"Forces std: {standardized_f_std.flatten()}")
+    debug_stats(standardized_stats)
 
-    return standardized_e_mean, standardized_e_std, standardized_f_mean, standardized_f_std
+    return standardized_stats
 
-def compute_means_and_stds(device: torch.device, train_loader: pl.LightningDataModule, num_atoms: int) -> tuple:
+def compute_means_and_stds(device: torch.device, train_loader: pl.LightningDataModule, num_atoms: int) -> dict:
     """
     Compute the means and standard deviations of energies and forces from the training data.
     Args:
@@ -224,30 +139,33 @@ def compute_means_and_stds(device: torch.device, train_loader: pl.LightningDataM
         ValueError: If the force vectors do not have 3 components.
         ValueError: If the energy and forces batch sizes do not match.
     Returns:
-        tuple: A tuple containing the mean and standard deviation of energies and forces.
+        dict: A dictionary containing the mean and standard deviation of energies and forces.
     """
     # Initialize accumulators for means and variances
     energy_mean = torch.zeros((), dtype=torch.float64, device=device)
     energy_M2   = torch.zeros_like(energy_mean)
     forces_mean = torch.zeros((num_atoms,3), dtype=torch.float64, device=device)
     forces_M2   = torch.zeros_like(forces_mean)
+    positions_mean = torch.zeros((num_atoms,3), dtype=torch.float64, device=device)
+    positions_M2   = torch.zeros_like(positions_mean)
     count = 0
 
     # Single‐pass Welford (see wikipedia for details)
     for batch in tqdm(train_loader, desc="Computing stats"):
-        e_batch = batch["energy"].to(dtype=torch.float64, device=device)   # (B,)
-        f_batch = batch["forces"].to(dtype=torch.float64, device=device)   # (B,N,3)
+        e_batch = batch["energy"].to(dtype=torch.float64, device=device)    # (1)
+        f_batch = batch["forces"].to(dtype=torch.float64, device=device)    # (N,3)
+        p_batch = batch["_positions"].to(dtype=torch.float64, device=device) # (N,3)
 
-        if f_batch.shape[0] != num_atoms:
-            raise ValueError(f"Number of atoms in batch {f_batch.shape[0]} does not match expected number {num_atoms}.")
-        if f_batch.shape[1] != 3:
-            raise ValueError(f"Force vectors should have 3 components, but got {f_batch.shape[2]}.")
+        if f_batch.shape[0] != num_atoms or p_batch.shape[0] != num_atoms:
+            raise ValueError(f"Number of atoms in forces ({f_batch.shape[0]}) or positions ({p_batch.shape[0]}) batch does not match expected number {num_atoms}.")
+        if f_batch.shape[1] != 3 or p_batch.shape[1] != 3:
+            raise ValueError(f"Force vectors should have 3 components, but got {f_batch.shape[2]} for forces and {p_batch.shape[2]} for positions.")
 
-        for i in range(e_batch.shape[0]):
-            # increment count and do energy and forces updates
-            count += 1
-            energy_mean, energy_M2 = welford_update(e_batch[i], energy_mean, energy_M2, count)
-            forces_mean, forces_M2 = welford_update(f_batch[i], forces_mean, forces_M2, count)
+        # increment count and do energy and forces updates
+        count += 1
+        energy_mean, energy_M2 = welford_update(e_batch[0], energy_mean, energy_M2, count) # [0] because energy is a scalar
+        forces_mean, forces_M2 = welford_update(f_batch, forces_mean, forces_M2, count)
+        positions_mean, positions_M2 = welford_update(p_batch, positions_mean, positions_M2, count)
 
     # Finalize
     energy_var  = energy_M2 / count
@@ -255,7 +173,20 @@ def compute_means_and_stds(device: torch.device, train_loader: pl.LightningDataM
 
     forces_var  = forces_M2 / count
     forces_std  = torch.sqrt(forces_var)
-    return energy_mean, energy_std, forces_mean, forces_std
+
+    positions_var = positions_M2 / count
+    positions_std = torch.sqrt(positions_var)
+
+    stats = {
+        "energy_mean": energy_mean,
+        "energy_std": energy_std,
+        "forces_mean": forces_mean,
+        "forces_std": forces_std,
+        "positions_mean": positions_mean,
+        "positions_std": positions_std
+    }
+
+    return stats
 
 def welford_update(x, mean, M2, count) -> tuple:
     """
@@ -274,40 +205,38 @@ def welford_update(x, mean, M2, count) -> tuple:
     M2   += delta * delta2
     return mean, M2
 
-def check_means_and_stds(energy_mean: torch.Tensor, energy_std: torch.Tensor, forces_mean: torch.Tensor, forces_std: torch.Tensor, num_atoms: int, device: torch.device):
+def check_means_and_stds(stats: dict, num_atoms: int, device: torch.device):
     """
     Check if the computed means and standard deviations are as expected.
     Args:
-        energy_mean (torch.Tensor): Mean of energies.
-        energy_std (torch.Tensor): Standard deviation of energies.
-        forces_mean (torch.Tensor): Mean of forces.
-        forces_std (torch.Tensor): Standard deviation of forces.
+        stats (dict): A dictionary containing the mean and standard deviation of energies and forces.
         num_atoms (int): Number of atoms in the system.
         device (torch.device): The device to perform computations on (CPU or GPU).
     Raises:
         AssertionError: If the means and standard deviations do not match the expected values.
     """
-    assert torch.isclose(energy_mean, torch.tensor(0.0, dtype=torch.float64, device=device)), f"Energy mean ≠ 0: {energy_mean:.6f}"
-    assert torch.isclose(energy_std, torch.tensor(1.0, dtype=torch.float64, device=device)), f"Energy std ≠ 1: {energy_std:.6f}"
-    assert torch.allclose(forces_mean, torch.zeros((num_atoms, 3), dtype=torch.float64, device=device)), f"Forces mean ≠ 0: {forces_mean.abs().max():.3e}"
-    assert torch.allclose(forces_std, torch.ones((num_atoms, 3), dtype=torch.float64, device=device)), f"Forces std ≠ 1: {forces_std.abs().max():.3e}"
+    assert torch.isclose(stats['energy_mean'], torch.tensor(0.0, dtype=torch.float64, device=device)), f"Energy mean != 0: {stats['energy_mean']:.6f}"
+    assert torch.isclose(stats['energy_std'], torch.tensor(1.0, dtype=torch.float64, device=device)), f"Energy std != 1: {stats['energy_std']:.6f}"
+    assert torch.allclose(stats['forces_mean'], torch.zeros((num_atoms, 3), dtype=torch.float64, device=device)), f"Forces mean != 0: {stats['forces_mean'].abs().max():.3e}"
+    assert torch.allclose(stats['forces_std'], torch.ones((num_atoms, 3), dtype=torch.float64, device=device)), f"Forces std != 1: {stats['forces_std'].abs().max():.3e}"
+    assert torch.allclose(stats['positions_mean'], torch.zeros((num_atoms, 3), dtype=torch.float64, device=device)), f"Positions mean != 0: {stats['positions_mean'].abs().max():.3e}"
+    assert torch.allclose(stats['positions_std'], torch.ones((num_atoms, 3), dtype=torch.float64, device=device)), f"Positions std != 1: {stats['positions_std'].abs().max():.3e}"
 
-def save_means_and_stds(save_path: str, energy_mean: torch.Tensor, energy_std: torch.Tensor, forces_mean: torch.Tensor, forces_std: torch.Tensor):
+def save_means_and_stds(save_path: str, stats: dict):
     """
     Save the computed means and standard deviations to a file.
     Args:
         save_path (str): The path to the file where means and standard deviations will be saved.
-        energy_mean (torch.Tensor): Mean of energies.
-        energy_std (torch.Tensor): Standard deviation of energies.
-        forces_mean (torch.Tensor): Mean of forces.
-        forces_std (torch.Tensor): Standard deviation of forces.
+        stats (dict): A dictionary containing the mean and standard deviation of energies and forces.
     """
     
     torch.save({
-        "energy_mean": energy_mean,
-        "energy_std": energy_std,
-        "forces_mean": forces_mean,
-        "forces_std": forces_std
+        "energy_mean": stats['energy_mean'],
+        "energy_std": stats['energy_std'],
+        "forces_mean": stats['forces_mean'],
+        "forces_std": stats['forces_std'],
+        "positions_mean": stats['positions_mean'],
+        "positions_std": stats['positions_std']
     }, save_path)
     logger.info(f"Means and standard deviations saved to {save_path}")
 
@@ -320,7 +249,7 @@ def main(trajectory_dir: str, fold: int, num_atoms: int):
     
     if not os.path.exists(means_stds_path):
         logger.info(f"Means and standard deviations file does not exist, computing them")
-        energy_mean, energy_std, forces_mean, forces_std = load_data_and_compute_stats(
+        stats = load_data_and_compute_stats(
             data_prefix=data_prefix,
             trajectory_dir=trajectory_dir,
             device=device,
@@ -329,34 +258,26 @@ def main(trajectory_dir: str, fold: int, num_atoms: int):
         )
     else:
         logger.info(f"Means and standard deviations file exists, loading them")
-        means_stds = torch.load(means_stds_path, map_location=device, weights_only=True)
-        energy_mean = means_stds["energy_mean"]
-        energy_std = means_stds["energy_std"]
-        forces_mean = means_stds["forces_mean"]
-        forces_std = means_stds["forces_std"]
+        stats = torch.load(means_stds_path, map_location=device, weights_only=True)
+        print(f"stats: {stats}")
+        
 
-    standardized_e_mean, standardized_e_std, standardized_f_mean, standardized_f_std = load_transformed_data_and_compute_stats(
+    standardized_stats = load_transformed_data_and_compute_stats(
         data_prefix=data_prefix,
         trajectory_dir=trajectory_dir,
         device=device,
         num_atoms=num_atoms,
-        energy_mean=energy_mean,
-        energy_std=energy_std,
-        forces_mean=forces_mean,
-        forces_std=forces_std
+        stats=stats
     )
 
     # check if means are zero and stds are one
-    check_means_and_stds(standardized_e_mean, standardized_e_std, standardized_f_mean, standardized_f_std, num_atoms, device)
+    check_means_and_stds(standardized_stats, num_atoms, device)
 
     if not os.path.exists(means_stds_path):
         # Save the computed means and stds to a file
         save_means_and_stds(
             save_path=means_stds_path,
-            energy_mean=energy_mean,
-            energy_std=energy_std,
-            forces_mean=forces_mean,
-            forces_std=forces_std
+            stats=stats
         )
 
 if __name__ == "__main__":

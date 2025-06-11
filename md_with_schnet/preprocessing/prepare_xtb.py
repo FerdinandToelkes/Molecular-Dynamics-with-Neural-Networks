@@ -4,7 +4,6 @@ import argparse
 
 from ase import Atoms
 from schnetpack.data import ASEAtomsData
-from io import StringIO
 from ase.data import atomic_numbers as ase_atomic_numbers
 
 from md_with_schnet.utils import set_data_prefix
@@ -185,7 +184,6 @@ def main(trajectory_dir: str, num_atoms: int):
     forces_std = np.std(forces_traj, axis=0)
     logger.debug(f'forces_mean.shape: {forces_mean.shape}')
     logger.debug(f'forces_std.shape: {forces_std.shape}')
-    exit()
 
     # convert trajectory data to ASE Atoms objects and properties
     atoms_list, property_list = convert_trajectory_to_ase(coords_traj, energy_traj, forces_traj, velocities_traj, atomic_numbers)

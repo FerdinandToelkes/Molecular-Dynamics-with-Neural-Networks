@@ -3,6 +3,7 @@ import pytorch_lightning as pl
 import argparse
 import platform
 import time
+import torch
 
 from hydra import initialize, compose
 from hydra.utils import instantiate, get_class
@@ -10,7 +11,7 @@ from omegaconf import OmegaConf, DictConfig
 
 
 # own imports
-from md_with_schnet.utils import setup_logger, set_data_prefix, get_splits_and_load_data
+from md_with_schnet.utils import setup_logger, set_data_prefix, get_splits_and_load_data, get_split_path
 
 logger = setup_logger("debug")
 
@@ -74,6 +75,7 @@ def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: i
         cfg.data.num_workers = num_workers
     else:
         cfg.data.num_workers = 0 if platform.system() == 'Darwin' else 31
+    cfg.data.pin_memory = torch.cuda.is_available()
     cfg.trainer.max_epochs = num_epochs
     cfg.globals.lr = learning_rate
     return cfg
@@ -103,7 +105,22 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     ####################### 3) Prepare our own data #########################
     data_prefix = set_data_prefix()
 
-    datamodule = get_splits_and_load_data(data_prefix, trajectory_dir, cfg.data.num_workers, cfg.data.batch_size)
+    split_file = get_split_path(data_prefix, trajectory_dir, fold=0)
+    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
+
+    datamodule = instantiate(
+        cfg.data,
+        datapath=path_to_db,
+        split_file=split_file,
+    )
+    datamodule.prepare_data()
+    datamodule.setup()  
+    logger.info(f"loaded xtb datamodule: {datamodule}")    
+
+    transforms = []
+    datamodule = get_splits_and_load_data(data_prefix, trajectory_dir, cfg.data.num_workers, cfg.data.batch_size, transforms)
+
+    exit()
 
     ####################### 4) Instantiate model & task from YAML ###########
     model: pl.LightningModule = instantiate(cfg.model)
@@ -131,7 +148,7 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
 
 
     ####################### 6) Callbacks ##############################
-    callbacks: list = [
+    callbacks = [
         instantiate(cfg.callbacks.model_checkpoint),
         instantiate(cfg.callbacks.early_stopping),
         instantiate(cfg.callbacks.lr_monitor),
@@ -145,8 +162,8 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
         logger=tb_logger,
         deterministic=True, # for reproducibility
     )
-    
 
+    
     ####################### 8) Launch training ########################
     # since we have a pl datamodule, it is split automatically into train, val and test sets
     # depending on which method is called, e.g. fit, validate, test

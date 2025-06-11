@@ -146,8 +146,8 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
     os.makedirs(xtb_dir)  
     logger.debug(f"MD workdir: {md_workdir}")
 
-    datamodule = get_splits_and_load_data(data_prefix, trajectory_dir,
-                                      cfg.data.batch_size, cfg.data.num_workers)
+    transforms = []
+    datamodule = get_splits_and_load_data(data_prefix, trajectory_dir, cfg.data.num_workers, cfg.data.batch_size, transforms)
 
 
     ####################### 4) Prepare molecule ##############################

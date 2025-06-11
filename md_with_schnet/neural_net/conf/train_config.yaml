@@ -36,7 +36,7 @@ trainer:
   precision: 32
   accelerator: auto
   num_nodes: 1
-  deterministic: false
+  deterministic: true
   inference_mode: false
 callbacks:
   model_checkpoint:
@@ -130,26 +130,51 @@ model:
     force_key: ${globals.forces_key}
   postprocessors:
   - _target_: schnetpack.transform.CastTo64
-  - _target_: schnetpack.transform.AddOffsets
-    property: energy
-    add_mean: true
+  # - _target_: schnetpack.transform.AddOffsets # TODO
+  #   property: energy
+  #   add_mean: true # TODO
+  - _target_: md_with_schnet.preprocessing.transforms.RescaleProperty
+    property_key: energy
+    property_mean: null # has to be set in the code
+    property_std: null # has to be set in the code
+  - _target_: md_with_schnet.preprocessing.transforms.RescaleProperty
+    property_key: forces
+    property_mean: null # has to be set in the code
+    property_std: null # has to be set in the code
+  - _target_: md_with_schnet.preprocessing.transforms.RescaleProperty
+    property_key: _positions
+    property_mean: null # has to be set in the code
+    property_std: null # has to be set in the code
 data:
-  # _target_: schnetpack.datasets.MD17
-  data_workdir: null
-  batch_size: 100
+  _target_: schnetpack.data.AtomsDataModule
+  #data_workdir: null
+  batch_size: 64
   num_workers: 31
-  num_val_workers: null
-  num_test_workers: null
-  train_sampler_cls: null
+  pin_memory: null
+  # num_val_workers: null
+  # num_test_workers: null
+  # train_sampler_cls: null
   distance_unit: Bohr
   property_units:
     energy: Hartree
     forces: Hartree/Bohr
   transforms:
-  - _target_: schnetpack.transform.SubtractCenterOfMass
-  - _target_: schnetpack.transform.RemoveOffsets
-    property: energy
-    remove_mean: true
+  # - _target_: schnetpack.transform.SubtractCenterOfMass # TODO
+  # - _target_: schnetpack.transform.RemoveOffsets # TODO
+  #   property: energy
+  #   remove_mean: true # TODO
+  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+    property_key: energy
+    property_mean: null # has to be set in the code
+    property_std: null  # has to be set in the code
+  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+    property_key: forces
+    property_mean: null # has to be set in the code
+    property_std: null  # has to be set in the code
+  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+    property_key: _positions
+    property_mean: null # has to be set in the code
+    property_std: null  # has to be set in the code
   - _target_: schnetpack.transform.MatScipyNeighborList
     cutoff: ${globals.cutoff}
   - _target_: schnetpack.transform.CastTo32
