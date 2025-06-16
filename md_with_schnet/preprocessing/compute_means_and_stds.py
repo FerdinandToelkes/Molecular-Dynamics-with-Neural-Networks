@@ -74,8 +74,8 @@ def debug_stats(stats: dict):
     logger.debug(f"Energy std: {stats['energy_std'].item()}")
     logger.debug(f"Forces mean: {stats['forces_mean'].flatten()}")
     logger.debug(f"Forces std: {stats['forces_std'].flatten()}")
-    logger.debug(f"Positions mean: {stats['positions_mean'].flatten()}")
-    logger.debug(f"Positions std: {stats['positions_std'].flatten()}")
+    logger.debug(f"Positions mean: {stats['_positions_mean'].flatten()}")
+    logger.debug(f"Positions std: {stats['_positions_std'].flatten()}")
 
 def load_transformed_data_and_compute_stats(data_prefix: str, trajectory_dir: str, device: torch.device, 
                                             num_atoms: int, stats: dict) -> dict:
@@ -104,8 +104,8 @@ def load_transformed_data_and_compute_stats(data_prefix: str, trajectory_dir: st
         ),
         StandardizeProperty(
             property_key="_positions",
-            property_mean=stats['positions_mean'],
-            property_std=stats['positions_std']
+            property_mean=stats['_positions_mean'],
+            property_std=stats['_positions_std']
         )
     ]
     train_loader = get_splits_and_load_data(
@@ -182,8 +182,8 @@ def compute_means_and_stds(device: torch.device, train_loader: pl.LightningDataM
         "energy_std": energy_std,
         "forces_mean": forces_mean,
         "forces_std": forces_std,
-        "positions_mean": positions_mean,
-        "positions_std": positions_std
+        "_positions_mean": positions_mean,
+        "_positions_std": positions_std
     }
 
     return stats
@@ -219,8 +219,8 @@ def check_means_and_stds(stats: dict, num_atoms: int, device: torch.device):
     assert torch.isclose(stats['energy_std'], torch.tensor(1.0, dtype=torch.float64, device=device)), f"Energy std != 1: {stats['energy_std']:.6f}"
     assert torch.allclose(stats['forces_mean'], torch.zeros((num_atoms, 3), dtype=torch.float64, device=device)), f"Forces mean != 0: {stats['forces_mean'].abs().max():.3e}"
     assert torch.allclose(stats['forces_std'], torch.ones((num_atoms, 3), dtype=torch.float64, device=device)), f"Forces std != 1: {stats['forces_std'].abs().max():.3e}"
-    assert torch.allclose(stats['positions_mean'], torch.zeros((num_atoms, 3), dtype=torch.float64, device=device)), f"Positions mean != 0: {stats['positions_mean'].abs().max():.3e}"
-    assert torch.allclose(stats['positions_std'], torch.ones((num_atoms, 3), dtype=torch.float64, device=device)), f"Positions std != 1: {stats['positions_std'].abs().max():.3e}"
+    assert torch.allclose(stats['_positions_mean'], torch.zeros((num_atoms, 3), dtype=torch.float64, device=device)), f"Positions mean != 0: {stats['_positions_mean'].abs().max():.3e}"
+    assert torch.allclose(stats['_positions_std'], torch.ones((num_atoms, 3), dtype=torch.float64, device=device)), f"Positions std != 1: {stats['_positions_std'].abs().max():.3e}"
 
 def save_means_and_stds(save_path: str, stats: dict):
     """
@@ -235,8 +235,8 @@ def save_means_and_stds(save_path: str, stats: dict):
         "energy_std": stats['energy_std'],
         "forces_mean": stats['forces_mean'],
         "forces_std": stats['forces_std'],
-        "positions_mean": stats['positions_mean'],
-        "positions_std": stats['positions_std']
+        "_positions_mean": stats['_positions_mean'], # for consistency with SchNetPack
+        "_positions_std": stats['_positions_std']    # for consistency with SchNetPack
     }, save_path)
     logger.info(f"Means and standard deviations saved to {save_path}")
 

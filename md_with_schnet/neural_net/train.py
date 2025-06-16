@@ -11,13 +11,13 @@ from omegaconf import OmegaConf, DictConfig
 
 
 # own imports
-from md_with_schnet.utils import setup_logger, set_data_prefix, get_splits_and_load_data, get_split_path
+from md_with_schnet.utils import setup_logger, set_data_prefix, get_split_path
 
 logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-screen -dmS xtb_train sh -c 'python -m md_with_schnet.neural_net.train --trajectory_dir MOTOR_MD_XTB/T300_1 -e 1000 ; exec bash'
+screen -dmS xtb_train sh -c 'python -m md_with_schnet.neural_net.train --trajectory_dir MOTOR_MD_XTB/T300_1 -e 1000 -cname train_config_default_transforms; exec bash'
 """
 
 def parse_args() -> dict:
@@ -33,8 +33,10 @@ def parse_args() -> dict:
     parser.add_argument("-bs", "--batch_size", type=int, default=100, help="Batch size for training (default: 100)")
     parser.add_argument("-e", "--num_epochs", type=int, default=1, help="Number of epochs for training (default: 1)")
     parser.add_argument("-lr", "--learning_rate", type=float, default=1e-4, help="Learning rate for the optimizer (default: 1e-4)")
-    parser.add_argument("-nw", "--num_workers", type=int, default=-1, help="Number of workers for data loading (default: -1, which sets it to 0 on macOS and 31 on Linux)")
+    parser.add_argument("-nw", "--num_workers", type=int, default=-1, help="Number of workers for data loading (default: -1, which sets it to 0 on macOS and 8 on Linux)")
     # others
+    parser.add_argument("-cname", "--config_name", type=str, default="train_config", help="Name of the configuration file (default: train_config)")
+    parser.add_argument("-f", "--fold", type=int, default=0, help="Fold number for cross-validation (default: 0)")
     parser.add_argument("-s", "--seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
     return vars(parser.parse_args())
 
@@ -56,7 +58,7 @@ def set_run_path(trajectory_dir: str, num_epochs: int, batch_size: int, learning
     run_path = os.path.join(current_dir, "runs", run_name)
     return run_path
 
-def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int) -> DictConfig:
+def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int, path_to_stats: str) -> DictConfig:
     """ 
     Update the configuration with command-line arguments.
     Args:
@@ -66,36 +68,41 @@ def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: i
         num_epochs (int): Number of epochs for training.
         learning_rate (float): Learning rate for the optimizer.
         num_workers (int): Number of workers for data loading.
+        path_to_stats (str): Path to the statistics file (mean and std) for standardization.
     Returns:
         DictConfig: Updated configuration.
     """
     cfg.run.path = run_path
+    cfg.run.mean_std_path = path_to_stats
     cfg.data.batch_size = batch_size
     if num_workers != -1:
         cfg.data.num_workers = num_workers
     else:
-        cfg.data.num_workers = 0 if platform.system() == 'Darwin' else 31
-    cfg.data.pin_memory = torch.cuda.is_available()
+        cfg.data.num_workers = 0 if platform.system() == 'Darwin' else 8
     cfg.trainer.max_epochs = num_epochs
     cfg.globals.lr = learning_rate
     return cfg
 
 
 
-def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int, seed: int):
+def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int, config_name: str, fold: int, seed: int):
     ####################### Basic setup ###########################
     pl.seed_everything(seed, workers=True)
+    data_prefix = set_data_prefix()
+    split_file = get_split_path(data_prefix, trajectory_dir, fold)
+    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
+    path_to_stats = os.path.join(data_prefix, trajectory_dir, f"means_stds_fold_{fold}.pt")
 
     ####################### 1) Compose the config ###########################
     with initialize(config_path="conf", job_name="train", version_base="1.1"):
-        cfg: DictConfig = compose(config_name="train_config")
+        cfg: DictConfig = compose(config_name=config_name)
 
     # set run path
     run_path = set_run_path(trajectory_dir, num_epochs, batch_size, learning_rate, seed)
     logger.debug(f"Run path: {run_path}")
     
     # update the config with the arguments from the command line
-    cfg = update_config(cfg, run_path, batch_size, num_epochs, learning_rate, num_workers)
+    cfg = update_config(cfg, run_path, batch_size, num_epochs, learning_rate, num_workers, path_to_stats)
     logger.info(f"Loaded and updated config:\n{OmegaConf.to_yaml(cfg)}")
 
     ####################### 2) Switch strings to classes ####################
@@ -103,24 +110,15 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     sched_cls = get_class(cfg.task.scheduler_cls)
 
     ####################### 3) Prepare our own data #########################
-    data_prefix = set_data_prefix()
-
-    split_file = get_split_path(data_prefix, trajectory_dir, fold=0)
-    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
-
-    datamodule = instantiate(
+    datamodule : pl.LightningDataModule = instantiate(
         cfg.data,
         datapath=path_to_db,
         split_file=split_file,
     )
     datamodule.prepare_data()
     datamodule.setup()  
-    logger.info(f"loaded xtb datamodule: {datamodule}")    
+    logger.info(f"loaded xtb datamodule: {datamodule}")   
 
-    transforms = []
-    datamodule = get_splits_and_load_data(data_prefix, trajectory_dir, cfg.data.num_workers, cfg.data.batch_size, transforms)
-
-    exit()
 
     ####################### 4) Instantiate model & task from YAML ###########
     model: pl.LightningModule = instantiate(cfg.model)
@@ -130,7 +128,6 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
         optimizer_cls=optim_cls,
         scheduler_cls=sched_cls
     )
-
 
     ####################### 5) Logger ################################
     # Convert the config to a basic dict with resolved values, i.e. ${work_dir} -> /path/to/work_dir

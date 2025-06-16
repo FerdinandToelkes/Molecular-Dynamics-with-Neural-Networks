@@ -9,7 +9,6 @@ import torch
 import pytorch_lightning as pl
 
 from hydra import initialize, compose
-from hydra.utils import instantiate
 from omegaconf import OmegaConf, DictConfig
 
 from ase import Atoms
@@ -20,16 +19,13 @@ from ase.io import read, write
 
 from xtb_ase import XTB
 
-from md_with_schnet.utils import set_data_prefix, get_split_path
+from md_with_schnet.utils import set_data_prefix
 from md_with_schnet.setup_logger import setup_logger
 
-# Unit conversions
-BOHR_TO_ANGSTROM = units.Bohr  # 1 Bohr = 0.52917721067 Å
-AUT_TO_S = units._aut
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase -mdir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42_normalized --md_steps 10 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase --md_steps 10 ; exec bash'
 """
 
 
@@ -47,13 +43,91 @@ def parse_args() -> dict:
     parser.add_argument("-mdir", "--model_dir", type=str, default="MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42", help="Directory of the trained model (default: MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42)")
     parser.add_argument("-mds", "--md_steps", type=int, default=10, help="Number of MD steps to run (default: 10)")
     parser.add_argument("-ts", "--time_step", type=float, default=0.5, help="Time step for the MD simulation in fs (default: 0.5 fs)")
-    parser.add_argument("-f", "--fold", type=int, default=0, help="Fold number for cross-validation (default: 0)")
     parser.add_argument("-s", "--seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
     parser.add_argument("-nw", "--num_workers", type=int, default=-1, help="Number of workers for data loading (default: -1, which sets it to 0 on macOS and 8 on Linux)")
     return vars(parser.parse_args())
 
+def get_split_path(data_prefix: str, trajectory_dir: str, fold: int = 0) -> str:
+    """
+    Get the path to the split file for the given trajectory directory and fold.
+    Args:
+        data_prefix (str): The prefix path to the data directory.
+        trajectory_dir (str): The directory containing the trajectory data.
+        fold (int): The fold number for cross-validation (default: 0).
+    Returns:
+        str: The path to the split file.
+    """
+    split_file = os.path.join(data_prefix, "splits", trajectory_dir, f"inner_splits_{fold}.npz")
+    if not os.path.exists(split_file):
+        raise FileNotFoundError(f"Missing split file: {split_file}")
+    logger.debug(f"Split file: {split_file}")
+    return split_file
 
+def prepare_and_load_data(data_prefix: str, cfg: DictConfig, trajectory_dir: str) -> pl.LightningDataModule:
+    """
+    Prepare loading the dataset and then load it.
+    Args:
+        data_prefix (str): The prefix path to the data directory.
+        cfg (DictConfig): The configuration dictionary.
+        trajectory_dir (str): The directory containing the trajectory data.
+    Returns:
+        pl.LightningDataModule: The data module containing the dataset.
+    """
+    split_file = get_split_path(data_prefix, trajectory_dir, fold=0)
 
+    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
+    logger.debug(f"Path to database: {path_to_db}")
+
+    datamodule = load_xtb_dataset(path_to_db, cfg, split_file)
+    return datamodule
+
+def load_xtb_dataset(db_path: str, config: DictConfig, split_file: str | None = None, pin_memory: bool | None = None) -> spk.data.datamodule.AtomsDataModule:
+    """
+    Load anXTB dataset from the specified path. 
+    Note: data.prepare_data() and data.setup() do not need to be called here, since they will be called by pl.trainer.fit().
+    Args:
+        db_path (str): Path to the dataset.
+        config (DictConfig): Configuration object containing dataset parameters.
+        split_file (str | None): Path to the split file. Default is None.
+        pin_memory (bool | None): Whether to use pinned memory. Default is None.
+    Returns:
+        spk.data.datamodule.AtomsDataModule: The loaded XTB dataset.
+    """
+    if pin_memory is None:
+        pin_memory = torch.cuda.is_available()
+
+    if config.data.num_workers == -1:
+        num_workers = 0 if platform.system() == "Darwin" else 8 
+    else:
+        num_workers = config.data.num_workers
+    logger.debug(f"pin_memory: {pin_memory}")
+    logger.debug(f"num_workers: {num_workers}")
+
+    # load xtb dataset with subclass of pl.LightningDataModule
+    data = spk.data.AtomsDataModule(
+        db_path,
+        batch_size=config.data.batch_size,
+        distance_unit='Bohr',
+        property_units={'energy':'Hartree', 'forces':'Hartree/Bohr'},
+        split_file=split_file,
+        transforms=[
+            trn.ASENeighborList(cutoff=5.),
+            trn.RemoveOffsets("energy", remove_mean=True, remove_atomrefs=False),
+            trn.CastTo32()
+        ],
+        num_workers=num_workers,
+        pin_memory=pin_memory, # set to false, when not using a GPU
+    )
+    data.prepare_data()
+    data.setup()
+    logger.info(f"loaded xtb dataset: {data}")
+
+    if not isinstance(data, pl.LightningDataModule):
+        raise ValueError("The loaded dataset is not an instance of pl.LightningDataModule. Please check the dataset path and configuration.")
+
+    return data
+
+#######################################################################
 
 def update_config_with_train_config(cfg: DictConfig, cfg_train: DictConfig) -> DictConfig:
     """
@@ -67,19 +141,13 @@ def update_config_with_train_config(cfg: DictConfig, cfg_train: DictConfig) -> D
     # Disable struct mode to allow adding new fields
     OmegaConf.set_struct(cfg, False)
 
-    # Copy over specific globals and of run
+    # Copy over specific globals
     cfg.globals.cutoff = cfg_train.globals.cutoff
     cfg.globals.energy_key = cfg_train.globals.energy_key
     cfg.globals.forces_key = cfg_train.globals.forces_key
-    cfg.run.mean_std_path = cfg_train.run.mean_std_path
 
     # Copy over data fields
     cfg.data = cfg_train.data
-    # Create model field if it doesn't exist
-    if 'model' not in cfg:
-        cfg.model = DictConfig({})
-    # Copy over model fields
-    cfg.model.postprocessors = cfg_train.model.postprocessors
 
     # Re-enable struct mode to enforce the structure
     OmegaConf.set_struct(cfg, True)
@@ -128,7 +196,7 @@ def move_xtb_files_to_xtb_dir(xtb_dir: str):
         else:
             logger.warning(f"File {src} does not exist, skipping move.")
 
-def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, fold: int, seed: int, num_workers: int):
+def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, seed: int, num_workers: int):
     ####################### 1) Compose the config ###########################
     with initialize(config_path="conf", job_name="inference", version_base="1.1"):
         cfg: DictConfig = compose(config_name="inference_config")
@@ -148,8 +216,6 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     ####################### 2) Prepare Data and Paths #########################
     data_prefix = set_data_prefix()
     md_workdir = cfg.run.path
-    split_file = get_split_path(data_prefix, trajectory_dir, fold)
-    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
     simulation_name = f"md_sim_steps_{md_steps}_time_step_{time_step}_seed_{seed}"
     target_dir = os.path.join(md_workdir, simulation_name)
     xtb_dir = os.path.join(target_dir, "xtb")
@@ -159,47 +225,18 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     os.makedirs(xtb_dir)  
     logger.debug(f"MD workdir: {md_workdir}")
 
-    xtb_datamodule: spk.data.AtomsDataModule = instantiate(
-        cfg.org_data, # i.e. without any transforms and in atomic units
-        datapath=path_to_db,
-        split_file=split_file,
-    )
-    xtb_datamodule.prepare_data()
-    xtb_datamodule.setup()
-
-    nn_datamodule : spk.data.AtomsDataModule = instantiate(
-        cfg.data,
-        datapath=path_to_db,
-        split_file=split_file,
-    )
-    nn_datamodule.prepare_data()
-    nn_datamodule.setup()
-
-    logger.info(f"Loaded xtb datamodule: {xtb_datamodule}")
-    logger.info(f"Loaded nn datamodule: {nn_datamodule}")
+    datamodule = prepare_and_load_data(data_prefix, cfg, trajectory_dir)
 
 
     ####################### 4) Prepare molecule ##############################
-    sample_idx = 0
-    nn_structure = nn_datamodule.test_dataset[sample_idx]
-    xtb_structure = xtb_datamodule.test_dataset[sample_idx]
-     
-    # bring it from bohr to angstrom
-    xtb_structure["_positions"] *= BOHR_TO_ANGSTROM
-    if "_cell" in xtb_structure:
-        xtb_structure["_cell"] *= BOHR_TO_ANGSTROM
-
-    atoms_xtb = Atoms(
-        numbers=xtb_structure[spk.properties.Z],
-        positions=xtb_structure[spk.properties.R],
-    )
-    atoms_nn = Atoms(
-        numbers=nn_structure[spk.properties.Z],
-        positions=nn_structure[spk.properties.R],
-    )
-
-    velocities_au = nn_structure["velocities"]
+    structure = datamodule.test_dataset[0]
     
+    atoms_xtb = Atoms(
+        numbers=structure[spk.properties.Z],
+        positions=structure[spk.properties.R],
+    )
+
+    velocities_au = structure["velocities"]
     # transform from torch tensor to numpy array 
     if isinstance(velocities_au, torch.Tensor):
         velocities_au = velocities_au.detach().cpu().numpy()
@@ -208,9 +245,10 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     
 
     # convert velocities from atomic units to Angstrom/ase time units
-    velocities_ase = velocities_au * BOHR_TO_ANGSTROM / (AUT_TO_S * units.s) 
+    bohr_to_angstrom = units.Bohr  # 1 Bohr = 0.52917721067 Å
+    aut_to_s = units._aut
+    velocities_ase = velocities_au * bohr_to_angstrom / (aut_to_s * units.s) 
     atoms_xtb.set_velocities(velocities_ase)
-    atoms_nn.set_velocities(velocities_ase)
 
     # check if velocities are valid by computing the corresponding temperature
     temperature = atoms_xtb.get_temperature()
@@ -218,15 +256,23 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     e_kin = atoms_xtb.get_kinetic_energy()
     logger.info(f"Initial kinetic energy of the system: {e_kin} eV")    
     
-    # print(f"Initial positions (in Angstrom): {atoms_xtb.get_positions()}")
-    # exit()
+
+    # make duplicate of the atoms object 
+    atoms_nn = atoms_xtb.copy()
 
     ####################### 6) Setup calculators ##############################
-    atoms_xtb.calc = XTB(method=cfg.xtb.method)
+    atoms_xtb.calc = XTB(
+        method=cfg.xtb.method,
+    )
     
-    md_calculator: spk.interfaces.SpkCalculator = instantiate(cfg.calculator)
-    
-    # set the calculator for the atoms objects
+    md_calculator = spk.interfaces.SpkCalculator(
+        model_file=cfg.globals.model_path,
+        neighbor_list=trn.ASENeighborList(cutoff=cfg.model.neighborlist.cutoff),
+        energy_key=cfg.globals.energy_key,
+        force_key=cfg.globals.forces_key,
+        energy_unit=cfg.data.property_units.energy, # Hartree
+        position_unit=cfg.data.distance_unit, # Bohr
+    )
     atoms_nn.calc = md_calculator
 
     ####################### 8) Setup simulator ##############################
@@ -253,7 +299,6 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
 
     ####################### 9) Run simulations ##############################
     logger.info(f"Starting simulation with {cfg.md.n_steps} steps and saving to {md_workdir}")
-    logger.info(f"Beginning simulation with neural network calculator.")
     nn_start = time.time()
     dyn_nn.run(cfg.md.n_steps)
     nn_end = time.time()
@@ -261,13 +306,12 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
 
     # Silence the XTB output to avoid cluttering the console
     logging.getLogger('cclib').setLevel(logging.WARNING)
-    logger.info(f"Beginning simulation with XTB calculator.")
     xtb_start = time.time()
     dyn_xtb.run(cfg.md.n_steps)
     xtb_end = time.time()
     
-    logger.info(f"XTB time: {xtb_end - xtb_start:.2f} s")
-    logger.info(f"NN time: {nn_end - nn_start:.2f} s")
+    print(f"XTB time: {xtb_end - xtb_start:.2f} s")
+    print(f"NN time: {nn_end - nn_start:.2f} s")
 
     # Move the files created by the XTB calculator to the xtb directory
     move_xtb_files_to_xtb_dir(xtb_dir)
@@ -277,6 +321,23 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     nn_traj = read(f'{target_dir}/nn_traj.traj', index=':')
     write(f'{target_dir}/xtb_traj.xyz', xtb_traj)
     write(f'{target_dir}/nn_traj.xyz', nn_traj)
+
+    # ####################### 5) Setup MD system ##############################
+    # md_system = System()
+    # md_system.load_molecules(
+    #     atoms,
+    #     n_replicas=cfg.md.n_replicas,
+    #     position_unit_input=cfg.model.units.length,
+    # )
+
+    # # Initial momenta
+    # md_initializer = UniformInit(
+    #     cfg.md.system_temperature,
+    #     remove_center_of_mass=True,
+    #     remove_translation=True,
+    #     remove_rotation=True,
+    # )
+    # md_initializer.initialize_system(md_system)
 
 
    

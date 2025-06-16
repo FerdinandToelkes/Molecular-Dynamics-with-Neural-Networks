@@ -13,19 +13,28 @@ class StandardizeProperty(Transform):
     def __init__(
             self, 
             property_key: str, 
-            property_mean: torch.Tensor, 
-            property_std: torch.Tensor, 
+            property_mean: torch.Tensor | None = None, 
+            property_std: torch.Tensor | None = None, 
+            path_to_stats: str = None,
         ):
         """
         Args:
             property_key (str): Key for property in the input data.
-            property_mean (torch.Tensor): Mean value of property for standardization.
-            property_std (torch.Tensor): Standard deviation of property for standardization.
+            property_mean (torch.Tensor | None): Mean value of property for standardization.
+            property_std (torch.Tensor | None): Standard deviation of property for standardization.
+            path_to_stats (str | None): Path to the statistics file (mean and std) for standardization.
         """
         super().__init__()
         self.property_key = property_key
-        self.property_mean = property_mean
-        self.property_std = property_std
+
+        if path_to_stats is not None:
+            # Load the mean and std from the stats file
+            stats = torch.load(path_to_stats, weights_only=True)
+            self.property_mean = stats[f'{property_key}_mean']
+            self.property_std = stats[f'{property_key}_std']
+        else:
+            self.property_mean = property_mean
+            self.property_std = property_std
 
     def forward(self, data: dict) -> dict:
         """
@@ -37,6 +46,7 @@ class StandardizeProperty(Transform):
         """
         data[self.property_key] = (data[self.property_key] - self.property_mean) / self.property_std
         return data
+    
 
 class RescaleProperty(Transform):
     """
@@ -46,19 +56,28 @@ class RescaleProperty(Transform):
     def __init__(
             self, 
             property_key: str, 
-            property_mean: torch.Tensor, 
-            property_std: torch.Tensor, 
+            property_mean: torch.Tensor | None = None, 
+            property_std: torch.Tensor | None = None, 
+            path_to_stats: str | None = None,
         ):
         """
         Args:
             property_key (str): Key for property in the input data.
-            property_mean (torch.Tensor): Mean value of property for standardization.
-            property_std (torch.Tensor): Standard deviation of property for standardization.
+            property_mean (torch.Tensor | None): Mean value of property for standardization.
+            property_std (torch.Tensor | None): Standard deviation of property for standardization.
+            path_to_stats (str | None): Path to the statistics file (mean and std) for standardization.
         """
         super().__init__()
         self.property_key = property_key
-        self.property_mean = property_mean
-        self.property_std = property_std
+        
+        if path_to_stats is not None:
+            # Load the mean and std from the stats file
+            stats = torch.load(path_to_stats, weights_only=True)
+            self.property_mean = stats[f'{property_key}_mean']
+            self.property_std = stats[f'{property_key}_std']
+        else:
+            self.property_mean = property_mean
+            self.property_std = property_std
 
     def forward(self, data: dict) -> dict:
         """
@@ -70,3 +89,4 @@ class RescaleProperty(Transform):
         """
         data[self.property_key] = (data[self.property_key] * self.property_std) + self.property_mean
         return data
+    
