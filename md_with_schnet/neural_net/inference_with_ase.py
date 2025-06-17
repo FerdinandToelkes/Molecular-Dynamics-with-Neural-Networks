@@ -29,7 +29,7 @@ AUT_TO_S = units._aut
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase -mdir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42_normalized --md_steps 10 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase -mdir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42_normalized --md_steps 10 -ts 0.5 ; exec bash'
 """
 
 
@@ -53,6 +53,18 @@ def parse_args() -> dict:
     return vars(parser.parse_args())
 
 
+def load_config(config_path: str, config_name: str, job_name: str) -> DictConfig:
+    """
+    Load the configuration from the specified path and name.
+    Args:
+        config_path (str): Path to the configuration directory.
+        config_name (str): Name of the configuration file.
+        job_name (str): Name of the job for Hydra.
+    Returns:
+        DictConfig: Loaded configuration.
+    """
+    with initialize(config_path=config_path, job_name=job_name, version_base="1.1"):
+        return compose(config_name=config_name)
 
 
 def update_config_with_train_config(cfg: DictConfig, cfg_train: DictConfig) -> DictConfig:
@@ -107,6 +119,45 @@ def update_config(cfg: DictConfig, run_path: str, md_steps: int, time_step: floa
 
     return cfg
 
+def setup_datamodule(cfg: DictConfig, datapath: str, split_file: str) -> spk.data.AtomsDataModule:
+    """
+    Setup the data module for the given configuration.
+    Args:
+        cfg (DictConfig): Configuration for the data module.
+        datapath (str): Path to the data.
+        split_file (str): Path to the split file.
+    Returns:
+        spk.data.AtomsDataModule: Configured data module.
+    """
+    dm = instantiate(cfg, datapath=datapath, split_file=split_file)
+    dm.prepare_data()
+    dm.setup()
+    logger.info(f"Loaded datamodule: {dm}")
+    return dm
+
+def prepare_atoms(structure: DictConfig, velocities_au: torch.Tensor) -> Atoms:
+    """
+    Prepare an ASE Atoms object from the structure and velocities.
+    Args:
+        structure (DictConfig): The structure containing atomic numbers and positions.
+        velocities_au (torch.Tensor): Velocities in atomic units.
+    Returns:
+        Atoms: ASE Atoms object with positions and velocities.
+    """
+    atoms = Atoms(
+        numbers=structure[spk.properties.Z],
+        positions=structure[spk.properties.R],
+    )
+
+    if isinstance(velocities_au, torch.Tensor):
+        velocities_au = velocities_au.detach().cpu().numpy()
+    else:
+        raise TypeError(f"Unsupported type for velocities: {type(velocities_au)}")
+
+    velocities_ase = velocities_au * BOHR_TO_ANGSTROM / (AUT_TO_S * units.s)
+    atoms.set_velocities(velocities_ase)
+
+    return atoms
 
 def move_xtb_files_to_xtb_dir(xtb_dir: str):
     """
@@ -128,158 +179,110 @@ def move_xtb_files_to_xtb_dir(xtb_dir: str):
         else:
             logger.warning(f"File {src} does not exist, skipping move.")
 
+def save_traj_to_xyz(traj_path: str, xyz_path: str):
+    """
+    Save the trajectory from a .traj file to an .xyz file.
+    Args:
+        traj_path (str): Path to the input .traj file.
+        xyz_path (str): Path to save the output .xyz file.
+    """
+    traj = read(traj_path, index=':')
+    write(xyz_path, traj)
+    logger.info(f"Saved trajectory from {traj_path} to {xyz_path}")
+
 def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, fold: int, seed: int, num_workers: int):
     ####################### 1) Compose the config ###########################
-    with initialize(config_path="conf", job_name="inference", version_base="1.1"):
-        cfg: DictConfig = compose(config_name="inference_config")
+    cfg = load_config("conf", "inference_config", "inference")
 
     # use training config to update the inference config
-    train_cfg_path = os.path.join("runs", model_dir, "tensorboard/default/version_0")
-    with initialize(config_path=train_cfg_path, job_name="train", version_base="1.1"):
-        cfg_train: DictConfig = compose(config_name="hparams.yaml")
+    train_cfg_path = os.path.join("runs", model_dir, cfg.globals.train_config_subpath)
+    cfg_train = load_config(train_cfg_path, cfg.globals.hparams_file_name, "train")
     cfg = update_config_with_train_config(cfg, cfg_train)
 
     # update config with arguments from command line
     home_dir = os.path.expanduser("~")
-    model_dir_path = os.path.join(home_dir, "whk/code/md_with_schnet/neural_net/runs", model_dir)
+    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
+    model_dir_path = os.path.join(runs_dir_path, model_dir)
     cfg = update_config(cfg, model_dir_path, md_steps, time_step, num_workers)
     logger.info(f"Loaded and updated config:\n{OmegaConf.to_yaml(cfg)}")
 
     ####################### 2) Prepare Data and Paths #########################
     data_prefix = set_data_prefix()
-    md_workdir = cfg.run.path
     split_file = get_split_path(data_prefix, trajectory_dir, fold)
     path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
     simulation_name = f"md_sim_steps_{md_steps}_time_step_{time_step}_seed_{seed}"
-    target_dir = os.path.join(md_workdir, simulation_name)
-    xtb_dir = os.path.join(target_dir, "xtb")
-    if os.path.exists(target_dir):
-        raise FileExistsError(f"Target directory already exists: {target_dir}. Please choose a different name or remove the existing directory.")
+    target_dir = os.path.join(cfg.run.path, simulation_name)
     os.makedirs(target_dir)
-    os.makedirs(xtb_dir)  
-    logger.debug(f"MD workdir: {md_workdir}")
+    
+    xtb_target_dir = os.path.join(runs_dir_path, cfg.globals.xtb_dir_name, simulation_name)
+    xtb_cache_dir = os.path.join(xtb_target_dir, "xtb")
+    os.makedirs(xtb_target_dir, exist_ok=True)
+    os.makedirs(xtb_cache_dir, exist_ok=True)
 
-    xtb_datamodule: spk.data.AtomsDataModule = instantiate(
-        cfg.org_data, # i.e. without any transforms and in atomic units
-        datapath=path_to_db,
-        split_file=split_file,
-    )
-    xtb_datamodule.prepare_data()
-    xtb_datamodule.setup()
-
-    nn_datamodule : spk.data.AtomsDataModule = instantiate(
-        cfg.data,
-        datapath=path_to_db,
-        split_file=split_file,
-    )
-    nn_datamodule.prepare_data()
-    nn_datamodule.setup()
-
-    logger.info(f"Loaded xtb datamodule: {xtb_datamodule}")
-    logger.info(f"Loaded nn datamodule: {nn_datamodule}")
-
-
-    ####################### 4) Prepare molecule ##############################
+    xtb_datamodule = setup_datamodule(cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
+    nn_datamodule = setup_datamodule(cfg=cfg.data, datapath=path_to_db, split_file=split_file)
+    ####################### 3) Prepare molecule ##############################
     sample_idx = 0
     nn_structure = nn_datamodule.test_dataset[sample_idx]
     xtb_structure = xtb_datamodule.test_dataset[sample_idx]
-     
-    # bring it from bohr to angstrom
+    velocities_au = xtb_structure["velocities"]
+
+    # transform original structure from bohr to angstrom
     xtb_structure["_positions"] *= BOHR_TO_ANGSTROM
     if "_cell" in xtb_structure:
         xtb_structure["_cell"] *= BOHR_TO_ANGSTROM
 
-    atoms_xtb = Atoms(
-        numbers=xtb_structure[spk.properties.Z],
-        positions=xtb_structure[spk.properties.R],
-    )
-    atoms_nn = Atoms(
-        numbers=nn_structure[spk.properties.Z],
-        positions=nn_structure[spk.properties.R],
-    )
-
-    velocities_au = nn_structure["velocities"]
-    
-    # transform from torch tensor to numpy array 
-    if isinstance(velocities_au, torch.Tensor):
-        velocities_au = velocities_au.detach().cpu().numpy()
-    else:
-        raise TypeError(f"Unsupported type for velocities: {type(velocities_au)}")
-    
-
-    # convert velocities from atomic units to Angstrom/ase time units
-    velocities_ase = velocities_au * BOHR_TO_ANGSTROM / (AUT_TO_S * units.s) 
-    atoms_xtb.set_velocities(velocities_ase)
-    atoms_nn.set_velocities(velocities_ase)
+    atoms_nn = prepare_atoms(nn_structure, velocities_au)
+    atoms_xtb = prepare_atoms(xtb_structure, velocities_au)
 
     # check if velocities are valid by computing the corresponding temperature
-    temperature = atoms_xtb.get_temperature()
-    logger.info(f"Initial temperature of the system: {temperature} K")
-    e_kin = atoms_xtb.get_kinetic_energy()
-    logger.info(f"Initial kinetic energy of the system: {e_kin} eV")    
-    
-    # print(f"Initial positions (in Angstrom): {atoms_xtb.get_positions()}")
-    # exit()
+    logger.info(f"Initial temperature of the system: {atoms_xtb.get_temperature()} K")
+    logger.info(f"Initial kinetic energy of the system: {atoms_xtb.get_kinetic_energy()} eV")    
 
-    ####################### 6) Setup calculators ##############################
+    ####################### 4) Setup calculators ##############################
     atoms_xtb.calc = XTB(method=cfg.xtb.method)
     
     md_calculator: spk.interfaces.SpkCalculator = instantiate(cfg.calculator)
-    
-    # set the calculator for the atoms objects
     atoms_nn.calc = md_calculator
 
-    ####################### 8) Setup simulator ##############################
-     # convert time step from atomic units to seconds and then to ASE time units
+    ####################### 5) Setup simulator ##############################
+    # convert time step from atomic units to seconds and then to ASE time units
     logger.debug(f"Time step (in fs): {cfg.md.time_step}")
     time_step_ase = cfg.md.time_step * units.fs
     logger.debug(f"Time step (in ASE time units): {time_step_ase:.2f}")
     
 
     dyn_xtb = ASEVelocityVerlet(
-        atoms_xtb, 
-        timestep=time_step_ase, 
-        trajectory=f'{target_dir}/xtb_traj.traj', 
-        logfile=f'{target_dir}/xtb_md.log',
+        atoms_xtb, time_step_ase, trajectory=f'{xtb_target_dir}/xtb_traj.traj', logfile=f'{xtb_target_dir}/xtb_md.log',
     )
          
     dyn_nn = ASEVelocityVerlet(
-        atoms_nn, 
-        timestep=time_step_ase, 
-        trajectory=f'{target_dir}/nn_traj.traj', 
-        logfile=f'{target_dir}/nn_md.log',
+        atoms_nn, time_step_ase, trajectory=f'{target_dir}/nn_traj.traj', logfile=f'{target_dir}/nn_md.log',
     )
-    
 
-    ####################### 9) Run simulations ##############################
-    logger.info(f"Starting simulation with {cfg.md.n_steps} steps and saving to {md_workdir}")
-    logger.info(f"Beginning simulation with neural network calculator.")
+    ####################### 6) Run simulations ##############################
+    logger.info(f"Starting simulation with {cfg.md.n_steps} steps.")
+    logger.info(f"Beginning simulation with neural network calculator and saving to {target_dir}.")
     nn_start = time.time()
     dyn_nn.run(cfg.md.n_steps)
     nn_end = time.time()
     
+    # Only run the XTB simulation, if it has not been run before
+    if not os.path.exists(f'{target_dir}/xtb_traj.traj'):
+        # Silence the XTB output to avoid cluttering the console
+        logging.getLogger('cclib').setLevel(logging.WARNING)
+        logger.info(f"Beginning simulation with XTB calculator.")
+        xtb_start = time.time()
+        dyn_xtb.run(cfg.md.n_steps)
+        xtb_end = time.time()
+        logger.info(f"XTB time: {xtb_end - xtb_start:.2f} s")
 
-    # Silence the XTB output to avoid cluttering the console
-    logging.getLogger('cclib').setLevel(logging.WARNING)
-    logger.info(f"Beginning simulation with XTB calculator.")
-    xtb_start = time.time()
-    dyn_xtb.run(cfg.md.n_steps)
-    xtb_end = time.time()
-    
-    logger.info(f"XTB time: {xtb_end - xtb_start:.2f} s")
+        # Move the files created by the XTB calculator to the xtb directory
+        move_xtb_files_to_xtb_dir(xtb_target_dir)
+        save_traj_to_xyz(f'{target_dir}/xtb_traj.traj', f'{target_dir}/xtb_traj.xyz')
+
     logger.info(f"NN time: {nn_end - nn_start:.2f} s")
-
-    # Move the files created by the XTB calculator to the xtb directory
-    move_xtb_files_to_xtb_dir(xtb_dir)
-
-    # read in the saved .traj files and save them as .xyz files
-    xtb_traj = read(f'{target_dir}/xtb_traj.traj', index=':')
-    nn_traj = read(f'{target_dir}/nn_traj.traj', index=':')
-    write(f'{target_dir}/xtb_traj.xyz', xtb_traj)
-    write(f'{target_dir}/nn_traj.xyz', nn_traj)
-
-
-   
+    save_traj_to_xyz(f'{target_dir}/nn_traj.traj', f'{target_dir}/nn_traj.xyz')
 
 
 if __name__ == "__main__":
