@@ -4,7 +4,6 @@ import numpy as np
 
 from hydra import initialize, compose
 from omegaconf import DictConfig
-from ase.io import write, read
 
 
 from md_with_schnet.setup_logger import setup_logger
@@ -12,13 +11,16 @@ from md_with_schnet.neural_net.inference_with_ase import update_config_with_trai
 
 # for interactive plotting
 import plotly.graph_objects as go
+# ensure that no conflict with jupyter package (ipykernel) occurs
+import plotly.io as pio
+pio.renderers.default = 'browser' 
 
 logger = setup_logger("debug")
 
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim --model_dir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 --n_samples 200
+python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim --model_dir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_500_time_step_0.5_seed_42 --n_samples 500
 """
 
 def parse_args() -> dict:
@@ -527,20 +529,20 @@ def main(model_dir: str, simulation_name: str, n_samples: int, first_sample: int
 
     ####################### 2) Prepare Data and Paths #########################
     home_dir = os.path.expanduser("~")
-    md_workdir = os.path.join(home_dir, "whk/code/md_with_schnet/neural_net/runs", model_dir)
-    print(f"md_workdir: {md_workdir}")
-    print(f"simulation_name: {simulation_name}")
-    target_dir = os.path.join(md_workdir, simulation_name)
-    
-    # read in the saved .traj files and save them as .xyz files
-    xtb_traj = read(f'{target_dir}/xtb_traj.traj', index=':')
-    nn_traj = read(f'{target_dir}/nn_traj.traj', index=':')
-    write(f'{target_dir}/xtb_traj.xyz', xtb_traj)
-    write(f'{target_dir}/nn_traj.xyz', nn_traj)
+    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
+    md_workdir = os.path.join(runs_dir_path, model_dir)
+    logger.debug(f"md_workdir: {md_workdir}")
+    logger.debug(f"simulation_name: {simulation_name}")
+    nn_target_dir = os.path.join(md_workdir, simulation_name)
+    xtb_target_dir = os.path.join(runs_dir_path, cfg.globals.xtb_dir_name, simulation_name)
+    logger.debug(f"nn_target_dir: {nn_target_dir}")
+    logger.debug(f"xtb_target_dir: {xtb_target_dir}")
+
 
     # load the log file containing the MD simulation data
-    xtb_data = np.loadtxt(f'{target_dir}/xtb_md.log', skiprows=1) 
-    nn_data = np.loadtxt(f'{target_dir}/nn_md.log', skiprows=1) # time[ps], Etot, Epot, Ekin[eV], T[K]
+    xtb_data = np.loadtxt(f'{xtb_target_dir}/xtb_md.log', skiprows=1) 
+    nn_data = np.loadtxt(f'{nn_target_dir}/nn_md.log', skiprows=1) # time[ps], Etot, Epot, Ekin[eV], T[K]
+    # nn_data = np.loadtxt(f'{nn_target_dir}/xtb_md.log', skiprows=1) # time[ps], Etot, Epot, Ekin[eV], T[K]
     logger.debug(f"Shape of xtb_data: {xtb_data.shape}")
     logger.debug(f"Shape of nn_data: {nn_data.shape}")
 

@@ -24,3 +24,5 @@ dependencies:
   - xtb=6.6.0
   - plotly=6.1.1
   - mdanalysis=2.9.0
+  - ipykernel=6.29.5 # for jupyter lab in vs code
+  

@@ -3,24 +3,21 @@ import argparse
 import schnetpack as spk
 import platform
 import time
-import schnetpack.transform as trn
 import logging
 import torch
-import pytorch_lightning as pl
 
-from hydra import initialize, compose
+
 from hydra.utils import instantiate
 from omegaconf import OmegaConf, DictConfig
-
 from ase import Atoms
 # from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.md.verlet import VelocityVerlet as ASEVelocityVerlet
 from ase import units
 from ase.io import read, write
-
 from xtb_ase import XTB
+from tqdm import tqdm
 
-from md_with_schnet.utils import set_data_prefix, get_split_path
+from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule
 from md_with_schnet.setup_logger import setup_logger
 
 # Unit conversions
@@ -52,19 +49,6 @@ def parse_args() -> dict:
     parser.add_argument("-nw", "--num_workers", type=int, default=-1, help="Number of workers for data loading (default: -1, which sets it to 0 on macOS and 8 on Linux)")
     return vars(parser.parse_args())
 
-
-def load_config(config_path: str, config_name: str, job_name: str) -> DictConfig:
-    """
-    Load the configuration from the specified path and name.
-    Args:
-        config_path (str): Path to the configuration directory.
-        config_name (str): Name of the configuration file.
-        job_name (str): Name of the job for Hydra.
-    Returns:
-        DictConfig: Loaded configuration.
-    """
-    with initialize(config_path=config_path, job_name=job_name, version_base="1.1"):
-        return compose(config_name=config_name)
 
 
 def update_config_with_train_config(cfg: DictConfig, cfg_train: DictConfig) -> DictConfig:
@@ -119,21 +103,7 @@ def update_config(cfg: DictConfig, run_path: str, md_steps: int, time_step: floa
 
     return cfg
 
-def setup_datamodule(cfg: DictConfig, datapath: str, split_file: str) -> spk.data.AtomsDataModule:
-    """
-    Setup the data module for the given configuration.
-    Args:
-        cfg (DictConfig): Configuration for the data module.
-        datapath (str): Path to the data.
-        split_file (str): Path to the split file.
-    Returns:
-        spk.data.AtomsDataModule: Configured data module.
-    """
-    dm = instantiate(cfg, datapath=datapath, split_file=split_file)
-    dm.prepare_data()
-    dm.setup()
-    logger.info(f"Loaded datamodule: {dm}")
-    return dm
+
 
 def prepare_atoms(structure: DictConfig, velocities_au: torch.Tensor) -> Atoms:
     """
@@ -158,6 +128,7 @@ def prepare_atoms(structure: DictConfig, velocities_au: torch.Tensor) -> Atoms:
     atoms.set_velocities(velocities_ase)
 
     return atoms
+
 
 def move_xtb_files_to_xtb_dir(xtb_dir: str):
     """
@@ -192,10 +163,10 @@ def save_traj_to_xyz(traj_path: str, xyz_path: str):
 
 def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, fold: int, seed: int, num_workers: int):
     ####################### 1) Compose the config ###########################
-    cfg = load_config("conf", "inference_config", "inference")
+    cfg = load_config("neural_net/conf", "inference_config", "inference")
 
     # use training config to update the inference config
-    train_cfg_path = os.path.join("runs", model_dir, cfg.globals.train_config_subpath)
+    train_cfg_path = os.path.join("neural_net/runs", model_dir, cfg.globals.train_config_subpath)
     cfg_train = load_config(train_cfg_path, cfg.globals.hparams_file_name, "train")
     cfg = update_config_with_train_config(cfg, cfg_train)
 
@@ -219,8 +190,9 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     os.makedirs(xtb_target_dir, exist_ok=True)
     os.makedirs(xtb_cache_dir, exist_ok=True)
 
-    xtb_datamodule = setup_datamodule(cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
-    nn_datamodule = setup_datamodule(cfg=cfg.data, datapath=path_to_db, split_file=split_file)
+    xtb_datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
+    # nn_datamodule = setup_datamodule(data_cfg=cfg.data, datapath=path_to_db, split_file=split_file)
+    nn_datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
     ####################### 3) Prepare molecule ##############################
     sample_idx = 0
     nn_structure = nn_datamodule.test_dataset[sample_idx]
@@ -234,14 +206,14 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
 
     atoms_nn = prepare_atoms(nn_structure, velocities_au)
     atoms_xtb = prepare_atoms(xtb_structure, velocities_au)
+    #atoms_nn = atoms_xtb.copy()  # Use the same structure for the neural network
 
     # check if velocities are valid by computing the corresponding temperature
     logger.info(f"Initial temperature of the system: {atoms_xtb.get_temperature()} K")
-    logger.info(f"Initial kinetic energy of the system: {atoms_xtb.get_kinetic_energy()} eV")    
+    logger.info(f"Initial kinetic energy of the system: {atoms_xtb.get_kinetic_energy()} eV") 
 
     ####################### 4) Setup calculators ##############################
     atoms_xtb.calc = XTB(method=cfg.xtb.method)
-    
     md_calculator: spk.interfaces.SpkCalculator = instantiate(cfg.calculator)
     atoms_nn.calc = md_calculator
 
@@ -252,10 +224,6 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     logger.debug(f"Time step (in ASE time units): {time_step_ase:.2f}")
     
 
-    dyn_xtb = ASEVelocityVerlet(
-        atoms_xtb, time_step_ase, trajectory=f'{xtb_target_dir}/xtb_traj.traj', logfile=f'{xtb_target_dir}/xtb_md.log',
-    )
-         
     dyn_nn = ASEVelocityVerlet(
         atoms_nn, time_step_ase, trajectory=f'{target_dir}/nn_traj.traj', logfile=f'{target_dir}/nn_md.log',
     )
@@ -268,18 +236,35 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     nn_end = time.time()
     
     # Only run the XTB simulation, if it has not been run before
-    if not os.path.exists(f'{target_dir}/xtb_traj.traj'):
+    if not os.path.exists(f'{xtb_target_dir}/xtb_traj.traj'):
+        dyn_xtb = ASEVelocityVerlet(
+            atoms_xtb, time_step_ase, trajectory=f'{xtb_target_dir}/xtb_traj.traj', logfile=f'{xtb_target_dir}/xtb_md.log',
+        )
         # Silence the XTB output to avoid cluttering the console
         logging.getLogger('cclib').setLevel(logging.WARNING)
+        
         logger.info(f"Beginning simulation with XTB calculator.")
+        
+        # Create a tqdm progress bar
+        pbar = tqdm(total=cfg.md.n_steps, desc="MD progress")
+
+        # Attach a callback that advances the bar once each interval
+        def update_bar(_=None):
+            pbar.update(interval)  # note: interval defined below
+
+        interval = 1
+        dyn_xtb.attach(update_bar, interval=interval)
+
         xtb_start = time.time()
         dyn_xtb.run(cfg.md.n_steps)
         xtb_end = time.time()
         logger.info(f"XTB time: {xtb_end - xtb_start:.2f} s")
 
         # Move the files created by the XTB calculator to the xtb directory
-        move_xtb_files_to_xtb_dir(xtb_target_dir)
-        save_traj_to_xyz(f'{target_dir}/xtb_traj.traj', f'{target_dir}/xtb_traj.xyz')
+        move_xtb_files_to_xtb_dir(xtb_cache_dir)
+        save_traj_to_xyz(f'{xtb_target_dir}/xtb_traj.traj', f'{xtb_target_dir}/xtb_traj.xyz')
+    else:
+        logger.info(f"XTB trajectory already exists at {xtb_target_dir}/xtb_traj.traj. Skipping XTB simulation.")
 
     logger.info(f"NN time: {nn_end - nn_start:.2f} s")
     save_traj_to_xyz(f'{target_dir}/nn_traj.traj', f'{target_dir}/nn_traj.xyz')
@@ -299,10 +284,20 @@ if __name__ == "__main__":
 # NN time: 6.97 s
 # XTB time: 42.48 s
 
-# 1000 steps with 1 fs time step on pc54
+
+# 500 steps with 0.5 fs time step on pc54
+# NN time: 17.90 s
+# XTB time: 432.25 s ?!?!?!
+
+
+# 5000 steps with 1 fs time step on pc54
 # NN time: 337.57 s = 5.63 min
 # XTB time:  2193.96 s = 36.57 min
 
 # 10000 steps with 0.5 fs time step on pc54
 # NN time: Not measured
 # XTB time: 4143.98 s
+
+# 10000 steps with 0.5 fs time step on pc54
+# NN time: 322.48 s
+# XTB time: 10036.13 s ?!?!

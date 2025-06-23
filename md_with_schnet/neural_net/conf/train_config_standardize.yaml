@@ -12,7 +12,7 @@ run:
   mean_std_path: null
 globals:
   model_path: ${run.path}/best_model
-  cutoff: 5.0
+  cutoff: 10.0 # Bohr
   lr: 0.001
   energy_key: energy
   forces_key: forces
@@ -131,13 +131,13 @@ model:
     force_key: ${globals.forces_key}
   postprocessors:
   - _target_: schnetpack.transform.CastTo64
-  - _target_: md_with_schnet.preprocessing.transforms.RescaleProperty
+  - _target_: md_with_schnet.preprocessing.transforms.UndoStandardizeProperty
     property_key: energy
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.RescaleProperty
+  - _target_: md_with_schnet.preprocessing.transforms.UndoStandardizeProperty
     property_key: forces
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.RescaleProperty
+  - _target_: md_with_schnet.preprocessing.transforms.UndoStandardizeProperty
     property_key: _positions
     path_to_stats: ${run.mean_std_path}
 data:

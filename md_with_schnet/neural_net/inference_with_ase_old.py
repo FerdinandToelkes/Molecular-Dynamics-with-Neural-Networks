@@ -10,14 +10,13 @@ import pytorch_lightning as pl
 
 from hydra import initialize, compose
 from omegaconf import OmegaConf, DictConfig
-
 from ase import Atoms
 # from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.md.verlet import VelocityVerlet as ASEVelocityVerlet
 from ase import units
 from ase.io import read, write
-
 from xtb_ase import XTB
+from tqdm import tqdm
 
 from md_with_schnet.utils import set_data_prefix
 from md_with_schnet.setup_logger import setup_logger
@@ -300,9 +299,18 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, s
     ####################### 9) Run simulations ##############################
     logger.info(f"Starting simulation with {cfg.md.n_steps} steps and saving to {md_workdir}")
     nn_start = time.time()
-    dyn_nn.run(cfg.md.n_steps)
+    # dyn_nn.run(cfg.md.n_steps)
     nn_end = time.time()
     
+    # Create a tqdm progress bar
+    pbar = tqdm(total=cfg.md.n_steps, desc="MD progress")
+
+    # Attach a callback that advances the bar once each interval
+    def update_bar(_=None):
+        pbar.update(interval)  # note: interval defined below
+
+    interval = 1
+    dyn_xtb.attach(update_bar, interval=interval)
 
     # Silence the XTB output to avoid cluttering the console
     logging.getLogger('cclib').setLevel(logging.WARNING)

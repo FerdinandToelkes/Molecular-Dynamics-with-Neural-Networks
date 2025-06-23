@@ -9,6 +9,9 @@ import pytorch_lightning as pl
 import os
 
 from schnetpack.datasets import MD17
+from hydra import initialize, compose
+from hydra.utils import instantiate
+from omegaconf import DictConfig
 
 from md_with_schnet.setup_logger import setup_logger
 
@@ -273,6 +276,19 @@ def load_xtb_dataset_without_given_splits(db_path: str, batch_size: int = 10, pi
 
 ####################################################################################
 
+def load_config(config_path: str, config_name: str, job_name: str) -> DictConfig:
+    """
+    Load the configuration from the specified path and name.
+    Args:
+        config_path (str): Path to the configuration directory.
+        config_name (str): Name of the configuration file.
+        job_name (str): Name of the job for Hydra.
+    Returns:
+        DictConfig: Loaded configuration.
+    """
+    with initialize(config_path=config_path, job_name=job_name, version_base="1.1"):
+        return compose(config_name=config_name)
+
 def get_split_path(data_prefix: str, trajectory_dir: str, fold: int = 0) -> str:
     """
     Get the path to the split file for the given trajectory directory and fold.
@@ -289,34 +305,50 @@ def get_split_path(data_prefix: str, trajectory_dir: str, fold: int = 0) -> str:
     logger.debug(f"Split file: {split_file}")
     return split_file
 
-def get_splits_and_load_data(data_prefix: str, trajectory_dir: str, num_workers: int, batch_size: int, transforms: list, fold: int = 0) -> pl.LightningDataModule:
+def setup_datamodule(data_cfg: DictConfig, datapath: str, split_file: str) -> spk.data.AtomsDataModule:
     """
-    Prepare loading the dataset and then load it.
+    Setup the data module for the given configuration.
     Args:
-        data_prefix (str): The prefix path to the data directory.
-        trajectory_dir (str): The directory containing the trajectory data.
-        num_workers (int): The number of workers for data loading.
-        batch_size (int): The batch size for data loading.
-        transforms (list): List of transforms to apply to the dataset.
-        fold (int): The fold number for cross-validation (default: 0).
-    Raises:
-        FileNotFoundError: If the split file does not exist.
+        data_cfg (DictConfig): Configuration for the data module.
+        datapath (str): Path to the data.
+        split_file (str): Path to the split file.
     Returns:
-        pl.LightningDataModule: The data module containing the dataset.
+        spk.data.AtomsDataModule: Configured data module.
     """
-    split_file = get_split_path(data_prefix, trajectory_dir, fold)
+    dm: spk.data.AtomsDataModule = instantiate(data_cfg, datapath=datapath, split_file=split_file)
+    dm.prepare_data()
+    dm.setup()
+    logger.info(f"Loaded datamodule: {dm}")
+    return dm
 
-    if not os.path.exists(split_file):
-        raise FileNotFoundError(f"Split file does not exist: {split_file}, try running the create_splits.py script first.")
+# def get_splits_and_load_data(data_prefix: str, trajectory_dir: str, num_workers: int, batch_size: int, transforms: list, fold: int = 0) -> pl.LightningDataModule:
+#     """
+#     Prepare loading the dataset and then load it.
+#     Args:
+#         data_prefix (str): The prefix path to the data directory.
+#         trajectory_dir (str): The directory containing the trajectory data.
+#         num_workers (int): The number of workers for data loading.
+#         batch_size (int): The batch size for data loading.
+#         transforms (list): List of transforms to apply to the dataset.
+#         fold (int): The fold number for cross-validation (default: 0).
+#     Raises:
+#         FileNotFoundError: If the split file does not exist.
+#     Returns:
+#         pl.LightningDataModule: The data module containing the dataset.
+#     """
+#     split_file = get_split_path(data_prefix, trajectory_dir, fold)
 
-    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
-    logger.debug(f"Path to database: {path_to_db}")
+#     if not os.path.exists(split_file):
+#         raise FileNotFoundError(f"Split file does not exist: {split_file}, try running the create_splits.py script first.")
 
-    datamodule = load_xtb_dataset(
-        db_path=path_to_db,
-        num_workers=num_workers,
-        batch_size=batch_size,
-        transforms=transforms,
-        split_file=split_file
-    )
-    return datamodule
+#     path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
+#     logger.debug(f"Path to database: {path_to_db}")
+
+#     datamodule = load_xtb_dataset(
+#         db_path=path_to_db,
+#         num_workers=num_workers,
+#         batch_size=batch_size,
+#         transforms=transforms,
+#         split_file=split_file
+#     )
+#     return datamodule

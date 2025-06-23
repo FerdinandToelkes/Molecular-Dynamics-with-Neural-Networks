@@ -3,15 +3,13 @@ import pytorch_lightning as pl
 import argparse
 import platform
 import time
-import torch
 
-from hydra import initialize, compose
 from hydra.utils import instantiate, get_class
 from omegaconf import OmegaConf, DictConfig
 
 
 # own imports
-from md_with_schnet.utils import setup_logger, set_data_prefix, get_split_path
+from md_with_schnet.utils import setup_logger, set_data_prefix, get_split_path, load_config, setup_datamodule
 
 logger = setup_logger("debug")
 
@@ -94,8 +92,7 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     path_to_stats = os.path.join(data_prefix, trajectory_dir, f"means_stds_fold_{fold}.pt")
 
     ####################### 1) Compose the config ###########################
-    with initialize(config_path="conf", job_name="train", version_base="1.1"):
-        cfg: DictConfig = compose(config_name=config_name)
+    cfg = load_config("neural_net/conf", config_name, "train")
 
     # set run path
     run_path = set_run_path(trajectory_dir, num_epochs, batch_size, learning_rate, seed)
@@ -110,14 +107,7 @@ def main(trajectory_dir: str, batch_size: int, num_epochs: int, learning_rate: f
     sched_cls = get_class(cfg.task.scheduler_cls)
 
     ####################### 3) Prepare our own data #########################
-    datamodule : pl.LightningDataModule = instantiate(
-        cfg.data,
-        datapath=path_to_db,
-        split_file=split_file,
-    )
-    datamodule.prepare_data()
-    datamodule.setup()  
-    logger.info(f"loaded xtb datamodule: {datamodule}")   
+    datamodule = setup_datamodule(cfg.data, path_to_db, split_file)
 
 
     ####################### 4) Instantiate model & task from YAML ###########
