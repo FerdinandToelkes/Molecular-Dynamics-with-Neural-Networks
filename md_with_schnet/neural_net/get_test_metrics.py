@@ -17,10 +17,11 @@ from md_with_schnet.setup_logger import setup_logger
 
 BOHR_TO_ANGSTROM = units.Bohr  # 1 Bohr = 0.52917721067 Å
 HARTREE_TO_EV = units.Hartree  # 1 eV = 27.21138602 Hartree
+BATCH_SIZE = 1 # needed due to weird batch shape of schnetpack data module
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.get_test_metrics -mdir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42_default_trafos ; exec bash'
+screen -dmS get_test_metrics sh -c 'python -m md_with_schnet.neural_net.get_test_metrics -mdir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42_default_trafos ; exec bash'
 """
 
 
@@ -88,7 +89,7 @@ def update_config(cfg: DictConfig, run_path: str, num_workers: int) -> DictConfi
         cfg.data.num_workers = num_workers
     else:
         cfg.data.num_workers = 0 if platform.system() == 'Darwin' else 8
-
+    cfg.org_data.batch_size = BATCH_SIZE  # Set batch size for inference
     return cfg
 
 def compute_metrics_for_neural_net(cfg: DictConfig, datamodule: pl.LightningDataModule, model: torch.nn.Module):
@@ -116,29 +117,6 @@ def compute_metrics_for_neural_net(cfg: DictConfig, datamodule: pl.LightningData
     forces_mae, energy_mae = average_over_batches(datamodule, forces_mae, energy_mae)
 
     return forces_mae, energy_mae
-
-def average_over_batches(datamodule: pl.LightningDataModule, forces_mae: float, energy_mae: float):
-    """ 
-    Average the computed metrics over all batches.
-    Args:
-        datamodule: Data module containing the test data.
-        forces_mae (float): Mean Absolute Error for forces.
-        energy_mae (float): Mean Absolute Error for energy.
-    Returns:
-        tuple: Averaged Mean Absolute Error (MAE) for forces and energy.
-    """
-    num_batches = len(datamodule.test_dataloader())
-    return forces_mae / num_batches, energy_mae / num_batches
-
-def get_batch_mae(pred: np.ndarray, gt: np.ndarray) -> float:
-    """ Compute Mean Absolute Error (MAE) for a batch.
-    Args:
-        pred (np.ndarray): Predicted values.
-        gt (np.ndarray): Ground truth values.
-    Returns:
-        float: Mean Absolute Error for the batch.
-    """
-    return np.mean(np.abs(pred - gt)).item()
 
 def compute_metrics_for_xtb(cfg: DictConfig, datamodule: pl.LightningDataModule):
     """ Compute metrics for the XTB model on the test data.
@@ -175,6 +153,29 @@ def compute_metrics_for_xtb(cfg: DictConfig, datamodule: pl.LightningDataModule)
 
     return forces_mae, energy_mae
 
+def average_over_batches(datamodule: pl.LightningDataModule, forces_mae: float, energy_mae: float):
+    """ 
+    Average the computed metrics over all batches.
+    Args:
+        datamodule: Data module containing the test data.
+        forces_mae (float): Mean Absolute Error for forces.
+        energy_mae (float): Mean Absolute Error for energy.
+    Returns:
+        tuple: Averaged Mean Absolute Error (MAE) for forces and energy.
+    """
+    num_batches = len(datamodule.test_dataloader())
+    return forces_mae / num_batches, energy_mae / num_batches
+
+def get_batch_mae(pred: np.ndarray, gt: np.ndarray) -> float:
+    """ Compute Mean Absolute Error (MAE) for a batch.
+    Args:
+        pred (np.ndarray): Predicted values.
+        gt (np.ndarray): Ground truth values.
+    Returns:
+        float: Mean Absolute Error for the batch.
+    """
+    return np.mean(np.abs(pred - gt)).item()
+
 def log_final_metrics(nn_forces_mae: float, nn_energy_mae: float, xtb_forces_mae: float, xtb_energy_mae: float):
     """ Log the final metrics for both neural network and XTB models.
     Args:
@@ -191,7 +192,6 @@ def log_final_metrics(nn_forces_mae: float, nn_energy_mae: float, xtb_forces_mae
     logger.info(f"Energy MAE: {xtb_energy_mae:.6f} Hartree")
 
 def main(trajectory_dir: str, model_dir: str, fold: int, seed: int, num_workers: int):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     pl.seed_everything(seed, workers=True)
 
     ####################### 1) Compose the config ###########################
@@ -221,8 +221,8 @@ def main(trajectory_dir: str, model_dir: str, fold: int, seed: int, num_workers:
     model.eval()
 
     nn_forces_mae, nn_energy_mae = compute_metrics_for_neural_net(cfg, datamodule, model)
-    xtb_forces_mae, xtb_energy_mae = 0, 0
-    # xtb_forces_mae, xtb_energy_mae = compute_metrics_for_xtb(cfg, datamodule)
+    xtb_forces_mae, xtb_energy_mae = None, None
+    #xtb_forces_mae, xtb_energy_mae = compute_metrics_for_xtb(cfg, datamodule)
     
     log_final_metrics(nn_forces_mae, nn_energy_mae, xtb_forces_mae, xtb_energy_mae)
 

@@ -164,7 +164,7 @@ def main(trajectory_dir: str, num_atoms: int):
     energy_path = os.path.join(data_prefix, 'energies.txt')
     grads_path = os.path.join(data_prefix, 'gradients.txt')
     vels_path = os.path.join(data_prefix, 'velocities.txt')
-    target_path = os.path.join(data_prefix, 'md_trajectory.db')
+    target_path = os.path.join(data_prefix, 'md_trajectory_atomic_units.db')
 
     if not os.path.exists(traj_path) or not os.path.exists(energy_path) or not os.path.exists(grads_path) or not os.path.exists(vels_path):
         logger.error(f"One or more files do not exist in the specified directory: {data_prefix}")

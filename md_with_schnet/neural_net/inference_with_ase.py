@@ -17,12 +17,9 @@ from ase.io import read, write
 from xtb_ase import XTB
 from tqdm import tqdm
 
+from md_with_schnet.constants import BOHR_TO_ANGSTROM, HARTREE_TO_EV, AUT_TO_S
 from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule
 from md_with_schnet.setup_logger import setup_logger
-
-# Unit conversions
-BOHR_TO_ANGSTROM = units.Bohr  # 1 Bohr = 0.52917721067 Å
-AUT_TO_S = units._aut
 
 # Example command to run the script from within code directory:
 """
@@ -192,21 +189,21 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
 
     xtb_datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
     # nn_datamodule = setup_datamodule(data_cfg=cfg.data, datapath=path_to_db, split_file=split_file)
-    nn_datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
+    # nn_datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
     ####################### 3) Prepare molecule ##############################
-    sample_idx = 0
-    nn_structure = nn_datamodule.test_dataset[sample_idx]
+    sample_idx = -1
+    # nn_structure = nn_datamodule.test_dataset[sample_idx]
     xtb_structure = xtb_datamodule.test_dataset[sample_idx]
     velocities_au = xtb_structure["velocities"]
 
     # transform original structure from bohr to angstrom
     xtb_structure["_positions"] *= BOHR_TO_ANGSTROM
-    if "_cell" in xtb_structure:
-        xtb_structure["_cell"] *= BOHR_TO_ANGSTROM
+    # if "_cell" in xtb_structure:
+    #     xtb_structure["_cell"] *= BOHR_TO_ANGSTROM
 
-    atoms_nn = prepare_atoms(nn_structure, velocities_au)
+    # atoms_nn = prepare_atoms(nn_structure, velocities_au)
     atoms_xtb = prepare_atoms(xtb_structure, velocities_au)
-    #atoms_nn = atoms_xtb.copy()  # Use the same structure for the neural network
+    atoms_nn = atoms_xtb.copy()  # Use the same structure for the neural network
 
     # check if velocities are valid by computing the corresponding temperature
     logger.info(f"Initial temperature of the system: {atoms_xtb.get_temperature()} K")
@@ -215,7 +212,10 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     ####################### 4) Setup calculators ##############################
     atoms_xtb.calc = XTB(method=cfg.xtb.method)
     md_calculator: spk.interfaces.SpkCalculator = instantiate(cfg.calculator)
-    atoms_nn.calc = md_calculator
+    from schnetpack.interfaces import SpkCalculator
+    nn_calculator = SpkCalculator(model=cfg.calculator.model_file)
+    atoms_nn.calc = nn_calculator
+    # atoms_nn.calc = md_calculator
 
     ####################### 5) Setup simulator ##############################
     # convert time step from atomic units to seconds and then to ASE time units
@@ -229,6 +229,18 @@ def main(trajectory_dir: str, model_dir: str, md_steps: int, time_step: float, f
     )
 
     ####################### 6) Run simulations ##############################
+    # make single prediction with the neural network calculator
+    logger.info("Running single prediction with the neural network calculator.")
+    nn_e_pot = atoms_nn.get_potential_energy()
+    nn_e_pot_au = nn_e_pot / HARTREE_TO_EV
+    # xtb_e_pot = atoms_xtb.get_potential_energy()
+    # xtb_e_pot_au = xtb_e_pot / HARTREE_TO_EV
+    
+    # logger.info(f"XTB energy: {xtb_e_pot_au} Hartree = {xtb_e_pot} eV")
+    logger.info(f"Neural network energy: {nn_e_pot_au} Hartree = {nn_e_pot} eV")
+    
+    exit()
+
     logger.info(f"Starting simulation with {cfg.md.n_steps} steps.")
     logger.info(f"Beginning simulation with neural network calculator and saving to {target_dir}.")
     nn_start = time.time()

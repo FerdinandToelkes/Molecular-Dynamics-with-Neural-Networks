@@ -35,6 +35,11 @@ class StandardizeProperty(Transform):
         else:
             self.property_mean = property_mean
             self.property_std = property_std
+        
+        if not isinstance(self.property_mean, torch.Tensor):
+            self.property_mean = torch.tensor(self.property_mean, dtype=torch.float64)
+        if not isinstance(self.property_std, torch.Tensor):
+            self.property_std = torch.tensor(self.property_std, dtype=torch.float64)
 
     def forward(self, data: dict) -> dict:
         """

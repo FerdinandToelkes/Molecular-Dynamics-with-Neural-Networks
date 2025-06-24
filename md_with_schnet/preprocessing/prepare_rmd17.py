@@ -6,7 +6,7 @@ from schnetpack.data import ASEAtomsData
 
 from md_with_schnet.setup_logger import setup_logger
 from md_with_schnet.utils import set_data_prefix
-from md_with_schnet.preprocessing.prepare_xtb import convert_trajectory_to_ase, get_overview_of_dataset
+from md_with_schnet.preprocessing.prepare_xtb_in_atomic_units import convert_trajectory_to_ase, get_overview_of_dataset
 
 
 logger = setup_logger(logging_level_str="debug")

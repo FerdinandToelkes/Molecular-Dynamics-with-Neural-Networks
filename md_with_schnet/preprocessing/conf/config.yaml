@@ -1,0 +1,29 @@
+data:
+  _target_: schnetpack.data.AtomsDataModule
+  batch_size: 1
+  num_workers: 8
+  distance_unit: Ang
+  property_units:
+    energy: kcal/mol
+    forces: kcal/mol/Ang
+standardized_data:
+  _target_: schnetpack.data.AtomsDataModule
+  batch_size: ${data.batch_size}
+  num_workers: ${data.num_workers}
+  distance_unit: ${data.distance_unit}
+  property_units:
+    energy: ${data.property_units.energy}
+    forces: ${data.property_units.forces}
+  transforms:
+  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+    property_key: energy
+    property_mean: null
+    property_std: null
+  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+    property_key: forces
+    property_mean: null
+    property_std: null
+  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+    property_key: _positions
+    property_mean: null
+    property_std: null

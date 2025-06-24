@@ -26,13 +26,13 @@ calculator:
   force_unit: ${data.property_units.forces}
 org_data:
   _target_: schnetpack.data.AtomsDataModule
-  batch_size: 1
+  batch_size: 100
   num_workers: 8
   pin_memory: false # just to be safe
   distance_unit: Bohr
   property_units:
-    energy: Hartree
-    forces: Hartree/Bohr
+    energy: Hartree 
+    forces: Hartree/Bohr 
   transforms:
   - _target_: schnetpack.transform.MatScipyNeighborList
     cutoff: ${globals.cutoff}
