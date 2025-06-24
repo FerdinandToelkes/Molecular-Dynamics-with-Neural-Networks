@@ -1,5 +1,5 @@
 """
-Physical and unit conversion constants.
+Physical and unit conversion constants. The hard coded reference values are taken from Wikipedia
 """
 
 from ase import units
