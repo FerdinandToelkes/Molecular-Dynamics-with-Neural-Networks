@@ -35,35 +35,32 @@ Each script should include an example of how to execute it at the top.
 - All python scripts are to be executed from the root directory of the project, i.e. the directory containing the "md_with_schnet" directory.
 - The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = MOTOR_MD_XTB/T300_1
 - Obtain gradients, positions and velocities from mdlog.i files with the extract.py script:
-
 ```bash
-python -m md_with_schnet.preprocessing.extract --property gradients --target_dir path/to/dir/with/mdlog.i/files
+python -m md_with_schnet.preprocessing.extract \
+    --property gradients \
+    --target_dir path/to/dir/with/mdlog.i/files
 ```
-
 - Obtain energies from mdlog.i files with Turbomole by executing directly in the directory with the mdlog.i files:
-
 ```bash
 log2egy > energies.txt
 ```
-
 - Transform the extracted properties into a .db file (which is the format used within SchNetPack) by employing the prepare_xtb_in_atomic_units.py or the prepare_xtb_ang_kcal_mol.py  script
-
 ```bash
-python -m md_with_schnet.preprocessing.prepare_xtb_ang_kcal_mol --trajectory_dir path/to/dir/with/mdlog.i/files --num_atoms 48
+python -m md_with_schnet.preprocessing.prepare_xtb_ang_kcal_mol \
+    --trajectory_dir path/to/dir/with/mdlog.i/files \
+    --num_atoms 48
 ```
-
 - Define how the data later should be splitted into training, validation and test data via the create_splits.py script:
-
 ```bash
-python -m md_with_schnet.preprocessing.create_splits --trajectory_dir path/to/dir/with/mdlog.i/files
+python -m md_with_schnet.preprocessing.create_splits \
+    --trajectory_dir path/to/dir/with/mdlog.i/files
 ```
-
 - If needed, compute the mean and standard deviation of the various properties in the training set via the compute_means_and_stds.py script:
-
 ```bash
-python -m md_with_schnet.preprocessing.compute_means_and_stds --trajectory_dir path/to/dir/with/mdlog.i/files --num_atoms=48
+python -m md_with_schnet.preprocessing.compute_means_and_stds \
+    --trajectory_dir path/to/dir/with/mdlog.i/files \
+    --num_atoms=48
 ```
-
 Note that paths need to be updated depending on the local setup especially of the data. 
 
 ### neural_net
