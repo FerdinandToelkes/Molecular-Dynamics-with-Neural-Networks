@@ -32,7 +32,7 @@ def parse_args() -> dict:
     parser = argparse.ArgumentParser(description="Script for analyzing the trajectory predicted with the trained model on XTB test data.")
     # paths setup
     parser.add_argument("-mdir", "--model_dir", type=str, default="MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42", help="Directory of the trained model (default: MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42)")
-    parser.add_argument("--units", type=str, default="ang_kcal_mol", choices=["ang_kcal_mol", "atomic_units"], help="Units for the input data (default: ang_kcal_mol).")
+    parser.add_argument("--units", type=str, default="angstrom_kcal_mol_fs", choices=["angstrom_kcal_mol_fs", "atomic_units"], help="Units for the input data (default: angstrom_kcal_mol_fs).")
     parser.add_argument("-sn", "--simulation_name", type=str, default="md_sim_steps_10000_time_step_0.5_seed_42", help="Name of the MD simulation (default: md_sim_steps_2000_time_step_0.5_seed_42)")
     # analysis setup
     parser.add_argument("-ns", "--n_samples", type=int, default=100, help="Number of samples to analyze (default: 1000)")
@@ -343,7 +343,7 @@ def create_interactive_window_scatter(xtb_prop: np.ndarray, nn_prop: np.ndarray,
     )
     # Save the figure to a file
     # too large to be displayed without additional configuration
-    #fig.write_html(f"{plot_dir}/interactive_window_scatter.html")
+    fig.write_html(f"{plot_dir}/interactive_window_scatter.html")
 
     fig.show()
 
@@ -531,10 +531,10 @@ def main(model_dir: str, units: str, simulation_name: str, n_samples: int, first
     ####################### 2) Prepare Data and Paths #########################
     home_dir = os.path.expanduser("~")
     runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
-    md_workdir = os.path.join(runs_dir_path, model_dir)
-    logger.debug(f"md_workdir: {md_workdir}")
+    model_dir_path = os.path.join(runs_dir_path, model_dir)
+    logger.debug(f"model_dir_path: {model_dir_path}")
     logger.debug(f"simulation_name: {simulation_name}")
-    nn_target_dir = os.path.join(md_workdir, simulation_name)
+    nn_target_dir = os.path.join(model_dir_path, simulation_name)
     xtb_target_dir = os.path.join(runs_dir_path, cfg.globals.xtb_dir_name, simulation_name)
     logger.debug(f"nn_target_dir: {nn_target_dir}")
     logger.debug(f"xtb_target_dir: {xtb_target_dir}")
@@ -559,7 +559,7 @@ def main(model_dir: str, units: str, simulation_name: str, n_samples: int, first
     
     ####################### 3) Make interactive Plots #########################
     properties, y_labels = prepare_properties_data(log_data)
-    plot_dir = f"docs/{model_dir}/{simulation_name}"
+    plot_dir = f"md_with_schnet/neural_net/plots/{model_dir}/{simulation_name}"
     # Ensure the plot directory exists
     os.makedirs(plot_dir, exist_ok=True)
     logger.debug(f"Plot directory: {plot_dir}")

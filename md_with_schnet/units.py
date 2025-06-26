@@ -4,16 +4,17 @@ Physical and unit conversion constants. The hard coded reference values are take
 import numpy as np
 import torch
 
-from ase import units
+from ase import units as ase_units
 
 # atomic units
-BOHR_TO_ANGSTROM = units.Bohr  # 1 Bohr = 0.529177210544 Å
-HARTREE_TO_KCAL_PER_MOL = units.Hartree * units.mol / units.kcal  # 1 Hartree = 627.5094740631 kcal/mol
-HARTREE_TO_EV = units.Hartree # 1 eV = 27.211386245988 Hartree
-AUT_TO_FS = units._aut * 1e15 # 1 AUT = 2.4188843265864e-2 fs
-AUT_TO_S = units._aut * 1e-15  # 1 AUT = 2.4188843265864e-17 s
+BOHR_TO_ANGSTROM = ase_units.Bohr  # 1 Bohr = 0.529177210544 Å
+HARTREE_TO_KCAL_PER_MOL = ase_units.Hartree * ase_units.mol / ase_units.kcal  # 1 Hartree = 627.5094740631 kcal/mol
+HARTREE_TO_EV = ase_units.Hartree # 1 eV = 27.211386245988 Hartree
+AUT_TO_FS = ase_units._aut * 1e15 # 1 AUT = 2.4188843265864e-2 fs
+AUT_TO_S = ase_units._aut * 1e-15  # 1 AUT = 2.4188843265864e-17 s
+FS_TO_ASE_TIME = ase_units.fs
 
-KCAL_PER_MOL_TO_EV = units.kcal / units.mol  # 1 kcal/mol = 0.0433641 eV
+KCAL_PER_MOL_TO_EV = ase_units.kcal / ase_units.mol  # 1 kcal/mol = 0.0433641 eV
 
 
 # Tolerance for floating point comparison
@@ -36,7 +37,9 @@ def convert_energies(energies: np.ndarray | torch.Tensor, from_units: str, to_un
     Returns:
         np.ndarray or torch.Tensor: Converted energies.
     """
-    if from_units == "hartree" and to_units == "kcal/mol":
+    if from_units == to_units:
+        return energies
+    elif from_units == "hartree" and to_units == "kcal/mol":
         return energies * HARTREE_TO_KCAL_PER_MOL
     elif from_units == "kcal/mol" and to_units == "hartree":
         return energies / HARTREE_TO_KCAL_PER_MOL
@@ -60,7 +63,9 @@ def convert_forces(forces: np.ndarray | torch.Tensor, from_units: str, to_units:
     Returns:
         np.ndarray or torch.Tensor: Converted forces.
     """
-    if from_units == "hartree/bohr" and to_units == "kcal/mol/angstrom":
+    if from_units == to_units:
+        return forces
+    elif from_units == "hartree/bohr" and to_units == "kcal/mol/angstrom":
         return forces * HARTREE_TO_KCAL_PER_MOL / BOHR_TO_ANGSTROM
     elif from_units == "kcal/mol/angstrom" and to_units == "hartree/bohr":
         return forces * BOHR_TO_ANGSTROM / HARTREE_TO_KCAL_PER_MOL
@@ -84,7 +89,9 @@ def convert_distances(distances: np.ndarray | torch.Tensor, from_units: str, to_
     Returns:
         np.ndarray or torch.Tensor: Converted distances.
     """
-    if from_units == "bohr" and to_units == "angstrom":
+    if from_units == to_units:
+        return distances
+    elif from_units == "bohr" and to_units == "angstrom":
         return distances * BOHR_TO_ANGSTROM
     elif from_units == "angstrom" and to_units == "bohr":
         return distances / BOHR_TO_ANGSTROM
@@ -100,7 +107,9 @@ def convert_velocities(velocities: np.ndarray | torch.Tensor, from_units: str, t
     Returns:
         np.ndarray or torch.Tensor: Converted velocities.
     """
-    if from_units == "bohr/fs" and to_units == "angstrom/fs":
+    if from_units == to_units:
+        return velocities
+    elif from_units == "bohr/fs" and to_units == "angstrom/fs":
         return velocities * BOHR_TO_ANGSTROM
     elif from_units == "angstrom/fs" and to_units == "bohr/fs":
         return velocities / BOHR_TO_ANGSTROM
@@ -111,9 +120,11 @@ def convert_velocities(velocities: np.ndarray | torch.Tensor, from_units: str, t
     elif from_units == "bohr/aut" and to_units == "angstrom/fs":
         return velocities * BOHR_TO_ANGSTROM / AUT_TO_FS
     elif from_units == "angstrom/fs" and to_units == "bohr/aut":
-        return velocities * AUT_TO_FS / BOHR_TO_ANGSTROM
-    # elif from_units == "angstrom/fs" and to_units == "angstrom/ase_time":
-    #     return velocities * AUT_TO_FS 
+        return velocities / BOHR_TO_ANGSTROM * AUT_TO_FS
+    elif from_units == "angstrom/fs" and to_units == "angstrom/ase_time":
+        return velocities / FS_TO_ASE_TIME
+    elif from_units == "angstrom/ase_time" and to_units == "angstrom/fs":
+        return velocities * FS_TO_ASE_TIME
     else:
         raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
     
@@ -126,7 +137,9 @@ def convert_time(time: float, from_units: str, to_units: str) -> float:
     Returns:
         float: Converted time.
     """
-    if from_units == "aut" and to_units == "fs":
+    if from_units == to_units:
+        return time
+    elif from_units == "aut" and to_units == "fs":
         return time * AUT_TO_FS
     elif from_units == "fs" and to_units == "aut":
         return time / AUT_TO_FS
@@ -134,6 +147,10 @@ def convert_time(time: float, from_units: str, to_units: str) -> float:
         return time * AUT_TO_S
     elif from_units == "s" and to_units == "aut":
         return time / AUT_TO_S
+    elif from_units == "fs" and to_units == "ase_time":
+        return time * FS_TO_ASE_TIME
+    elif from_units == "ase_time" and to_units == "fs":
+        return time / FS_TO_ASE_TIME
     else:
         raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
     

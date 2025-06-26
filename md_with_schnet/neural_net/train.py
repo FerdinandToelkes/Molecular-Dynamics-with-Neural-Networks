@@ -68,9 +68,9 @@ def set_run_path(trajectory_dir: str, units: str, num_epochs: int, batch_size: i
         str: The run path.
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    run_name = f"{trajectory_dir}_{units}_epochs_{num_epochs}_bs_{batch_size}_lr_{learning_rate}_seed_{seed}"
+    run_name = f"{trajectory_dir}_epochs_{num_epochs}_bs_{batch_size}_lr_{learning_rate}_seed_{seed}"
     run_name = run_name.replace("/", "_")
-    run_path = os.path.join(current_dir, "runs", run_name)
+    run_path = os.path.join(current_dir, "runs", units, run_name)
     return run_path
 
 def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int, path_to_stats: str) -> DictConfig:
