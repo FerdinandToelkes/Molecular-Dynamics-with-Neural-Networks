@@ -10,7 +10,7 @@ logger = setup_logger(logging_level_str="debug")
 # Script to generate splits for an inner k-fold cross-validation and save them in a ASE compatible format.
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.preprocessing.create_splits --trajectory_dir MOTOR_MD_XTB/T300_1 
+python -m md_with_schnet.preprocessing.create_splits --trajectory_dir MOTOR_MD_XTB/T300_1 --units angstrom_kcal_per_mol_fs
 """
 
 

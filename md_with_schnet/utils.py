@@ -320,3 +320,16 @@ def setup_datamodule(data_cfg: DictConfig, datapath: str, split_file: str) -> sp
     dm.setup()
     logger.info(f"Loaded datamodule: {dm}")
     return dm
+
+def get_num_workers(num_workers: int) -> int:
+    """
+    Get the number of workers for data loading.
+    Args:
+        num_workers (int): Number of workers specified by the user, if -1, it will be set to 0 on macOS and 8 on Linux.
+    Returns:
+        int: Number of workers to use for data loading.
+    """
+    if num_workers != -1:
+        return num_workers
+    else:
+        return 0 if platform.system() == 'Darwin' else 8

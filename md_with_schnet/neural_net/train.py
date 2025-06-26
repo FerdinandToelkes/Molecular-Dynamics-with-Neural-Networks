@@ -1,7 +1,6 @@
 import os
 import pytorch_lightning as pl
 import argparse
-import platform
 import time
 
 from hydra.utils import instantiate, get_class
@@ -9,7 +8,7 @@ from omegaconf import OmegaConf, DictConfig
 
 
 # own imports
-from md_with_schnet.utils import setup_logger, set_data_prefix, get_split_path, load_config, setup_datamodule
+from md_with_schnet.utils import setup_logger, set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers
 from md_with_schnet.units import get_ase_units_from_str, convert_distances
 
 logger = setup_logger("debug")
@@ -91,10 +90,7 @@ def update_config(cfg: DictConfig, run_path: str, ase_units: dict, batch_size: i
     cfg.run.path = run_path
     cfg.run.mean_std_path = path_to_stats
     cfg.data.batch_size = batch_size
-    if num_workers != -1:
-        cfg.data.num_workers = num_workers
-    else:
-        cfg.data.num_workers = 0 if platform.system() == 'Darwin' else 8
+    cfg.data.num_workers = get_num_workers(num_workers)
     cfg.trainer.max_epochs = num_epochs
     cfg.globals.lr = learning_rate
 

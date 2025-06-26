@@ -1,7 +1,6 @@
 import os
 import argparse
 import schnetpack as spk
-import platform
 import time
 import logging
 import torch
@@ -14,13 +13,13 @@ from ase.io import read, write
 from xtb_ase import XTB
 from tqdm import tqdm
 
-from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule
+from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers
 from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.units import convert_time, convert_velocities, get_ase_units_from_str, convert_distances
+from md_with_schnet.units import convert_time, convert_velocities, get_ase_units_from_str
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase -mdir MOTOR_MD_XTB_T300_1_ang_kcal_mol_epochs_1000_bs_100_lr_0.0001_seed_42 --md_steps 100 -ts 0.5 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase -mdir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 --units angstrom_kcal_per_mol_fs --md_steps 10000 --time_step 0.5 ; exec bash'
 """
 
 
@@ -90,11 +89,7 @@ def update_config(cfg: DictConfig, ase_units: dict, run_path: str, md_steps: int
         DictConfig: Updated configuration.
     """
     cfg.run.path = run_path
-    
-    if num_workers != -1:
-        cfg.data.num_workers = num_workers
-    else:
-        cfg.data.num_workers = 0 if platform.system() == 'Darwin' else 8
+    cfg.data.num_workers = get_num_workers(num_workers)
     cfg.md.n_steps = md_steps
     cfg.md.time_step = time_step 
 
@@ -102,7 +97,6 @@ def update_config(cfg: DictConfig, ase_units: dict, run_path: str, md_steps: int
     cfg.org_data.distance_unit = ase_units['distance']
     cfg.org_data.property_units.energy = ase_units['energy']
     cfg.org_data.property_units.forces = ase_units['forces']
-
 
     return cfg
 
@@ -169,22 +163,33 @@ def save_traj_to_xyz(traj_path: str, xyz_path: str):
     write(xyz_path, traj)
     logger.info(f"Saved trajectory from {traj_path} to {xyz_path}")
 
+def save_config(cfg: DictConfig, target_dir: str):
+    """
+    Save the configuration to a YAML file in the target directory.
+    Args:
+        cfg (DictConfig): The configuration to save.
+        target_dir (str): Directory where the configuration file will be saved.
+    """
+    config_path = os.path.join(target_dir, "inference_config.yaml")
+    with open(config_path, 'w') as f:
+        OmegaConf.save(cfg, f)
+    logger.info(f"Configuration saved to {config_path}")
+
 def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_step: float, fold: int, seed: int, num_workers: int):
     ####################### 1) Compose the config ###########################
     cfg = load_config(f"neural_net/conf", "inference_config", "inference")
 
     # use training config to update the inference config
-    train_cfg_path = os.path.join("neural_net/runs", model_dir, cfg.globals.train_config_subpath)
+    train_cfg_path = os.path.join(f"neural_net/runs/{units}", model_dir, cfg.globals.train_config_subpath)
     cfg_train = load_config(train_cfg_path, cfg.globals.hparams_file_name, "train")
     cfg = update_config_with_train_config(cfg, cfg_train)
 
     # update config with arguments from command line
     home_dir = os.path.expanduser("~")
-    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
+    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath, units)
     model_dir_path = os.path.join(runs_dir_path, model_dir)
 
     ase_units = get_ase_units_from_str(units)
-    
     cfg = update_config(cfg, ase_units, model_dir_path, md_steps, time_step, num_workers)
     logger.info(f"Loaded and updated config:\n{OmegaConf.to_yaml(cfg)}")
 
@@ -203,12 +208,6 @@ def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_st
 
     xtb_datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
     nn_datamodule = setup_datamodule(data_cfg=cfg.data, datapath=path_to_db, split_file=split_file)
-
-    # save config to the target directory
-    config_path = os.path.join(target_dir, "inference_config.yaml")
-    with open(config_path, 'w') as f:
-        OmegaConf.save(cfg, f)
-    exit()
 
     ####################### 3) Prepare molecule ##############################
     sample_idx = -1
@@ -279,6 +278,9 @@ def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_st
 
     logger.info(f"NN time: {nn_end - nn_start:.2f} s")
     save_traj_to_xyz(f'{target_dir}/nn_traj.traj', f'{target_dir}/nn_traj.xyz')
+
+    # save config to the target directory
+    save_config(cfg, target_dir)
 
 
 if __name__ == "__main__":

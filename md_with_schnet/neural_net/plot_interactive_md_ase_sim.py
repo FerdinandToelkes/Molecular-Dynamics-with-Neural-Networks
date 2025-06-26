@@ -20,7 +20,7 @@ logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim --model_dir MOTOR_MD_XTB_T300_1_ang_kcal_mol_epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_500_time_step_0.5_seed_42 --n_samples 100
+python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 --n_samples 100 --units angstrom_kcal_per_mol_fs
 """
 
 def parse_args() -> dict:
@@ -519,7 +519,7 @@ def create_interactive_rolling_corr_plot(rolling_data: dict, window_sizes: list,
 
 def main(model_dir: str, units: str, simulation_name: str, n_samples: int, first_sample: int):
     ####################### 1) Compose the config ###########################
-    with initialize(config_path=f"conf/{units}", job_name="inference", version_base="1.1"):
+    with initialize(config_path=f"conf", job_name="inference", version_base="1.1"):
         cfg: DictConfig = compose(config_name="inference_config")
 
     # use training config to update the inference config

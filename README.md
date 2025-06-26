@@ -46,28 +46,53 @@ log2egy > energies.txt
 ```
 - Transform the extracted properties into a .db file (which is the format used within SchNetPack) by employing the prepare_xtb_in_atomic_units.py or the prepare_xtb_ang_kcal_mol.py  script
 ```bash
-python -m md_with_schnet.preprocessing.prepare_xtb_ang_kcal_mol \
+python -m md_with_schnet.preprocessing.prepare_xtb_data \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
-    --num_atoms 48
+    --num_atoms 48 --position_unit angstrom \
+    --energy_unit kcal/mol --time_unit fs
 ```
 - Define how the data later should be splitted into training, validation and test data via the create_splits.py script:
 ```bash
 python -m md_with_schnet.preprocessing.create_splits \
-    --trajectory_dir path/to/dir/with/mdlog.i/files
+    --trajectory_dir path/to/dir/with/mdlog.i/files \
+    --units angstrom_kcal_per_mol_fs 
 ```
 - If needed, compute the mean and standard deviation of the various properties in the training set via the compute_means_and_stds.py script:
 ```bash
 python -m md_with_schnet.preprocessing.compute_means_and_stds \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
-    --num_atoms=48
+    --num_atoms=48 --units angstrom_kcal_per_mol_fs
 ```
 Note that paths need to be updated depending on the local setup especially of the data. 
 
 ### neural_net
 
-- Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the train_config.yml if necessary)
+- Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the .yml config file if necessary)
+```bash
+screen -dmS xtb_train sh -c 'python -m md_with_schnet.neural_net.train \ 
+    --trajectory_dir path/to/dir/with/mdlog.i/files --epochs 1000  \ 
+    --batch_size 100 --learning_rate 0.0001 --seed 42 \
+    --config_name train_config_default_transforms 
+    --units angstrom_kcal_per_mol_fs; exec bash'
+```
+- Use get_test_metrics.py to predict the energies, forces and gradients of the test set with the trained model
+```bash
+python -m md_with_schnet.neural_net.get_test_metrics \
+    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
+```
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
+```bash
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase \
+    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
+    --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
+```
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
+```bash
+python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim \
+    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
+    --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
+    --n_samples 5000 --units angstrom_kcal_per_mol_fs
+```
 
 ## Interactive Plots
 
