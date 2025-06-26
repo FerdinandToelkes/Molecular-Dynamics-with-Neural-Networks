@@ -523,7 +523,8 @@ def main(model_dir: str, units: str, simulation_name: str, n_samples: int, first
         cfg: DictConfig = compose(config_name="inference_config")
 
     # use training config to update the inference config
-    train_cfg_path = os.path.join("runs", units, model_dir, "tensorboard/default/version_0")
+    model_dir = os.path.join(units, model_dir)
+    train_cfg_path = os.path.join("runs", model_dir, "tensorboard/default/version_0")
     with initialize(config_path=train_cfg_path, job_name="train", version_base="1.1"):
         cfg_train: DictConfig = compose(config_name="hparams.yaml")
     cfg = update_config_with_train_config(cfg, cfg_train)
@@ -531,7 +532,7 @@ def main(model_dir: str, units: str, simulation_name: str, n_samples: int, first
     ####################### 2) Prepare Data and Paths #########################
     home_dir = os.path.expanduser("~")
     runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
-    model_dir_path = os.path.join(runs_dir_path, units, model_dir)
+    model_dir_path = os.path.join(runs_dir_path, model_dir)
     logger.debug(f"model_dir_path: {model_dir_path}")
     logger.debug(f"simulation_name: {simulation_name}")
     nn_target_dir = os.path.join(model_dir_path, simulation_name)
