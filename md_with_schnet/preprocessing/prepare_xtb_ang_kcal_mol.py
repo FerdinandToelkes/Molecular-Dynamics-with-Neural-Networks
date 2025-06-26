@@ -3,7 +3,7 @@ import argparse
 
 from schnetpack.data import ASEAtomsData
 
-from md_with_schnet.constants import BOHR_TO_ANGSTROM, HARTREE_TO_KCAL_MOL, AUT_TO_FS
+from md_with_schnet.units import BOHR_TO_ANGSTROM, HARTREE_TO_KCAL_MOL, AUT_TO_FS
 from md_with_schnet.utils import set_data_prefix
 from md_with_schnet.setup_logger import setup_logger
 from md_with_schnet.preprocessing.prepare_xtb_in_atomic_units import convert_trajectory_to_ase, get_overview_of_dataset, get_trajectory_from_txt_and_reshape, get_all_energies_from_txt, get_atomic_numbers_from_xyz

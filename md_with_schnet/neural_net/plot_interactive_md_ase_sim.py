@@ -20,7 +20,7 @@ logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim --model_dir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_500_time_step_0.5_seed_42 --n_samples 500
+python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim --model_dir MOTOR_MD_XTB_T300_1_ang_kcal_mol_epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_500_time_step_0.5_seed_42 --n_samples 100
 """
 
 def parse_args() -> dict:
@@ -32,6 +32,7 @@ def parse_args() -> dict:
     parser = argparse.ArgumentParser(description="Script for analyzing the trajectory predicted with the trained model on XTB test data.")
     # paths setup
     parser.add_argument("-mdir", "--model_dir", type=str, default="MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42", help="Directory of the trained model (default: MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42)")
+    parser.add_argument("--units", type=str, default="ang_kcal_mol", choices=["ang_kcal_mol", "atomic_units"], help="Units for the input data (default: ang_kcal_mol).")
     parser.add_argument("-sn", "--simulation_name", type=str, default="md_sim_steps_10000_time_step_0.5_seed_42", help="Name of the MD simulation (default: md_sim_steps_2000_time_step_0.5_seed_42)")
     # analysis setup
     parser.add_argument("-ns", "--n_samples", type=int, default=100, help="Number of samples to analyze (default: 1000)")
@@ -516,9 +517,9 @@ def create_interactive_rolling_corr_plot(rolling_data: dict, window_sizes: list,
     fig.show()
 
 
-def main(model_dir: str, simulation_name: str, n_samples: int, first_sample: int):
+def main(model_dir: str, units: str, simulation_name: str, n_samples: int, first_sample: int):
     ####################### 1) Compose the config ###########################
-    with initialize(config_path="conf", job_name="inference", version_base="1.1"):
+    with initialize(config_path=f"conf/{units}", job_name="inference", version_base="1.1"):
         cfg: DictConfig = compose(config_name="inference_config")
 
     # use training config to update the inference config

@@ -10,14 +10,12 @@ from xtb_ase.calculator import XTB
 from omegaconf import OmegaConf, DictConfig
 from schnetpack.utils.compatibility import load_model
 from tqdm import tqdm
-from ase import units
 
+from md_with_schnet.units import convert_energies, convert_forces
 from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule
 from md_with_schnet.setup_logger import setup_logger
 
-BOHR_TO_ANGSTROM = units.Bohr  # 1 Bohr = 0.52917721067 Å
-HARTREE_TO_EV = units.Hartree  # 1 eV = 27.21138602 Hartree
-BATCH_SIZE = 1 # needed due to weird batch shape of schnetpack data module
+BATCH_SIZE = 1
 
 # Example command to run the script from within code directory:
 """
@@ -118,6 +116,8 @@ def compute_metrics_for_neural_net(cfg: DictConfig, datamodule: pl.LightningData
 
     return forces_mae, energy_mae
 
+
+
 def compute_metrics_for_xtb(cfg: DictConfig, datamodule: pl.LightningDataModule):
     """ Compute metrics for the XTB model on the test data.
     Args:
@@ -133,17 +133,10 @@ def compute_metrics_for_xtb(cfg: DictConfig, datamodule: pl.LightningDataModule)
         e_gt = batch[cfg.globals.energy_key].numpy() 
         f_gt = batch[cfg.globals.forces_key].numpy()
 
-        # convert positions from Bohr to Angstrom and
-        pos = pos * BOHR_TO_ANGSTROM  # convert positions to Angstrom
-
         atoms = Atoms(numbers=nums, positions=pos)
         atoms.calc = XTB(method=cfg.xtb.method)
         e_pred = atoms.get_potential_energy() # eV
-        f_pred = atoms.get_forces() # eV/Angstrom
-
-        # convert predicted properties to atomic units
-        e_pred = e_pred / HARTREE_TO_EV  # Hartree
-        f_pred = f_pred * (BOHR_TO_ANGSTROM / HARTREE_TO_EV) # Hartree/Bohr
+        f_pred = atoms.get_forces() # eV/Angstrom 
             
         # compute metrics
         forces_mae += get_batch_mae(f_pred, f_gt)
@@ -185,11 +178,11 @@ def log_final_metrics(nn_forces_mae: float, nn_energy_mae: float, xtb_forces_mae
         xtb_energy_mae (float): Mean Absolute Error for energy from the XTB model.
     """
     logger.info(f"Test metrics for nn:")
-    logger.info(f"Forces MAE: {nn_forces_mae:.6f} Hartree/Bohr")
-    logger.info(f"Energy MAE: {nn_energy_mae:.6f} Hartree")
+    logger.info(f"Forces MAE: {nn_forces_mae:.6f} eV/Angstrom")
+    logger.info(f"Energy MAE: {nn_energy_mae:.6f} eV")
     logger.info(f"Test metrics for XTB:")
-    logger.info(f"Forces MAE: {xtb_forces_mae:.6f} Hartree/Bohr")
-    logger.info(f"Energy MAE: {xtb_energy_mae:.6f} Hartree")
+    logger.info(f"Forces MAE: {xtb_forces_mae:.6f} eV/Angstrom")
+    logger.info(f"Energy MAE: {xtb_energy_mae:.6f} eV")
 
 def main(trajectory_dir: str, model_dir: str, fold: int, seed: int, num_workers: int):
     pl.seed_everything(seed, workers=True)
@@ -223,6 +216,14 @@ def main(trajectory_dir: str, model_dir: str, fold: int, seed: int, num_workers:
     nn_forces_mae, nn_energy_mae = compute_metrics_for_neural_net(cfg, datamodule, model)
     xtb_forces_mae, xtb_energy_mae = None, None
     #xtb_forces_mae, xtb_energy_mae = compute_metrics_for_xtb(cfg, datamodule)
+
+    # transform nn metrics to ase units (keep in mind which metric was used)
+    ase_energy_unit = "ev"
+    ase_forces_unit = "ev/angstrom"
+
+    nn_energy_mae = convert_energies(nn_energy_mae, "kcal/mol", ase_energy_unit)
+    nn_forces_mae = convert_forces(nn_forces_mae, "kcal/mol/angstrom", ase_forces_unit)
+    
     
     log_final_metrics(nn_forces_mae, nn_energy_mae, xtb_forces_mae, xtb_energy_mae)
 

@@ -54,7 +54,7 @@ def plot_on_one_y_axis(kinetic_energy: np.ndarray, ekin_from_temp: np.ndarray):
     ax.plot(x_values, ekin_from_temp, 'b-')
     ax.set_xlabel('Configurations')
     ax.set_ylabel('E_kin / T (eV)')
-    plt.legend(['Kinetic Energy (eV)', r'$\frac{3}{2}(N-6) k_B T$ (eV)'])
+    plt.legend(['Kinetic Energy (eV)', r'$\frac{3}{2}(N-2) k_B T$ (eV)'])
     plt.title('Kinetic Energy and Temperature over Time')
     plt.tight_layout()
 
@@ -69,7 +69,7 @@ def main(trajectory_dir: str, show_plots: bool):
 
     logger.debug(f'all_energies.shape: {all_energies.shape}')
     nr_of_configs = 200
-    first_config = 0
+    first_config = 19512
     all_energies = all_energies[first_config:first_config+nr_of_configs]
     kinetic_energy = all_energies[:, 0]
     temperature = all_energies[:, 1]

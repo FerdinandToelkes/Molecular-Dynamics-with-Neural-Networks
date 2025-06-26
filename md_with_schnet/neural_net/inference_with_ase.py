@@ -5,7 +5,7 @@ import platform
 import time
 import logging
 import torch
-
+import ase.units as ase_units
 
 from hydra.utils import instantiate
 from omegaconf import OmegaConf, DictConfig
@@ -17,10 +17,11 @@ from tqdm import tqdm
 
 from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule
 from md_with_schnet.setup_logger import setup_logger
+from md_with_schnet.units import AUT_TO_S
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase -mdir MOTOR_MD_XTB_T300_1_epochs_1000_bs_100_lr_0.0001_seed_42_normalized --md_steps 10 -ts 0.5 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase -mdir MOTOR_MD_XTB_T300_1_ang_kcal_mol_epochs_1000_bs_100_lr_0.0001_seed_42 --md_steps 100 -ts 0.5 ; exec bash'
 """
 
 
@@ -119,7 +120,8 @@ def prepare_atoms(structure: DictConfig, velocities: torch.Tensor) -> Atoms:
     else:
         raise TypeError(f"Unsupported type for velocities: {type(velocities_au)}")
 
-    atoms.set_velocities(velocities)
+    velocities_ase = velocities / ase_units.fs
+    atoms.set_velocities(velocities_ase)
 
     return atoms
 
@@ -161,7 +163,7 @@ def save_traj_to_xyz(traj_path: str, xyz_path: str):
 
 def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_step: float, fold: int, seed: int, num_workers: int):
     ####################### 1) Compose the config ###########################
-    cfg = load_config(f"neural_net/conf{units}", "inference_config", "inference")
+    cfg = load_config(f"neural_net/conf/{units}", "inference_config", "inference")
 
     # use training config to update the inference config
     train_cfg_path = os.path.join("neural_net/runs", model_dir, cfg.globals.train_config_subpath)
@@ -190,7 +192,6 @@ def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_st
 
     xtb_datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
     nn_datamodule = setup_datamodule(data_cfg=cfg.data, datapath=path_to_db, split_file=split_file)
-    # nn_datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
     
     ####################### 3) Prepare molecule ##############################
     sample_idx = -1
@@ -198,16 +199,11 @@ def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_st
     xtb_structure = xtb_datamodule.test_dataset[sample_idx]
     velocities_au = xtb_structure["velocities"]
 
-    # transform original structure from bohr to angstrom
-    # xtb_structure["_positions"] *= BOHR_TO_ANGSTROM
-    # if "_cell" in xtb_structure:
-    #     xtb_structure["_cell"] *= BOHR_TO_ANGSTROM
-
     atoms_nn = prepare_atoms(nn_structure, velocities_au)
     atoms_xtb = prepare_atoms(xtb_structure, velocities_au)
-    #atoms_nn = atoms_xtb.copy()  # Use the same structure for the neural network
 
     # check if velocities are valid by computing the corresponding temperature
+    # note that ase computes the temperature without subtracting any degrees of freedom, so it is not the same as the temperature computed by XTB
     logger.info(f"Initial temperature of the system: {atoms_xtb.get_temperature()} K")
     logger.info(f"Initial kinetic energy of the system: {atoms_xtb.get_kinetic_energy()} eV") 
 
@@ -219,7 +215,7 @@ def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_st
     ####################### 5) Setup simulator ##############################
     # convert time step from atomic units to seconds and then to ASE time units
     logger.debug(f"Time step (in fs): {cfg.md.time_step}")
-    time_step_ase = cfg.md.time_step * units.fs
+    time_step_ase = cfg.md.time_step * ase_units.fs
     logger.debug(f"Time step (in ASE time units): {time_step_ase:.2f}")
     
 
@@ -228,18 +224,14 @@ def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_st
     )
 
     ####################### 6) Run simulations ##############################
-    # # make single prediction with the neural network calculator
-    # logger.info("Running single prediction with the neural network calculator.")
-    # nn_e_pot = atoms_nn.get_potential_energy()
-    # nn_e_pot_au = nn_e_pot / HARTREE_TO_EV
-    # # xtb_e_pot = atoms_xtb.get_potential_energy()
-    # # xtb_e_pot_au = xtb_e_pot / HARTREE_TO_EV
-    
-    # logger.info(f"XTB energy: {xtb_e_pot_au} Hartree = {xtb_e_pot} eV")
-    # logger.info(f"Neural network energy: {nn_e_pot_au} Hartree = {nn_e_pot} eV")
-    
     logger.info(f"Starting simulation with {cfg.md.n_steps} steps.")
     logger.info(f"Beginning simulation with neural network calculator and saving to {target_dir}.")
+    
+    # Create a tqdm progress bar
+    interval = 1
+    pbar = tqdm(total=cfg.md.n_steps, desc="MD progress")
+    dyn_nn.attach(make_update_bar(pbar, interval), interval=interval)
+
     nn_start = time.time()
     dyn_nn.run(cfg.md.n_steps)
     nn_end = time.time()
@@ -253,7 +245,7 @@ def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_st
         logging.getLogger('cclib').setLevel(logging.WARNING)
         
         # Create a tqdm progress bar
-        interval = 1
+        interval = 10
         pbar = tqdm(total=cfg.md.n_steps, desc="MD progress")
         dyn_xtb.attach(make_update_bar(pbar, interval), interval=interval)
 
