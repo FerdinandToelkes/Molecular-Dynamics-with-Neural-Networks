@@ -12,7 +12,7 @@ run:
   mean_std_path: null
 globals:
   model_path: ${run.path}/best_model
-  cutoff: 10.0 # Bohr
+  cutoff: 5.0 # Angstrom
   lr: 0.001
   energy_key: energy
   forces_key: forces
@@ -131,13 +131,13 @@ model:
     force_key: ${globals.forces_key}
   postprocessors:
   - _target_: schnetpack.transform.CastTo64
-  - _target_: md_with_schnet.preprocessing.transforms.UndoStandardizeProperty
+  - _target_: md_with_schnet.preprocessing.transforms.UndoNormalizePropertyByMean
     property_key: energy
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.UndoStandardizeProperty
+  - _target_: md_with_schnet.preprocessing.transforms.UndoNormalizePropertyByMean
     property_key: forces
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.UndoStandardizeProperty
+  - _target_: md_with_schnet.preprocessing.transforms.UndoNormalizePropertyByMean
     property_key: _positions
     path_to_stats: ${run.mean_std_path}
 data:
@@ -145,18 +145,18 @@ data:
   batch_size: 100
   num_workers: 8
   pin_memory: false # just to be safe
-  distance_unit: Bohr
+  distance_unit: null # set in train.py
   property_units:
-    energy: Hartree
-    forces: Hartree/Bohr
+    energy: null # set in train.py
+    forces: null # set in train.py
   transforms:
-  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+  - _target_: md_with_schnet.preprocessing.transforms.NormalizePropertyByMean
     property_key: energy
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+  - _target_: md_with_schnet.preprocessing.transforms.NormalizePropertyByMean
     property_key: forces
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+  - _target_: md_with_schnet.preprocessing.transforms.NormalizePropertyByMean
     property_key: _positions
     path_to_stats: ${run.mean_std_path}
   - _target_: schnetpack.transform.MatScipyNeighborList

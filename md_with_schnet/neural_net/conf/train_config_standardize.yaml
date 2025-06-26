@@ -122,7 +122,7 @@ model:
   input_modules:
   - _target_: schnetpack.atomistic.PairwiseDistances
   output_modules:
-  - _target_: schnetpack.atomistic.Atomwise
+  - _target_: schnetpack.atomistic.Atomwise 
     output_key: ${globals.energy_key}
     n_in: ${model.representation.n_atom_basis}
     aggregation_mode: sum
@@ -131,23 +131,34 @@ model:
     force_key: ${globals.forces_key}
   postprocessors:
   - _target_: schnetpack.transform.CastTo64
-  - _target_: schnetpack.transform.AddOffsets
-    property: energy
-    add_mean: true
+  - _target_: md_with_schnet.preprocessing.transforms.UndoStandardizeProperty
+    property_key: energy
+    path_to_stats: ${run.mean_std_path}
+  - _target_: md_with_schnet.preprocessing.transforms.UndoStandardizeProperty
+    property_key: forces
+    path_to_stats: ${run.mean_std_path}
+  - _target_: md_with_schnet.preprocessing.transforms.UndoStandardizeProperty
+    property_key: _positions
+    path_to_stats: ${run.mean_std_path}
 data:
   _target_: schnetpack.data.AtomsDataModule
   batch_size: 100
   num_workers: 8
   pin_memory: false # just to be safe
-  distance_unit: Angstrom
+  distance_unit: null # set in train.py
   property_units:
-    energy: kcal/mol
-    forces: kcal/mol/Angstrom
+    energy: null # set in train.py
+    forces: null # set in train.py
   transforms:
-  - _target_: schnetpack.transform.SubtractCenterOfMass
-  - _target_: schnetpack.transform.RemoveOffsets
-    property: energy
-    remove_mean: true
+  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+    property_key: energy
+    path_to_stats: ${run.mean_std_path}
+  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+    property_key: forces
+    path_to_stats: ${run.mean_std_path}
+  - _target_: md_with_schnet.preprocessing.transforms.StandardizeProperty
+    property_key: _positions
+    path_to_stats: ${run.mean_std_path}
   - _target_: schnetpack.transform.MatScipyNeighborList
     cutoff: ${globals.cutoff}
   - _target_: schnetpack.transform.CastTo32

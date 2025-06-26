@@ -8,7 +8,7 @@ globals:
   xtb_dir_name: xtb_md_simulations
 model: 
   neighborlist:
-    cutoff: 5.0 # Angstrom
+    cutoff: ${globals.cutoff}
     dtype: float32
 xtb:
   method: "gfn2-xtb" # is I think default in Turbomole

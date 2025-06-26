@@ -12,7 +12,8 @@ run:
   mean_std_path: null
 globals:
   model_path: ${run.path}/best_model
-  cutoff: 10.0 # Bohr
+  # Angstrom if using Bohr -> multiply by 0.529177249 in train.py
+  cutoff: 5.0 
   lr: 0.001
   energy_key: energy
   forces_key: forces
@@ -139,10 +140,10 @@ data:
   batch_size: 100
   num_workers: 8
   pin_memory: false # just to be safe
-  distance_unit: Bohr
+  distance_unit: null # set in train.py
   property_units:
-    energy: Hartree
-    forces: Hartree/Bohr
+    energy: null
+    forces: null
   transforms:
   - _target_: schnetpack.transform.SubtractCenterOfMass
   - _target_: schnetpack.transform.RemoveOffsets

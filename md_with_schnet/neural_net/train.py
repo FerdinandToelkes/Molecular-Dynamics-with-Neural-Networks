@@ -10,6 +10,7 @@ from omegaconf import OmegaConf, DictConfig
 
 # own imports
 from md_with_schnet.utils import setup_logger, set_data_prefix, get_split_path, load_config, setup_datamodule
+from md_with_schnet.units import get_ase_units_from_str, convert_distances
 
 logger = setup_logger("debug")
 
@@ -72,12 +73,13 @@ def set_run_path(trajectory_dir: str, units: str, num_epochs: int, batch_size: i
     run_path = os.path.join(current_dir, "runs", units, trajectory_dir, run_name)
     return run_path
 
-def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int, path_to_stats: str) -> DictConfig:
+def update_config(cfg: DictConfig, run_path: str, ase_units: dict, batch_size: int, num_epochs: int, learning_rate: float, num_workers: int, path_to_stats: str) -> DictConfig:
     """ 
     Update the configuration with command-line arguments.
     Args:
         cfg (DictConfig): The original configuration.
         run_path (str): Path to save the run.
+        ase_units (dict): Dictionary containing ASE units.
         batch_size (int): Batch size for training.
         num_epochs (int): Number of epochs for training.
         learning_rate (float): Learning rate for the optimizer.
@@ -95,6 +97,15 @@ def update_config(cfg: DictConfig, run_path: str, batch_size: int, num_epochs: i
         cfg.data.num_workers = 0 if platform.system() == 'Darwin' else 8
     cfg.trainer.max_epochs = num_epochs
     cfg.globals.lr = learning_rate
+
+    # Set the ASE units in the configuration
+    cfg.data.distance_unit = ase_units['distance']
+    cfg.data.property_units.energy = ase_units['energy']
+    cfg.data.property_units.forces = ase_units['forces']
+
+    # If using Bohr, convert the cutoff distance to Angstrom
+    if ase_units['distance'] == "Bohr":
+        cfg.globals.cutoff = convert_distances(cfg.globals.cutoff, "angstrom", "bohr")
     return cfg
 
 
@@ -109,14 +120,15 @@ def main(trajectory_dir: str, units: str, batch_size: int, num_epochs: int, lear
     logger.info(f"Using the following units: {units}")
 
     ####################### 1) Compose the config ###########################
-    cfg = load_config(f"neural_net/conf/{units}", config_name, "train")
+    cfg = load_config(f"neural_net/conf", config_name, "train")
 
     # set run path
     run_path = set_run_path(trajectory_dir, units, num_epochs, batch_size, learning_rate, seed)
     logger.debug(f"Run path: {run_path}")
     
     # update the config with the arguments from the command line
-    cfg = update_config(cfg, run_path, batch_size, num_epochs, learning_rate, num_workers, path_to_stats)
+    ase_units = get_ase_units_from_str(units)
+    cfg = update_config(cfg, run_path, ase_units, batch_size, num_epochs, learning_rate, num_workers, path_to_stats)
     logger.info(f"Loaded and updated config:\n{OmegaConf.to_yaml(cfg)}")
 
     ####################### 2) Switch strings to classes ####################
@@ -125,7 +137,6 @@ def main(trajectory_dir: str, units: str, batch_size: int, num_epochs: int, lear
 
     ####################### 3) Prepare our own data #########################
     datamodule = setup_datamodule(cfg.data, path_to_db, split_file)
-
 
     ####################### 4) Instantiate model & task from YAML ###########
     model: pl.LightningModule = instantiate(cfg.model)

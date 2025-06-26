@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule
 from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.units import convert_time, convert_velocities, get_ase_units_from_str
+from md_with_schnet.units import convert_time, convert_velocities, get_ase_units_from_str, convert_distances
 
 # Example command to run the script from within code directory:
 """
@@ -90,6 +90,7 @@ def update_config(cfg: DictConfig, ase_units: dict, run_path: str, md_steps: int
         DictConfig: Updated configuration.
     """
     cfg.run.path = run_path
+    
     if num_workers != -1:
         cfg.data.num_workers = num_workers
     else:
@@ -101,6 +102,7 @@ def update_config(cfg: DictConfig, ase_units: dict, run_path: str, md_steps: int
     cfg.org_data.distance_unit = ase_units['distance']
     cfg.org_data.property_units.energy = ase_units['energy']
     cfg.org_data.property_units.forces = ase_units['forces']
+
 
     return cfg
 
@@ -169,7 +171,7 @@ def save_traj_to_xyz(traj_path: str, xyz_path: str):
 
 def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_step: float, fold: int, seed: int, num_workers: int):
     ####################### 1) Compose the config ###########################
-    cfg = load_config(f"neural_net/conf/{units}", "inference_config", "inference")
+    cfg = load_config(f"neural_net/conf", "inference_config", "inference")
 
     # use training config to update the inference config
     train_cfg_path = os.path.join("neural_net/runs", model_dir, cfg.globals.train_config_subpath)
