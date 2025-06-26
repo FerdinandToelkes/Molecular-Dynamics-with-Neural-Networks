@@ -29,7 +29,8 @@ assert abs(KCAL_PER_MOL_TO_EV - 0.0433641) < FLOAT_TOL, "KCAL_PER_MOL_TO_EV is n
 
 
 def convert_energies(energies: np.ndarray | torch.Tensor, from_units: str, to_units: str) -> np.ndarray | torch.Tensor:
-    """ Convert energies between different units.
+    """ 
+    Convert energies between different units.
     Args:
         energies (np.ndarray or torch.Tensor): Energies to convert.
         from_units (str): Units of the input energies.
@@ -55,7 +56,8 @@ def convert_energies(energies: np.ndarray | torch.Tensor, from_units: str, to_un
         raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
     
 def convert_forces(forces: np.ndarray | torch.Tensor, from_units: str, to_units: str) -> np.ndarray | torch.Tensor:
-    """ Convert forces between different units.
+    """ 
+    Convert forces between different units.
     Args:
         forces (np.ndarray or torch.Tensor): Forces to convert.
         from_units (str): Units of the input forces.
@@ -81,7 +83,8 @@ def convert_forces(forces: np.ndarray | torch.Tensor, from_units: str, to_units:
         raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
     
 def convert_distances(distances: np.ndarray | torch.Tensor, from_units: str, to_units: str) -> np.ndarray | torch.Tensor:
-    """ Convert distances between different units.
+    """ 
+    Convert distances between different units.
     Args:
         distances (np.ndarray or torch.Tensor): Distances to convert.
         from_units (str): Units of the input distances.
@@ -99,7 +102,8 @@ def convert_distances(distances: np.ndarray | torch.Tensor, from_units: str, to_
         raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
     
 def convert_velocities(velocities: np.ndarray | torch.Tensor, from_units: str, to_units: str) -> np.ndarray | torch.Tensor:
-    """ Convert velocities between different units.
+    """ 
+    Convert velocities between different units.
     Args:
         velocities (np.ndarray or torch.Tensor): Velocities to convert.
         from_units (str): Units of the input velocities.
@@ -129,7 +133,8 @@ def convert_velocities(velocities: np.ndarray | torch.Tensor, from_units: str, t
         raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
     
 def convert_time(time: float, from_units: str, to_units: str) -> float:
-    """ Convert time between different units.
+    """ 
+    Convert time between different units.
     Args:
         time (float): Time to convert.
         from_units (str): Units of the input time.
@@ -176,3 +181,72 @@ if __name__ == "__main__":
     reconverted_velocities = convert_velocities(converted_velocities, "angstrom/fs", "bohr/fs")
     assert torch.allclose(velocities, reconverted_velocities), "Velocity conversion failed"
 
+def get_ase_unit_format(position_unit: str, energy_unit: str, time_unit: str) -> tuple:
+    """
+    Convert the units to the format expected by ASE.
+    Args:
+        position_unit (str): Unit for positions (e.g., 'angstrom', 'bohr').
+        energy_unit (str): Unit for energies (e.g., 'kcal/mol', 'hartree', 'ev').
+        time_unit (str): Unit for time (e.g., 'fs', 'aut').
+    Returns:
+        tuple: Formatted units for ASE.
+    """
+    # Capitalize the position unit for ASE
+    pos_unit_ase = position_unit.capitalize() 
+    
+    # Convert energy and time units to ASE format
+    if energy_unit == 'hartree':
+        energy_unit_ase = 'Hartree'
+    elif energy_unit == 'ev':
+        energy_unit_ase = 'eV'
+    else:
+        energy_unit_ase = energy_unit
+
+    if time_unit == 'aut':
+        time_unit_ase = 'atomic_time_unit'
+    else:
+        time_unit_ase = time_unit
+    
+    force_unit_ase = f"{energy_unit_ase}/{pos_unit_ase}"  # e.g., kcal/mol/Angstrom
+    velocity_unit_ase = f"{pos_unit_ase}/{time_unit_ase}"  # e.g., Angstrom/fs
+    ase_units = {
+        'distance': pos_unit_ase,
+        'energy': energy_unit_ase,
+        'forces': force_unit_ase,
+        'velocities': velocity_unit_ase,
+        'time': time_unit_ase
+    }
+    return ase_units
+
+
+def get_ase_units_from_str(units: str) -> dict:
+    """ 
+    Convert a string representation of units to a dict containing the units.
+    Args:
+        units (str): String representation of units.
+    Returns:
+        dict: Dictionary containing the units for position, energy, force, and time.
+    """
+    if units == "angstrom_kcal_per_mol_fs":
+        return {
+            "distance": "Angstrom",
+            "energy": "kcal/mol",
+            "forces": "kcal/mol/Angstrom",
+            "time": "fs"
+        }
+    elif units == "angstrom_ev_fs":
+        return {
+            "distance": "Angstrom",
+            "energy": "eV",
+            "forces": "eV/Angstrom",
+            "time": "fs"
+        }
+    elif units == "bohr_hartree_aut":
+        return {
+            "distance": "Bohr",
+            "energy": "Hartree",
+            "forces": "Hartree/Bohr",
+            "time": "atomic_time_unit"
+        }
+    else:
+        raise ValueError(f"Unsupported units: {units}")

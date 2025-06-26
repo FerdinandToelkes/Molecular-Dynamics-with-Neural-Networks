@@ -1,12 +1,15 @@
 import os
 import argparse
+import numpy as np
 
 from schnetpack.data import ASEAtomsData
+from ase import Atoms
+from ase.data import atomic_numbers as ase_atomic_numbers
 
-from md_with_schnet.units import convert_distances, convert_energies, convert_forces, convert_velocities
+from md_with_schnet.units import convert_distances, convert_energies, convert_forces, convert_velocities, get_ase_unit_format
 from md_with_schnet.utils import set_data_prefix
 from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.preprocessing.prepare_xtb_in_atomic_units import convert_trajectory_to_ase, get_overview_of_dataset, get_trajectory_from_txt_and_reshape, get_all_energies_from_txt, get_atomic_numbers_from_xyz
+
 
 logger = setup_logger(logging_level_str="debug")
 
@@ -30,42 +33,126 @@ def parse_args() -> dict:
     parser.add_argument('--time_unit', type=str, default='fs', choices=['fs', 'aut'], help='Target unit for time to transform from atomic units to (default: fs)')
     return vars(parser.parse_args())
 
-def get_ase_unit_format(position_unit: str, energy_unit: str, time_unit: str) -> tuple:
+def get_atomic_numbers_from_xyz(path: str, number_of_atoms: int, extra_lines: int) -> list:
     """
-    Convert the units to the format expected by ASE.
+    Extract atomic symbols from a .xyz file and convert them to atomic numbers.
     Args:
-        position_unit (str): Unit for positions (e.g., 'angstrom', 'bohr').
-        energy_unit (str): Unit for energies (e.g., 'kcal/mol', 'hartree', 'ev').
-        time_unit (str): Unit for time (e.g., 'fs', 'aut').
+        path (str): Path to the .xyz file.
+        number_of_atoms (int): Number of atoms in the system.
+        extra_lines (int): Number of extra lines in each coordinates block, e.g., header lines.
     Returns:
-        tuple: Formatted units for ASE.
+        list: List of atomic numbers.
     """
-    # Capitalize the position unit for ASE
-    pos_unit_ase = position_unit.capitalize() 
-    
-    # Convert energy and time units to ASE format
-    if energy_unit == 'hartree':
-        energy_unit_ase = 'Hartree'
-    elif energy_unit == 'ev':
-        energy_unit_ase = 'eV'
-    else:
-        energy_unit_ase = energy_unit
+    with open(path, 'r') as file:
+        lines = file.readlines()
+        atom_lines = lines[extra_lines:extra_lines + number_of_atoms]  # Skip the first n lines
+        symbols = [line.split()[0] for line in atom_lines]
+    logger.debug(f'symbols: {symbols}')
 
-    if time_unit == 'aut':
-        time_unit_ase = 'atomic_time_unit'
-    else:
-        time_unit_ase = time_unit
+    # Convert symbols to atomic numbers
+    atomic_numbers = [ase_atomic_numbers[symbol] for symbol in symbols]
+    logger.debug(f'atomic_numbers: {atomic_numbers}')
+
+    if len(atomic_numbers) != number_of_atoms:
+        raise ValueError(f"Number of atomic_numbers extracted ({len(atomic_numbers)}) does not match the expected number of atoms ({number_of_atoms}).")
     
-    force_unit_ase = f"{energy_unit_ase}/{pos_unit_ase}"  # e.g., kcal/mol/Angstrom
-    velocity_unit_ase = f"{pos_unit_ase}/{time_unit_ase}"  # e.g., Angstrom/fs
-    ase_units = {
-        'distance': pos_unit_ase,
-        'energy': energy_unit_ase,
-        'forces': force_unit_ase,
-        'velocities': velocity_unit_ase,
-        'time': time_unit_ase
-    }
-    return ase_units
+    return atomic_numbers
+
+def get_all_energies_from_txt(path: str) -> tuple:
+    """
+    Extract all (potential) energies from a .txt file and return them as a NumPy array.
+    Args:
+        path (str): Path to the .txt file.
+    Returns:
+        tuple: Tuple containing all energies and the number of samples.
+    """
+    all_energies = np.loadtxt(path, usecols=(3))   # 3rd column is potential energy
+    number_of_samples = all_energies.shape[0]
+    logger.debug(f'all_energies.shape: {all_energies.shape}')
+    logger.debug(f'number_of_samples: {number_of_samples}')
+    return all_energies, number_of_samples
+
+def get_trajectory_from_txt_and_reshape(path: str, number_of_samples: int, 
+                                        num_atoms: int, usecols: tuple[int] = (1, 2, 3)) -> np.ndarray:
+    """
+    Load trajectory data from a .txt file and reshape it to the desired format.
+    Args:
+        path (str): Path to the .txt file containing trajectory data.
+        number_of_samples (int): Number of samples to align with.
+        num_atoms (int): Number of atoms in the system.
+        usecols (tuple[int]): Columns to use from the .txt file. Default is (1, 2, 3) which skips the element symbols.
+    Returns:
+        np.ndarray: Reshaped trajectory data with shape (Nframes, Natoms, 3).
+    """
+    traj = np.loadtxt(path, usecols=usecols, comments=["#", "t="]) 
+    traj = traj.reshape(-1, num_atoms, 3)  # Shape: (Nframes, Natoms, 3)
+    traj = align_shapes(number_of_samples, traj)
+    return traj
+
+
+def align_shapes(number_of_samples: int, traj: np.ndarray) -> np.ndarray:
+    """
+    Align the shape of the trajectory data with the number of samples given by the energy trajectory.
+    Args:
+        number_of_samples (int): Number of samples to align with.
+        traj (np.ndarray): Trajectory data to align.
+    Returns:
+        np.ndarray: Aligned trajectory data.
+    """
+    if traj.shape[0] != number_of_samples:
+        logger.warning(f'traj.shape[0] != number_of_samples: {traj.shape[0]} != {number_of_samples}')
+        logger.warning("Just using the first number_of_samples samples from grads_traj")
+        traj = traj[:number_of_samples]
+    return traj
+
+def convert_trajectory_to_ase(coords_traj: np.ndarray, energy_traj: np.ndarray, 
+                              forces_traj: np.ndarray, velocities_traj: np.ndarray, atomic_numbers: list) -> tuple:
+    """
+    Convert trajectory data to ASE Atoms objects and properties.
+    Args:
+        coords_traj (np.ndarray): Coordinates of the trajectory.
+        energy_traj (np.ndarray): Energies of the trajectory.
+        forces_traj (np.ndarray): Forces of the trajectory.
+        velocities_traj (np.ndarray): Velocities of the trajectory.
+        atomic_numbers (list): List of atomic numbers.
+    Returns:
+        tuple: Tuple containing a list of ASE Atoms objects and a list of properties.
+    """
+    logger.debug("Converting trajectory data to ASE Atoms objects and properties")
+    atoms_list = []
+    property_list = []
+    for positions, energies, forces, velocities in zip(coords_traj, energy_traj, forces_traj, velocities_traj):
+        ats = Atoms(positions=positions, numbers=atomic_numbers)
+        # convert energies to array if it is not already
+        if not isinstance(energies, np.ndarray):
+            energies = np.array([energies]) # compare with shape of data within the tutorial
+
+        properties = {'energy': energies, 'forces': forces, 'velocities': velocities}
+        property_list.append(properties)
+        atoms_list.append(ats)
+    logger.debug(f'Properties: {property_list[0]}')
+    return atoms_list, property_list
+
+def get_overview_of_dataset(new_dataset: ASEAtomsData):
+    """
+    Get an overview of the dataset.
+    Args:
+        new_dataset (ASEAtomsData): The dataset to analyze.
+    """
+    logger.debug(f'Number of reference calculations: {len(new_dataset)}')
+    print('Available properties:')
+
+    for p in new_dataset.available_properties:
+        print('-', p)
+    print()
+
+    print(f"new_dataset: {new_dataset}")
+    example = new_dataset[0]
+    print('Properties of molecule with id 0:')
+
+    for k, v in example.items():
+        print('-', k, ':', v.shape)
+
 
 
 def main(trajectory_dir: str, num_atoms: int, position_unit: str, energy_unit: str, time_unit: str):
@@ -81,7 +168,7 @@ def main(trajectory_dir: str, num_atoms: int, position_unit: str, energy_unit: s
     energy_path = os.path.join(data_prefix, 'energies.txt')
     grads_path = os.path.join(data_prefix, 'gradients.txt')
     vels_path = os.path.join(data_prefix, 'velocities.txt')
-    db_name = f"md_trajectory_{position_unit}_{energy_unit.replace('/', '_')}_{time_unit}.db"
+    db_name = f"md_trajectory_{position_unit}_{energy_unit.replace('/', '_per_')}_{time_unit}.db"
     target_path = os.path.join(data_prefix, db_name)
 
     if not os.path.exists(traj_path) or not os.path.exists(energy_path) or not os.path.exists(grads_path) or not os.path.exists(vels_path):
