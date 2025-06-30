@@ -12,8 +12,8 @@ run:
   mean_std_path: null
 globals:
   model_path: ${run.path}/best_model
-  # Angstrom if using Bohr -> multiply by 0.529177249 in train.py
-  cutoff: 5.0 
+  # Cutoff given in Angstrom. If using Bohr, multiply by 0.529177249 in train.py
+  cutoff: 5.0
   lr: 0.001
   energy_key: energy
   forces_key: forces

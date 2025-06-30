@@ -79,6 +79,10 @@ def convert_forces(forces: np.ndarray | torch.Tensor, from_units: str, to_units:
         return forces * KCAL_PER_MOL_TO_EV
     elif from_units == "ev/angstrom" and to_units == "kcal/mol/angstrom":
         return forces / KCAL_PER_MOL_TO_EV
+    elif from_units == "hartree/bohr" and to_units == "hartree/angstrom":
+        return forces / BOHR_TO_ANGSTROM
+    elif from_units == "hartree/angstrom" and to_units == "hartree/bohr":
+        return forces * BOHR_TO_ANGSTROM
     else:
         raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
     
@@ -158,28 +162,6 @@ def convert_time(time: float, from_units: str, to_units: str) -> float:
         return time / FS_TO_ASE_TIME
     else:
         raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
-    
-if __name__ == "__main__":
-    # Example usage
-    energies = np.array([1.0, 2.0, 3.0])  # in Hartree
-    converted_energies = convert_energies(energies, "hartree", "kcal/mol")
-    reconverted_energies = convert_energies(converted_energies, "kcal/mol", "hartree")
-    assert np.allclose(energies, reconverted_energies), "Energy conversion failed"
-
-    forces = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=float)  # in Hartree/Bohr
-    converted_forces = convert_forces(forces, "hartree/bohr", "kcal/mol/angstrom")
-    reconverted_forces = convert_forces(converted_forces, "kcal/mol/angstrom", "hartree/bohr")
-    assert torch.allclose(forces, reconverted_forces), "Forces conversion failed"
-
-    distances = np.array([1.0, 2.0, 3.0])  # in Bohr
-    converted_distances = convert_distances(distances, "bohr", "angstrom")
-    reconverted_distances = convert_distances(converted_distances, "angstrom", "bohr")
-    assert np.allclose(distances, reconverted_distances), "Distance conversion failed"
-
-    velocities = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=float)  # in Bohr/fs
-    converted_velocities = convert_velocities(velocities, "bohr/fs", "angstrom/fs")
-    reconverted_velocities = convert_velocities(converted_velocities, "angstrom/fs", "bohr/fs")
-    assert torch.allclose(velocities, reconverted_velocities), "Velocity conversion failed"
 
 def get_ase_unit_format(position_unit: str, energy_unit: str, time_unit: str) -> tuple:
     """
@@ -241,6 +223,13 @@ def get_ase_units_from_str(units: str) -> dict:
             "forces": "eV/Angstrom",
             "time": "fs"
         }
+    elif units == "angstrom_hartree_fs":
+        return {
+            "distance": "Angstrom",
+            "energy": "Hartree",
+            "forces": "Hartree/Angstrom",
+            "time": "fs"
+        }
     elif units == "bohr_hartree_aut":
         return {
             "distance": "Bohr",
@@ -250,3 +239,26 @@ def get_ase_units_from_str(units: str) -> dict:
         }
     else:
         raise ValueError(f"Unsupported units: {units}")
+
+if __name__ == "__main__":
+    # Example usage
+    energies = np.array([1.0, 2.0, 3.0])  # in Hartree
+    converted_energies = convert_energies(energies, "hartree", "kcal/mol")
+    reconverted_energies = convert_energies(converted_energies, "kcal/mol", "hartree")
+    assert np.allclose(energies, reconverted_energies), "Energy conversion failed"
+
+    forces = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=float)  # in Hartree/Bohr
+    converted_forces = convert_forces(forces, "hartree/bohr", "kcal/mol/angstrom")
+    reconverted_forces = convert_forces(converted_forces, "kcal/mol/angstrom", "hartree/bohr")
+    assert torch.allclose(forces, reconverted_forces), "Forces conversion failed"
+
+    distances = np.array([1.0, 2.0, 3.0])  # in Bohr
+    converted_distances = convert_distances(distances, "bohr", "angstrom")
+    reconverted_distances = convert_distances(converted_distances, "angstrom", "bohr")
+    assert np.allclose(distances, reconverted_distances), "Distance conversion failed"
+
+    velocities = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=float)  # in Bohr/fs
+    converted_velocities = convert_velocities(velocities, "bohr/fs", "angstrom/fs")
+    reconverted_velocities = convert_velocities(converted_velocities, "angstrom/fs", "bohr/fs")
+    assert torch.allclose(velocities, reconverted_velocities), "Velocity conversion failed"
+
