@@ -7,7 +7,7 @@ from omegaconf import DictConfig
 
 
 from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.neural_net.inference_with_ase import update_config_with_train_config
+from md_with_schnet.training_and_inference.inference_with_ase import update_config_with_train_config
 
 # for interactive plotting
 import plotly.graph_objects as go
@@ -20,7 +20,7 @@ logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim --model_dir epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 --n_samples 100 --units angstrom_kcal_per_mol_fs
+python -m md_with_schnet.evaluation.plot_interactive_md_ase_sim --model_dir epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 --n_samples 100 --units angstrom_kcal_per_mol_fs
 """
 
 def parse_args() -> dict:
@@ -520,7 +520,7 @@ def create_interactive_rolling_corr_plot(rolling_data: dict, window_sizes: list,
 
 def main(trajectory_dir: str, model_dir: str, units: str, simulation_name: str, n_samples: int, first_sample: int):
     ####################### 1) Compose the config ###########################
-    with initialize(config_path=f"conf", job_name="inference", version_base="1.1"):
+    with initialize(config_path=f"../conf", job_name="inference", version_base="1.1"):
         cfg: DictConfig = compose(config_name="inference_config")
 
     # use training config to update the inference config
@@ -560,7 +560,7 @@ def main(trajectory_dir: str, model_dir: str, units: str, simulation_name: str, 
     
     ####################### 3) Make interactive Plots #########################
     properties, y_labels = prepare_properties_data(log_data)
-    plot_dir = os.path.join("md_with_schnet/neural_net/plots", model_dir, simulation_name)
+    plot_dir = os.path.join("md_with_schnet/training_and_inference/plots", model_dir, simulation_name)
     # Ensure the plot directory exists
     os.makedirs(plot_dir, exist_ok=True)
     logger.debug(f"Plot directory: {plot_dir}")

@@ -13,13 +13,13 @@ from ase.io import read, write
 from xtb_ase import XTB
 from tqdm import tqdm
 
-from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers
+from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers, set_data_units_in_config
 from md_with_schnet.setup_logger import setup_logger
 from md_with_schnet.units import convert_time, convert_velocities, get_ase_units_from_str
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase -mdir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 --units angstrom_kcal_per_mol_fs --md_steps 10000 --time_step 0.5 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.training_and_inference.inference_with_ase -mdir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 --units angstrom_kcal_per_mol_fs --md_steps 10000 --time_step 0.5 ; exec bash'
 """
 
 
@@ -75,12 +75,12 @@ def update_config_with_train_config(cfg: DictConfig, cfg_train: DictConfig) -> D
     OmegaConf.set_struct(cfg, True)
     return cfg
 
-def update_config(cfg: DictConfig, ase_units: dict, run_path: str, md_steps: int, time_step: float, num_workers: int) -> DictConfig:
+def update_config(cfg: DictConfig, ase_unit_names: dict, run_path: str, md_steps: int, time_step: float, num_workers: int) -> DictConfig:
     """ 
     Update the configuration with command-line arguments.
     Args:
         cfg (DictConfig): The original configuration.
-        ase_units (dict): Dictionary containing ASE units.
+        ase_unit_names (dict): Dictionary containing ASE unit names for custom data.
         run_path (str): Path to save the run.
         md_steps (int): Number of MD steps to run.
         time_step (float): Time step for the MD simulation in atomic units.
@@ -94,9 +94,7 @@ def update_config(cfg: DictConfig, ase_units: dict, run_path: str, md_steps: int
     cfg.md.time_step = time_step 
 
     # Set the ASE units in the configuration
-    cfg.org_data.distance_unit = ase_units['distance']
-    cfg.org_data.property_units.energy = ase_units['energy']
-    cfg.org_data.property_units.forces = ase_units['forces']
+    cfg.org_data = set_data_units_in_config(cfg.org_data, ase_unit_names)
 
     return cfg
 
@@ -177,20 +175,23 @@ def save_config(cfg: DictConfig, target_dir: str):
 
 def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_step: float, fold: int, seed: int, num_workers: int):
     ####################### 1) Compose the config ###########################
-    cfg = load_config(f"neural_net/conf", "inference_config", "inference")
+    cfg = load_config(f"training_and_inference/conf", "inference_config", "inference")
+
+    # set absolute and relative paths to the model directory
+    home_dir = os.path.expanduser("~")
+    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
+    model_dir_path = os.path.join(runs_dir_path, units, model_dir)
+    model_dir_rel_path = "".join(model_dir_path.split("md_with_schnet/")[1:])
+    logger.debug(f"Absolute path to the model directory: {model_dir_path}")
 
     # use training config to update the inference config
-    train_cfg_path = os.path.join(f"neural_net/runs/{units}", model_dir, cfg.globals.train_config_subpath)
+    train_cfg_path = os.path.join(model_dir_rel_path, cfg.globals.train_config_subpath)
     cfg_train = load_config(train_cfg_path, cfg.globals.hparams_file_name, "train")
     cfg = update_config_with_train_config(cfg, cfg_train)
 
     # update config with arguments from command line
-    home_dir = os.path.expanduser("~")
-    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
-    model_dir_path = os.path.join(runs_dir_path, units, model_dir)
-
-    ase_units = get_ase_units_from_str(units)
-    cfg = update_config(cfg, ase_units, model_dir_path, md_steps, time_step, num_workers)
+    ase_unit_names = get_ase_units_from_str(units)
+    cfg = update_config(cfg, ase_unit_names, model_dir_path, md_steps, time_step, num_workers)
     logger.info(f"Loaded and updated config:\n{OmegaConf.to_yaml(cfg)}")
 
     ####################### 2) Prepare Data and Paths #########################

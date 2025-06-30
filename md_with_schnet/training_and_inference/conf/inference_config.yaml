@@ -4,7 +4,7 @@ globals:
   model_path: ${run.path}/best_model
   train_config_subpath: tensorboard/default/version_0
   hparams_file_name: hparams.yaml
-  runs_dir_subpath: whk/code/md_with_schnet/neural_net/runs
+  runs_dir_subpath: whk/code/md_with_schnet/training_and_inference/runs
   xtb_dir_name: xtb_md_simulations
 model: 
   neighborlist:

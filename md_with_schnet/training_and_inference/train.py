@@ -15,7 +15,7 @@ logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-screen -dmS xtb_train sh -c 'python -m md_with_schnet.neural_net.train --trajectory_dir MOTOR_MD_XTB/T300_1 -e 1 -cname train_config_default_transforms --units angstrom_kcal_per_mol_fs; exec bash'
+screen -dmS xtb_train sh -c 'python -m md_with_schnet.training_and_inference.train --trajectory_dir MOTOR_MD_XTB/T300_1 -e 1 -cname train_config_default_transforms --units angstrom_kcal_per_mol_fs; exec bash'
 """
 
 def parse_args() -> dict:
@@ -128,7 +128,7 @@ def main(trajectory_dir: str, units: str, batch_size: int, num_epochs: int, lear
     logger.info(f"Using the following units: {units}")
 
     ####################### 1) Compose the config ###########################
-    cfg = load_config(f"neural_net/conf", config_name, "train")
+    cfg = load_config(f"training_and_inference/conf", config_name, "train")
 
     # set run path
     run_path = set_run_path(trajectory_dir, units, num_epochs, batch_size, learning_rate, forces_loss_weight, energy_loss_weight, seed)

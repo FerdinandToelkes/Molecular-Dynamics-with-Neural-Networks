@@ -333,3 +333,18 @@ def get_num_workers(num_workers: int) -> int:
         return num_workers
     else:
         return 0 if platform.system() == 'Darwin' else 8
+    
+def set_data_units_in_config(cfg_org_data: DictConfig, ase_units: dict) -> DictConfig:
+    """ 
+    Set the ASE units in the configuration based on the distance and energy units specified in the configuration.
+    Args:
+        cfg_org_data (DictConfig): The original configuration containing the distance and energy units.
+        ase_units (dict): A dictionary containing the ASE units for distance, energy, and forces.
+    Returns:
+        DictConfig: The updated configuration with ASE units set.
+    """
+    # Set the ASE units in the configuration
+    cfg_org_data.distance_unit = ase_units['distance']
+    cfg_org_data.property_units.energy = ase_units['energy']
+    cfg_org_data.property_units.forces = ase_units['forces']
+    return cfg_org_data

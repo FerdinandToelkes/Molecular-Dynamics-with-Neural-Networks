@@ -79,6 +79,14 @@ def convert_forces(forces: np.ndarray | torch.Tensor, from_units: str, to_units:
         return forces * KCAL_PER_MOL_TO_EV
     elif from_units == "ev/angstrom" and to_units == "kcal/mol/angstrom":
         return forces / KCAL_PER_MOL_TO_EV
+    elif from_units == "hartree/angstrom" and to_units == "ev/angstrom":
+        return forces * HARTREE_TO_EV
+    elif from_units == "ev/angstrom" and to_units == "hartree/angstrom":
+        return forces / HARTREE_TO_EV
+    elif from_units == "hartree/angstrom" and to_units == "kcal/mol/angstrom":
+        return forces * HARTREE_TO_KCAL_PER_MOL
+    elif from_units == "kcal/mol/angstrom" and to_units == "hartree/angstrom":
+        return forces / HARTREE_TO_KCAL_PER_MOL
     elif from_units == "hartree/bohr" and to_units == "hartree/angstrom":
         return forces / BOHR_TO_ANGSTROM
     elif from_units == "hartree/angstrom" and to_units == "hartree/bohr":

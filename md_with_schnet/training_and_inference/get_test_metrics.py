@@ -3,6 +3,7 @@ import argparse
 import torch
 import pytorch_lightning as pl
 import numpy as np
+import pandas as pd
 
 from ase import Atoms
 from xtb_ase.calculator import XTB
@@ -10,22 +11,23 @@ from omegaconf import OmegaConf, DictConfig
 from schnetpack.utils.compatibility import load_model
 from tqdm import tqdm
 
-from md_with_schnet.units import convert_energies, convert_forces
-from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers
+from md_with_schnet.units import convert_energies, convert_forces, get_ase_units_from_str
+from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers, set_data_units_in_config
 from md_with_schnet.setup_logger import setup_logger
 
 BATCH_SIZE = 1
 
 # Example command to run the script from within code directory:
 """
-screen -dmS get_test_metrics sh -c 'python -m md_with_schnet.neural_net.get_test_metrics -mdir epochs_1000_bs_100_lr_0.0001_seed_42 --units angstrom_kcal_per_mol_fs; exec bash'
+screen -dmS get_test_metrics sh -c 'python -m md_with_schnet.training_and_inference.get_test_metrics -mdir epochs_1000_bs_100_lr_0.0001_seed_42 --units angstrom_kcal_per_mol_fs; exec bash'
 """
 
 
 logger = setup_logger("debug")
 
 def parse_args() -> dict:
-    """ Parse command-line arguments. 
+    """ 
+    Parse command-line arguments. 
 
     Returns:
         dict: Dictionary containing command-line arguments.
@@ -38,6 +40,7 @@ def parse_args() -> dict:
     parser.add_argument("-f", "--fold", type=int, default=0, help="Fold number for cross-validation (default: 0)")
     parser.add_argument("-s", "--seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
     parser.add_argument("-nw", "--num_workers", type=int, default=-1, help="Number of workers for data loading (default: -1, which sets it to 0 on macOS and 8 on Linux)")
+    parser.add_argument("--compute_xtb", action="store_true", help="Whether to compute XTB energies and forces")
     return vars(parser.parse_args())
 
 
@@ -72,11 +75,12 @@ def update_config_with_train_config(cfg: DictConfig, cfg_train: DictConfig) -> D
     OmegaConf.set_struct(cfg, True)
     return cfg
 
-def update_config(cfg: DictConfig, run_path: str, num_workers: int) -> DictConfig:
+def update_config(cfg: DictConfig, ase_unit_names: dict, run_path: str, num_workers: int) -> DictConfig:
     """ 
     Update the configuration with command-line arguments.
     Args:
         cfg (DictConfig): The original configuration.
+        ase_unit_names (dict): A dictionary containing the ASE unit names for distance, energy, and forces.
         run_path (str): Path to save the run.
         num_workers (int): Number of workers for data loading.
     Returns:
@@ -85,6 +89,10 @@ def update_config(cfg: DictConfig, run_path: str, num_workers: int) -> DictConfi
     cfg.run.path = run_path
     cfg.data.num_workers = get_num_workers(num_workers)
     cfg.org_data.batch_size = BATCH_SIZE  # Set batch size for inference
+
+    # Set ASE units in the configuration
+    cfg.org_data = set_data_units_in_config(cfg.org_data, ase_unit_names)
+
     return cfg
 
 def compute_metrics_for_neural_net(cfg: DictConfig, datamodule: pl.LightningDataModule, model: torch.nn.Module):
@@ -166,43 +174,34 @@ def get_batch_mae(pred: np.ndarray, gt: np.ndarray) -> float:
     """
     return np.mean(np.abs(pred - gt)).item()
 
-def log_final_metrics(nn_forces_mae: float, nn_energy_mae: float, xtb_forces_mae: float, xtb_energy_mae: float):
-    """ Log the final metrics for both neural network and XTB models.
-    Args:
-        nn_forces_mae (float): Mean Absolute Error for forces from the neural network.
-        nn_energy_mae (float): Mean Absolute Error for energy from the neural network.
-        xtb_forces_mae (float): Mean Absolute Error for forces from the XTB model.
-        xtb_energy_mae (float): Mean Absolute Error for energy from the XTB model.
-    """
-    logger.info(f"Test metrics for nn:")
-    logger.info(f"Forces MAE: {nn_forces_mae:.6f} eV/Angstrom")
-    logger.info(f"Energy MAE: {nn_energy_mae:.6f} eV")
-    logger.info(f"Test metrics for XTB:")
-    logger.info(f"Forces MAE: {xtb_forces_mae:.6f} eV/Angstrom")
-    logger.info(f"Energy MAE: {xtb_energy_mae:.6f} eV")
-
-def main(trajectory_dir: str, model_dir: str, fold: int, seed: int, num_workers: int):
+    
+def main(trajectory_dir: str, units: str, model_dir: str, fold: int, seed: int, num_workers: int, compute_xtb: bool):
     pl.seed_everything(seed, workers=True)
 
     ####################### 1) Compose the config ###########################
-    cfg = load_config("neural_net/conf", "inference_config", "inference")
+    cfg = load_config("training_and_inference/conf", "inference_config", "inference")
+
+    # set absolute and relative paths to the model directory
+    home_dir = os.path.expanduser("~")
+    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
+    model_dir_path = os.path.join(runs_dir_path, units, trajectory_dir, model_dir)
+    model_dir_rel_path = "".join(model_dir_path.split("md_with_schnet/")[1:])
+    logger.debug(f"Absolute path to the model directory: {model_dir_path}")
 
     # use training config to update the inference config
-    train_cfg_path = os.path.join("neural_net/runs", model_dir, cfg.globals.train_config_subpath)
+    train_cfg_path = os.path.join(model_dir_rel_path, cfg.globals.train_config_subpath)
     cfg_train = load_config(train_cfg_path, cfg.globals.hparams_file_name, "train")
     cfg = update_config_with_train_config(cfg, cfg_train)
 
     # update config with arguments from command line
-    home_dir = os.path.expanduser("~")
-    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
-    model_dir_path = os.path.join(runs_dir_path, model_dir)
-    cfg = update_config(cfg, model_dir_path, num_workers)
+    model_units = get_ase_units_from_str(units)
+    cfg = update_config(cfg, model_units, model_dir_path, num_workers)
     logger.info(f"Loaded and updated config:\n{OmegaConf.to_yaml(cfg)}")
 
     ####################### 2) Prepare Data and Paths #########################
     data_prefix = set_data_prefix()
     split_file = get_split_path(data_prefix, trajectory_dir, fold)
-    path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory.db")
+    path_to_db = os.path.join(data_prefix, trajectory_dir, f"md_trajectory_{units}.db")
     
     datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
     
@@ -211,18 +210,44 @@ def main(trajectory_dir: str, model_dir: str, fold: int, seed: int, num_workers:
     model.eval()
 
     nn_forces_mae, nn_energy_mae = compute_metrics_for_neural_net(cfg, datamodule, model)
-    xtb_forces_mae, xtb_energy_mae = None, None
-    #xtb_forces_mae, xtb_energy_mae = compute_metrics_for_xtb(cfg, datamodule)
+    if compute_xtb:
+        xtb_forces_mae, xtb_energy_mae = compute_metrics_for_xtb(cfg, datamodule)
+        logger.info(f"Test metrics for XTB:")
+        logger.info(f"Energy MAE: {xtb_energy_mae:.6f} eV")
+        logger.info(f"Forces MAE: {xtb_forces_mae:.6f} eV/Angstrom")
 
     # transform nn metrics to ase units (keep in mind which metric was used)
     ase_energy_unit = "ev"
     ase_forces_unit = "ev/angstrom"
 
-    nn_energy_mae = convert_energies(nn_energy_mae, "kcal/mol", ase_energy_unit)
-    nn_forces_mae = convert_forces(nn_forces_mae, "kcal/mol/angstrom", ase_forces_unit)
-    
-    
-    log_final_metrics(nn_forces_mae, nn_energy_mae, xtb_forces_mae, xtb_energy_mae)
+    model_energy_unit = model_units['energy'].lower()
+    model_forces_unit = model_units['forces'].lower()
+    logger.info(f"Model energy unit: {model_energy_unit}, Model forces unit: {model_forces_unit}")
+    logger.info(f"ASE energy unit: {ase_energy_unit}, ASE forces unit: {ase_forces_unit}")
+
+    nn_energy_mae = convert_energies(nn_energy_mae, model_energy_unit, ase_energy_unit)
+    nn_forces_mae = convert_forces(nn_forces_mae, model_forces_unit, ase_forces_unit)
+    nn_energy_mae_kcal = convert_energies(nn_energy_mae, ase_energy_unit, 'kcal/mol')
+    nn_forces_mae_kcal = convert_forces(nn_forces_mae, ase_forces_unit, 'kcal/mol/angstrom')
+
+    # log energies in ev/angstrom and kcal/mol
+    logger.info(f"Test metrics for nn:")
+    logger.info(f"Energy MAE: {nn_energy_mae:.6f} eV")
+    logger.info(f"Forces MAE: {nn_forces_mae:.6f} eV/Angstrom")
+    logger.info(f"Energy MAE: {nn_energy_mae_kcal:.6f} kcal/mol")
+    logger.info(f"Forces MAE: {nn_forces_mae_kcal:.6f} kcal/mol/Angstrom")
+
+    # Save the metrics to a csv file
+    results = {
+        f"energy_mae_{ase_energy_unit}": nn_energy_mae,
+        f"forces_mae_{ase_forces_unit.replace("/", "_per_")}": nn_forces_mae,
+        f"energy_mae_kcal_per_mol": nn_energy_mae_kcal,
+        f"forces_mae_kcal_per_mol_per_angstrom": nn_forces_mae_kcal
+    }
+    metrics_file = os.path.join(model_dir_path, f"test_metrics_fold_{fold}.csv")
+    df = pd.DataFrame([results])
+    df.to_csv(metrics_file, index=False)
+    logger.info(f"Test metrics saved to {metrics_file}")
 
 
 if __name__ == "__main__":
