@@ -29,7 +29,7 @@ def parse_args() -> dict:
 
 def main(trajectory_dir: str, model_dir: str, fold: int) -> None:
     home_dir = os.path.expanduser("~")
-    path_to_runs = os.path.join(home_dir, "whk/code/md_with_schnet/neural_net/runs")
+    path_to_runs = os.path.join(home_dir, "whk/code/md_with_schnet/training_and_inference/runs")
     unit_systems = ["angstrom_kcal_per_mol_fs", "angstrom_ev_fs", "angstrom_hartree_fs"]
     logger.info(f"Unit systems to be examined: {unit_systems}")
     results = {}
@@ -40,18 +40,37 @@ def main(trajectory_dir: str, model_dir: str, fold: int) -> None:
         
         # Check if the directory exists
         if not os.path.exists(target_dir):
-            logger.error(f"Directory {target_dir} does not exist. Skipping.")
+            logger.warning(f"Directory {target_dir} does not exist. Skipping.")
             continue
         
         # Load the metrics file
         metrics_file = os.path.join(target_dir, f"test_metrics_fold_{fold}.csv")
         if not os.path.isfile(metrics_file):
-            logger.error(f"Metrics file {metrics_file} does not exist. Skipping.")
+            logger.warning(f"Metrics file {metrics_file} does not exist. Skipping.")
             continue
         
         df = pd.read_csv(metrics_file)
-        results[units] = df
-        logger.info(f"Loaded metrics for {units}: {df.head()}")
+        # only take values for kcal and kcal/mol
+        energy_mae_kcal_per_mol = df["energy_mae_kcal_per_mol"]
+        forces_mae_kcal_per_mol_per_angstrom = df["forces_mae_kcal_per_mol_per_angstrom"]
+        results[units] = {
+            "energy_mae_kcal_per_mol": energy_mae_kcal_per_mol,
+            "forces_mae_kcal_per_mol_per_angstrom": forces_mae_kcal_per_mol_per_angstrom
+        }
+    # Combine results into a single DataFrame with the units as columns and the two metrics as rows
+    combined_results = pd.DataFrame({
+        "units_trained_on": unit_systems,
+        "energy_mae_kcal_per_mol": [results[units]["energy_mae_kcal_per_mol"].mean() for units in unit_systems],
+        "forces_mae_kcal_per_mol_per_angstrom": [results[units]["forces_mae_kcal_per_mol_per_angstrom"].mean() for units in unit_systems]
+    })
+    # transpose the DataFrame to have metrics as rows and units as columns
+    combined_results = combined_results.set_index("units_trained_on").T
+    logger.info(f"Combined test metrics:\n{combined_results}")
+    # Save the combined results to a CSV file
+    trajectory_dir = trajectory_dir.replace("/", "_")
+    output_file = os.path.join(path_to_runs, f"test_metrics_{trajectory_dir}_{model_dir}_fold_{fold}.csv")
+    combined_results.to_csv(output_file)
+    logger.info(f"Combined test metrics saved to {output_file}")
 
 
 if __name__ == "__main__":

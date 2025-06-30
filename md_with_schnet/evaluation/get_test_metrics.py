@@ -19,7 +19,7 @@ BATCH_SIZE = 1
 
 # Example command to run the script from within code directory:
 """
-screen -dmS get_test_metrics sh -c 'python -m md_with_schnet.training_and_inference.get_test_metrics -mdir epochs_1000_bs_100_lr_0.0001_seed_42 --units angstrom_kcal_per_mol_fs; exec bash'
+python -m md_with_schnet.evaluation.get_test_metrics -mdir epochs_1000_bs_100_lr_0.0001_seed_42 --units angstrom_kcal_per_mol_fs
 """
 
 

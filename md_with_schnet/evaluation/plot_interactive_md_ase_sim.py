@@ -7,6 +7,7 @@ from omegaconf import DictConfig
 
 
 from md_with_schnet.setup_logger import setup_logger
+from md_with_schnet.utils import load_config
 from md_with_schnet.training_and_inference.inference_with_ase import update_config_with_train_config
 
 # for interactive plotting
@@ -520,14 +521,12 @@ def create_interactive_rolling_corr_plot(rolling_data: dict, window_sizes: list,
 
 def main(trajectory_dir: str, model_dir: str, units: str, simulation_name: str, n_samples: int, first_sample: int):
     ####################### 1) Compose the config ###########################
-    with initialize(config_path=f"../conf", job_name="inference", version_base="1.1"):
-        cfg: DictConfig = compose(config_name="inference_config")
+    cfg = load_config(f"training_and_inference/conf", "inference_config", "inference")
 
     # use training config to update the inference config
     model_dir = os.path.join(units, trajectory_dir, model_dir)
-    train_cfg_path = os.path.join("runs", model_dir, "tensorboard/default/version_0")
-    with initialize(config_path=train_cfg_path, job_name="train", version_base="1.1"):
-        cfg_train: DictConfig = compose(config_name="hparams.yaml")
+    train_cfg_path = os.path.join("training_and_inference/runs", model_dir, "tensorboard/default/version_0")
+    cfg_train = load_config(train_cfg_path, "hparams", "train")
     cfg = update_config_with_train_config(cfg, cfg_train)
 
     ####################### 2) Prepare Data and Paths #########################
@@ -560,7 +559,7 @@ def main(trajectory_dir: str, model_dir: str, units: str, simulation_name: str, 
     
     ####################### 3) Make interactive Plots #########################
     properties, y_labels = prepare_properties_data(log_data)
-    plot_dir = os.path.join("md_with_schnet/training_and_inference/plots", model_dir, simulation_name)
+    plot_dir = os.path.join("md_with_schnet/plots", model_dir, simulation_name)
     # Ensure the plot directory exists
     os.makedirs(plot_dir, exist_ok=True)
     logger.debug(f"Plot directory: {plot_dir}")
@@ -601,89 +600,3 @@ if __name__ == "__main__":
     main(**args)
 
 
-# code for non interactive plotting
-# # plot potential energies from xtb and nn
-# set_plotting_config(fontsize=10, aspect_ratio=468/525, width_fraction=1)
-# fig, axes = plt.subplots(3) 
-# axes[0].plot(time_steps, xtb_e_tot, label='XTB Total Energy', color='green')
-# axes[0].plot(time_steps, nn_e_tot, label='NN Total Energy', color='red')
-# axes[0].set_xlabel('Time [ps]')
-# axes[0].set_ylabel('Total Energy [eV]')
-# axes[0].set_title('Total Energy Comparison')
-# axes[0].legend()
-# axes[1].plot(time_steps, xtb_e_pot, label='XTB Potential Energy', color='cyan')
-# axes[1].plot(time_steps, nn_e_pot, label='NN Potential Energy', color='magenta')
-# axes[1].set_xlabel('Time [ps]')
-# axes[1].set_ylabel('Potential Energy [eV]')
-# axes[1].set_title('Potential Energy Comparison')
-# axes[1].legend()
-# axes[2].plot(time_steps, xtb_e_kin, label='XTB Kinetic Energy', color='purple')
-# axes[2].plot(time_steps, nn_e_kin, label='NN Kinetic Energy', color='brown')
-# axes[2].set_xlabel('Time [ps]')
-# axes[2].set_ylabel('Kinetic Energy [eV]')
-# axes[2].set_title('Kinetic Energy Comparison')
-# axes[2].legend()
-# plt.tight_layout()
-# plt.show()
-
-# # plot potential energies on twin axes
-# set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
-# fig, ax1 = plt.subplots()
-# ax1.plot(time_steps, xtb_e_pot, label='XTB Potential Energy', color='green')
-# ax2 = ax1.twinx()  # create a twin Axes sharing the x-axis
-# ax2.plot(time_steps, nn_e_pot, label='NN Potential Energy', color='red')
-# ax1.set_xlabel('Time [ps]')
-# ax1.set_ylabel('XTB Potential Energy [eV]', color='green')
-# ax2.set_ylabel('NN Potential Energy [eV]', color='red')
-# ax1.set_title('Potential Energy Comparison')
-# ax1.tick_params(axis='y', labelcolor='green')
-# ax2.tick_params(axis='y', labelcolor='red')
-# # Combine legends from both axes
-# lines, labels = ax1.get_legend_handles_labels()
-# lines2, labels2 = ax2.get_legend_handles_labels()
-# ax1.legend(lines + lines2, labels + labels2, loc='upper left')
-# plt.tight_layout()
-# plt.show()
-
-# # compute rolling correlation with pandas
-# xtb_df = pd.DataFrame({
-#     'time': time_steps,
-#     'e_pot': xtb_e_pot,
-#     'e_kin': xtb_e_kin,
-#     'temp': xtb_temp
-# })
-# nn_df = pd.DataFrame({
-#     'time': time_steps,
-#     'e_pot': nn_e_pot,
-#     'e_kin': nn_e_kin,
-#     'temp': nn_temp
-# })
-# # compute rolling correlation with a window of 100
-# window_sizes = [100, 250, 500]
-# # take first four colors from the default matplotlib color cycle
-# colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][:len(window_sizes)]
-
-# xtb_nn_corrs = []
-# xtb_nn_time = []
-# for window_size in window_sizes:
-#     xtb_nn_corr = xtb_df.rolling(window=window_size).corr(nn_df)
-#     xtb_nn_corr = xtb_nn_corr.dropna()
-#     xtb_nn_corrs.append(xtb_nn_corr)
-#     # new time steps = time steps - window_size + 1
-#     xtb_nn_time.append(xtb_df['time'][:-(window_size-1)]) 
-#     logger.debug(f"XTB correlation shape: {xtb_nn_corr.shape}")
-
-# # plot the rolling correlation
-# set_plotting_config(fontsize=10, aspect_ratio=8/4, width_fraction=1)
-# plt.figure()
-# for i, window_size in enumerate(window_sizes):
-#     xtb_nn_corr = xtb_nn_corrs[i]
-#     xtb_nn_time_i = xtb_nn_time[i]
-#     xtb_nn_time_i = xtb_nn_time[i]
-#     plt.plot(xtb_nn_time_i, xtb_nn_corr['e_pot'], label=f'Window Size {window_size}', color=colors[i])
-# plt.xlabel('Time [ps]')
-# plt.ylabel('Rolling Correlation')
-# plt.title('Rolling Correlation between XTB and NN Potential Energies')
-# plt.legend()
-# plt.tight_layout()
-# plt.show()
