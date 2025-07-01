@@ -4,6 +4,8 @@ import torch
 import pytorch_lightning as pl
 import numpy as np
 import pandas as pd
+import torch.multiprocessing as mp
+mp.set_sharing_strategy('file_system') # to avoid problems with num_workers > 0
 
 from ase import Atoms
 from xtb_ase.calculator import XTB
@@ -19,7 +21,7 @@ BATCH_SIZE = 1
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.evaluation.get_test_metrics -mdir epochs_1000_bs_100_lr_0.0001_seed_42 --units angstrom_kcal_per_mol_fs
+python -i -m md_with_schnet.evaluation.get_test_metrics -mdir epochs_1000_bs_100_lr_0.0001_flw_389830.46_elw_3937.68_seed_42 --units angstrom_hartree_fs
 """
 
 
@@ -95,33 +97,85 @@ def update_config(cfg: DictConfig, ase_unit_names: dict, run_path: str, num_work
 
     return cfg
 
-def compute_metrics_for_neural_net(cfg: DictConfig, datamodule: pl.LightningDataModule, model: torch.nn.Module):
-    """ Compute metrics for the neural network model on the test data.
+def collect_predictions_and_ground_truths(cfg: DictConfig, datamodule: pl.LightningDataModule, model: torch.nn.Module):
+    """ Collect predictions and ground truths for energy and forces from the neural network model on the test data.
     Args:
         cfg (DictConfig): Configuration containing model and data parameters.
-        nn_datamodule: Data module containing the test data.
+        datamodule: Data module containing the test data.
         model: The trained neural network model.
     Returns:
-        tuple: Mean Absolute Error (MAE) for forces and energy.
+        dict: A dictionary containing predictions and ground truths for energy and forces.
     """
-    forces_mae = energy_mae = 0
-    for batch in tqdm(datamodule.test_dataloader(), desc="Evaluating model on test data"): 
-        e_gt = batch[cfg.globals.energy_key].numpy()
-        f_gt = batch[cfg.globals.forces_key].numpy()
-        # forward pass
+    results = {
+        "predictions": {"energy": [], "forces": []}, 
+        "ground_truths": {"energy": [], "forces": []}
+        }
+    for batch in tqdm(datamodule, desc="Evaluating model on test data"): 
+        e_gt = batch[cfg.globals.energy_key].cpu().numpy()
+        f_gt = batch[cfg.globals.forces_key].cpu().numpy()
+        # forward pass (gradients needed for forces)
         output = model(batch)
-        # enegry and forces required grads -> detach them
-        e_pred = output[cfg.globals.energy_key].detach().numpy()
-        f_pred = output[cfg.globals.forces_key].detach().numpy()
-        # compute metrics
-        forces_mae += get_batch_mae(f_pred, f_gt)
-        energy_mae += get_batch_mae(e_pred, e_gt)
- 
-    forces_mae, energy_mae = average_over_batches(datamodule, forces_mae, energy_mae)
+        # energy and forces required grads -> detach them
+        e_pred = output[cfg.globals.energy_key].detach().cpu().numpy()
+        f_pred = output[cfg.globals.forces_key].detach().cpu().numpy()
+        # store predictions and ground truths
+        results["predictions"]["energy"].append(e_pred)
+        results["predictions"]["forces"].append(f_pred)
+        results["ground_truths"]["energy"].append(e_gt)
+        results["ground_truths"]["forces"].append(f_gt)
 
-    return forces_mae, energy_mae
+    return results
 
+def transform_predictions_and_ground_truths_to_numpy(preds_and_gts: dict, nr_atoms: int) -> dict:
+    """ Transform predictions and ground truths from lists to numpy arrays.
+    Args:
+        preds_and_gts (dict): A dictionary containing predictions and ground truths for energy and forces.
+        nr_atoms (int): Number of atoms in each sample.
+    Returns:
+        dict: A dictionary containing predictions and ground truths as numpy arrays.
+    """
+    transformed = {
+        "predictions": {
+            "energy": np.concatenate(preds_and_gts["predictions"]["energy"]),
+            "forces": np.concatenate(preds_and_gts["predictions"]["forces"]).reshape(-1, nr_atoms, 3)  
+        },
+        "ground_truths": {
+            "energy": np.concatenate(preds_and_gts["ground_truths"]["energy"]),
+            "forces": np.concatenate(preds_and_gts["ground_truths"]["forces"]).reshape(-1, nr_atoms, 3)
+        }
+    }
+    logger.debug(f"Transformed predictions shape: {transformed['predictions']['energy'].shape}, {transformed['predictions']['forces'].shape}")
+    logger.debug(f"Transformed ground truths shape: {transformed['ground_truths']['energy'].shape}, {transformed['ground_truths']['forces'].shape}")
+    return transformed
 
+def check_shapes(preds_and_gts: dict, nr_samples: int):
+    """ Check the shapes of predictions and ground truths.
+    Args:
+        preds_and_gts (dict): A dictionary containing predictions and ground truths for energy and forces.
+        num_samples (int): Number of samples to check.
+    """
+    assert preds_and_gts["predictions"]["energy"].shape[0] == nr_samples, \
+        f"Predicted energies shape mismatch: {preds_and_gts['predictions']['energy'].shape[0]} != {nr_samples}"
+    assert preds_and_gts["predictions"]["forces"].shape[0] == nr_samples, \
+        f"Predicted forces shape mismatch: {preds_and_gts['predictions']['forces'].shape[0]} != {nr_samples}"
+    assert preds_and_gts["ground_truths"]["energy"].shape[0] == nr_samples, \
+        f"Ground truth energies shape mismatch: {preds_and_gts['ground_truths']['energy'].shape[0]} != {nr_samples}"
+    assert preds_and_gts["ground_truths"]["forces"].shape[0] == nr_samples, \
+        f"Ground truth forces shape mismatch: {preds_and_gts['ground_truths']['forces'].shape[0]} != {nr_samples}"
+
+def compute_mae_with_std_error(preds_and_gts: dict, property: str) -> tuple:
+    """ Compute Mean Absolute Error (MAE) and its standard error for a given property.
+    Args:
+        preds_and_gts (dict): A dictionary containing predictions and ground truths for energy and forces.
+        property (str): The property to compute the metrics for ("energy" or "forces").
+    Returns:
+        tuple: Mean Absolute Error (MAE) and its standard error for the specified property.
+    """
+    abs_diff = np.abs(preds_and_gts["predictions"][property] - preds_and_gts["ground_truths"][property])
+    mae = np.mean(abs_diff)
+    mae_std_error = np.std(abs_diff) / np.sqrt(len(abs_diff))  # Standard error of the mean
+
+    return mae, mae_std_error
 
 def compute_metrics_for_xtb(cfg: DictConfig, datamodule: pl.LightningDataModule):
     """ Compute metrics for the XTB model on the test data.
@@ -203,46 +257,67 @@ def main(trajectory_dir: str, units: str, model_dir: str, fold: int, seed: int, 
     split_file = get_split_path(data_prefix, trajectory_dir, fold)
     path_to_db = os.path.join(data_prefix, trajectory_dir, f"md_trajectory_{units}.db")
     
-    datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file)
+    datamodule = setup_datamodule(data_cfg=cfg.org_data, datapath=path_to_db, split_file=split_file).test_dataloader()
+    len_test = len(datamodule.dataset)
+    nr_atoms = datamodule.dataset[0]["_positions"].shape[0]
+    logger.info(f"Number of test samples: {len_test}")
+    logger.info(f"Number of atoms in each sample: {nr_atoms}")
     
-    ####################### 3) Evaluate model on test data ##############################    
+    ####################### 3) Collect predictions and ground truths of the test dataset ##############################    
     model = load_model(cfg.globals.model_path, device="cpu")
     model.eval()
 
-    nn_forces_mae, nn_energy_mae = compute_metrics_for_neural_net(cfg, datamodule, model)
+    preds_and_gts = collect_predictions_and_ground_truths(cfg, datamodule, model)
+    preds_and_gts = transform_predictions_and_ground_truths_to_numpy(preds_and_gts, nr_atoms)
+    check_shapes(preds_and_gts, len_test)
+
+    ######################## 4) Compute metrics  ##############################
+    logger.info("Computing metrics for the neural network model...")
+    nn_energy_mae, nn_energy_mae_std_err = compute_mae_with_std_error(preds_and_gts, "energy")
+    nn_forces_mae, nn_forces_mae_std_err = compute_mae_with_std_error(preds_and_gts, "forces")
+
     if compute_xtb:
         xtb_forces_mae, xtb_energy_mae = compute_metrics_for_xtb(cfg, datamodule)
         logger.info(f"Test metrics for XTB:")
         logger.info(f"Energy MAE: {xtb_energy_mae:.6f} eV")
         logger.info(f"Forces MAE: {xtb_forces_mae:.6f} eV/Angstrom")
 
-    # transform nn metrics to ase units (keep in mind which metric was used)
-    ase_energy_unit = "ev"
-    ase_forces_unit = "ev/angstrom"
+    ######################### 5) Converts metrics to internal ASE units and kcal/mol ##############################
+    ASE_ENERGY_UNIT = "ev"
+    ASE_FORCE_UNIT = "ev/angstrom"
 
     model_energy_unit = model_units['energy'].lower()
     model_forces_unit = model_units['forces'].lower()
     logger.info(f"Model energy unit: {model_energy_unit}, Model forces unit: {model_forces_unit}")
-    logger.info(f"ASE energy unit: {ase_energy_unit}, ASE forces unit: {ase_forces_unit}")
+    logger.info(f"ASE energy unit: {ASE_ENERGY_UNIT}, ASE forces unit: {ASE_FORCE_UNIT}")
 
-    nn_energy_mae = convert_energies(nn_energy_mae, model_energy_unit, ase_energy_unit)
-    nn_forces_mae = convert_forces(nn_forces_mae, model_forces_unit, ase_forces_unit)
-    nn_energy_mae_kcal = convert_energies(nn_energy_mae, ase_energy_unit, 'kcal/mol')
-    nn_forces_mae_kcal = convert_forces(nn_forces_mae, ase_forces_unit, 'kcal/mol/angstrom')
+    nn_energy_mae = convert_energies(nn_energy_mae, model_energy_unit, ASE_ENERGY_UNIT)
+    nn_energy_mae_std_err = convert_energies(nn_energy_mae_std_err, model_energy_unit, ASE_ENERGY_UNIT)
+    nn_forces_mae = convert_forces(nn_forces_mae, model_forces_unit, ASE_FORCE_UNIT)
+    nn_forces_mae_std_err = convert_forces(nn_forces_mae_std_err, model_forces_unit, ASE_FORCE_UNIT)
+    nn_energy_mae_kcal = convert_energies(nn_energy_mae, ASE_ENERGY_UNIT, 'kcal/mol')
+    nn_energy_mae_std_err_kcal = convert_energies(nn_energy_mae_std_err, ASE_ENERGY_UNIT, 'kcal/mol')
+    nn_forces_mae_kcal = convert_forces(nn_forces_mae, ASE_FORCE_UNIT, 'kcal/mol/angstrom')
+    nn_forces_mae_std_err_kcal = convert_forces(nn_forces_mae_std_err, ASE_FORCE_UNIT, 'kcal/mol/angstrom')
 
+    ######################### 6) Log metrics and save them to a csv file ##############################
     # log energies in ev/angstrom and kcal/mol
     logger.info(f"Test metrics for nn:")
-    logger.info(f"Energy MAE: {nn_energy_mae:.6f} eV")
-    logger.info(f"Forces MAE: {nn_forces_mae:.6f} eV/Angstrom")
-    logger.info(f"Energy MAE: {nn_energy_mae_kcal:.6f} kcal/mol")
-    logger.info(f"Forces MAE: {nn_forces_mae_kcal:.6f} kcal/mol/Angstrom")
+    logger.info(f"Energy MAE: {nn_energy_mae:.6f} +/- {nn_energy_mae_std_err:.6f} eV")
+    logger.info(f"Forces MAE: {nn_forces_mae:.6f} +/- {nn_forces_mae_std_err:.6f} eV/Angstrom")
+    logger.info(f"Energy MAE: {nn_energy_mae_kcal:.6f} +/- {nn_energy_mae_std_err_kcal:.6f} kcal/mol")
+    logger.info(f"Forces MAE: {nn_forces_mae_kcal:.6f} +/- {nn_forces_mae_std_err_kcal:.6f} kcal/mol/Angstrom")
 
     # Save the metrics to a csv file
     results = {
-        f"energy_mae_{ase_energy_unit}": nn_energy_mae,
-        f"forces_mae_{ase_forces_unit.replace("/", "_per_")}": nn_forces_mae,
+        f"energy_mae_{ASE_ENERGY_UNIT}": nn_energy_mae,
+        f"energy_mae_std_err_{ASE_ENERGY_UNIT}": nn_energy_mae_std_err,
+        f"forces_mae_{ASE_FORCE_UNIT.replace("/", "_per_")}": nn_forces_mae,
+        f"forces_mae_std_err_{ASE_FORCE_UNIT.replace("/", "_per_")}": nn_forces_mae_std_err,
         f"energy_mae_kcal_per_mol": nn_energy_mae_kcal,
-        f"forces_mae_kcal_per_mol_per_angstrom": nn_forces_mae_kcal
+        f"energy_mae_std_err_kcal_per_mol": nn_energy_mae_std_err_kcal,
+        f"forces_mae_kcal_per_mol_per_angstrom": nn_forces_mae_kcal,
+        f"forces_mae_std_err_kcal_per_mol_per_angstrom": nn_forces_mae_std_err_kcal
     }
     metrics_file = os.path.join(model_dir_path, f"test_metrics_fold_{fold}.csv")
     df = pd.DataFrame([results])

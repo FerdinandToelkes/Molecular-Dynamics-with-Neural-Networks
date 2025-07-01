@@ -10,11 +10,14 @@ from ase import units as ase_units
 BOHR_TO_ANGSTROM = ase_units.Bohr  # 1 Bohr = 0.529177210544 Å
 HARTREE_TO_KCAL_PER_MOL = ase_units.Hartree * ase_units.mol / ase_units.kcal  # 1 Hartree = 627.5094740631 kcal/mol
 HARTREE_TO_EV = ase_units.Hartree # 1 eV = 27.211386245988 Hartree
+KCAL_PER_MOL_TO_EV = ase_units.kcal / ase_units.mol  # 1 kcal/mol = 0.0433641 eV
+
 AUT_TO_FS = ase_units._aut * 1e15 # 1 AUT = 2.4188843265864e-2 fs
+AUT_TO_PS = AUT_TO_FS * 1e-3  # 1 AUT = 2.4188843265864e-5 ps
 AUT_TO_S = ase_units._aut * 1e-15  # 1 AUT = 2.4188843265864e-17 s
 FS_TO_ASE_TIME = ase_units.fs
 
-KCAL_PER_MOL_TO_EV = ase_units.kcal / ase_units.mol  # 1 kcal/mol = 0.0433641 eV
+
 
 
 # Tolerance for floating point comparison
@@ -23,9 +26,12 @@ FLOAT_TOL = 1e-6
 assert abs(BOHR_TO_ANGSTROM - 0.529177210544) < FLOAT_TOL, "BOHR_TO_ANGSTROM is not set correctly"
 assert abs(HARTREE_TO_KCAL_PER_MOL - 627.5094740631) < FLOAT_TOL, "HARTREE_TO_KCAL_PER_MOL is not set correctly"
 assert abs(HARTREE_TO_EV - 27.211386245988) < FLOAT_TOL, "HARTREE_TO_EV is not set correctly"
-assert abs(AUT_TO_FS - 2.4188843265864e-2) < FLOAT_TOL, "AUT_TO_FS is not set correctly"
-assert abs(AUT_TO_S - 2.4188843265864e-17) < FLOAT_TOL, "AUT_TO_S is not set correctly"
 assert abs(KCAL_PER_MOL_TO_EV - 0.0433641) < FLOAT_TOL, "KCAL_PER_MOL_TO_EV is not set correctly"
+    
+assert abs(AUT_TO_FS - 2.4188843265864e-2) < FLOAT_TOL, "AUT_TO_FS is not set correctly"
+assert abs(AUT_TO_PS - 2.4188843265864e-5) < FLOAT_TOL, "AUT_TO_PS is not set correctly"
+assert abs(AUT_TO_S - 2.4188843265864e-17) < FLOAT_TOL, "AUT_TO_S is not set correctly"
+
 
 
 def convert_energies(energies: np.ndarray | torch.Tensor, from_units: str, to_units: str) -> np.ndarray | torch.Tensor:
@@ -164,6 +170,10 @@ def convert_time(time: float, from_units: str, to_units: str) -> float:
         return time * AUT_TO_S
     elif from_units == "s" and to_units == "aut":
         return time / AUT_TO_S
+    elif from_units == "aut" and to_units == "ps":
+        return time * AUT_TO_PS
+    elif from_units == "ps" and to_units == "aut":
+        return time / AUT_TO_PS
     elif from_units == "fs" and to_units == "ase_time":
         return time * FS_TO_ASE_TIME
     elif from_units == "ase_time" and to_units == "fs":

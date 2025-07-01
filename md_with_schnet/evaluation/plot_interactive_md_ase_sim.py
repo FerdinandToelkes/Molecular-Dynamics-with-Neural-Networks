@@ -2,10 +2,6 @@ import os
 import argparse
 import numpy as np
 
-from hydra import initialize, compose
-from omegaconf import DictConfig
-
-
 from md_with_schnet.setup_logger import setup_logger
 from md_with_schnet.utils import load_config
 from md_with_schnet.training_and_inference.inference_with_ase import update_config_with_train_config
@@ -21,7 +17,7 @@ logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.evaluation.plot_interactive_md_ase_sim --model_dir epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 --n_samples 100 --units angstrom_kcal_per_mol_fs
+python -m md_with_schnet.evaluation.plot_interactive_md_ase_sim --model_dir epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 --units angstrom_kcal_per_mol_fs
 """
 
 def parse_args() -> dict:
@@ -37,7 +33,7 @@ def parse_args() -> dict:
     parser.add_argument("--units", type=str, default="angstrom_kcal_per_mol_fs", choices=["angstrom_kcal_per_mol_fs", "angstrom_ev_fs", "angstrom_hartree_fs", "bohr_hartree_aut"], help="Units for the input data (default: angstrom_kcal_per_mol_fs).")
     parser.add_argument("-sn", "--simulation_name", type=str, default="md_sim_steps_10000_time_step_0.5_seed_42", help="Name of the MD simulation (default: md_sim_steps_2000_time_step_0.5_seed_42)")
     # analysis setup
-    parser.add_argument("-ns", "--n_samples", type=int, default=100, help="Number of samples to analyze (default: 1000)")
+    parser.add_argument("-ns", "--n_samples", type=int, default=-1, help="Number of samples to analyze (default: -1). If set to a negative number, all samples will be analyzed.")
     parser.add_argument("-fs", "--first_sample", type=int, default=0, help="First sample to analyze (default: 0)")
     return vars(parser.parse_args())
 
@@ -550,8 +546,12 @@ def main(trajectory_dir: str, model_dir: str, units: str, simulation_name: str, 
     # take first n entries for plotting
     if n_samples + first_sample > xtb_data.shape[0]:
         raise ValueError(f"Requested n_samples ({n_samples}) + first_sample ({first_sample}) exceeds available data length ({xtb_data.shape[0]}).")
-    xtb_data = xtb_data[first_sample:first_sample + n_samples, :]  # time[ps], Etot, Epot, Ekin[eV], T[K]
-    nn_data = nn_data[first_sample:first_sample + n_samples, :]  # time[ps], Etot, Epot, Ekin[eV], T[K]
+    if n_samples > 0:
+        xtb_data = xtb_data[first_sample:first_sample + n_samples, :]  # time[ps], Etot, Epot, Ekin[eV], T[K]
+        nn_data = nn_data[first_sample:first_sample + n_samples, :]  # time[ps], Etot, Epot, Ekin[eV], T[K]
+    else:
+        xtb_data = xtb_data[first_sample:, :]
+        nn_data = nn_data[first_sample:, :]  # time[ps], Etot, Epot, Ekin[eV], T[K]
 
     log_data = get_data_dict(xtb_data, nn_data)
     logger.debug(f"Log data keys: {log_data.keys()}")

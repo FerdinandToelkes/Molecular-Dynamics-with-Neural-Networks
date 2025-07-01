@@ -19,7 +19,7 @@ from md_with_schnet.units import convert_time, convert_velocities, get_ase_units
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.training_and_inference.inference_with_ase -mdir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 --units angstrom_kcal_per_mol_fs --md_steps 10000 --time_step 0.5 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m md_with_schnet.training_and_inference.inference_with_ase -mdir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_flw_389830.46_elw_3937.68_seed_42 --units angstrom_kcal_per_mol_fs --md_steps 10000 --time_step 0.5 ; exec bash'
 """
 
 

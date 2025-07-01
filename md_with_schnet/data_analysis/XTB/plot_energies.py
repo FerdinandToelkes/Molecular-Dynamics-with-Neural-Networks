@@ -9,7 +9,7 @@ from md_with_schnet.utils import set_plotting_config, set_data_prefix
 
 logger = setup_logger(logging_level_str="debug")
 
-# Script to generate plots comparing the different energies (potential etc.).
+# Script to generate plots comparing the different energies (compare with paper from Jesús).
 # Example command to run the script from within code directory:
 """
 python -m md_with_schnet.data_analysis.XTB.plot_energies --trajectory_dir MOTOR_MD_XTB/T300_1 --show_plots

@@ -51,26 +51,39 @@ def main(trajectory_dir: str, model_dir: str, fold: int) -> None:
         
         df = pd.read_csv(metrics_file)
         # only take values for kcal and kcal/mol
-        energy_mae_kcal_per_mol = df["energy_mae_kcal_per_mol"]
-        forces_mae_kcal_per_mol_per_angstrom = df["forces_mae_kcal_per_mol_per_angstrom"]
         results[units] = {
-            "energy_mae_kcal_per_mol": energy_mae_kcal_per_mol,
-            "forces_mae_kcal_per_mol_per_angstrom": forces_mae_kcal_per_mol_per_angstrom
+            "energy_mae_kcal_per_mol": df["energy_mae_kcal_per_mol"],
+            "energy_mae_std_err_kcal_per_mol": df["energy_mae_std_err_kcal_per_mol"],
+            "forces_mae_kcal_per_mol_per_angstrom": df["forces_mae_kcal_per_mol_per_angstrom"],
+            "forces_mae_std_err_kcal_per_mol_per_angstrom": df["forces_mae_std_err_kcal_per_mol_per_angstrom"] 
         }
     # Combine results into a single DataFrame with the units as columns and the two metrics as rows
     combined_results = pd.DataFrame({
         "units_trained_on": unit_systems,
         "energy_mae_kcal_per_mol": [results[units]["energy_mae_kcal_per_mol"].mean() for units in unit_systems],
-        "forces_mae_kcal_per_mol_per_angstrom": [results[units]["forces_mae_kcal_per_mol_per_angstrom"].mean() for units in unit_systems]
+        "energy_mae_std_err_kcal_per_mol": [results[units]["energy_mae_std_err_kcal_per_mol"].mean() for units in unit_systems],
+        "forces_mae_kcal_per_mol_per_angstrom": [results[units]["forces_mae_kcal_per_mol_per_angstrom"].mean() for units in unit_systems],
+        "forces_mae_std_err_kcal_per_mol_per_angstrom": [results[units]["forces_mae_std_err_kcal_per_mol_per_angstrom"].mean() for units in unit_systems]
     })
     # transpose the DataFrame to have metrics as rows and units as columns
     combined_results = combined_results.set_index("units_trained_on").T
     logger.info(f"Combined test metrics:\n{combined_results}")
+    
     # Save the combined results to a CSV file
     trajectory_dir = trajectory_dir.replace("/", "_")
-    output_file = os.path.join(path_to_runs, f"test_metrics_{trajectory_dir}_{model_dir}_fold_{fold}.csv")
+    save_name = f"test_metrics_{trajectory_dir}_{model_dir}_fold_{fold}"
+    output_file = os.path.join(path_to_runs, f"{save_name}.csv")
     combined_results.to_csv(output_file)
     logger.info(f"Combined test metrics saved to {output_file}")
+
+    # Convert csv to LaTeX table format
+    latex_table = combined_results.to_latex(float_format="%.6f", column_format="lcccc", header=True, index=True)
+    latex_table = latex_table.replace("\\begin{tabular}{lcccc}", "\\begin{tabular}{lcccc} \\toprule")
+    latex_table = latex_table.replace("\\end{tabular}", "\\bottomrule \n\\end{tabular}")
+    latex_output_file = os.path.join(path_to_runs, f"{save_name}.tex")
+    with open(latex_output_file, "w") as f:
+        f.write(latex_table)
+    logger.info(f"Combined test metrics saved to {latex_output_file} in LaTeX format")
 
 
 if __name__ == "__main__":
