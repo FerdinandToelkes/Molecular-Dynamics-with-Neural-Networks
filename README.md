@@ -96,7 +96,7 @@ python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim \
 
 ## Data Overview
 
-The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the xTB software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms, and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four confirmations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) for more details on the data. The evolution of the dihedral angles for one of the simulations can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html).
+The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the xTB software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms, and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four confirmations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data. The evolution of the dihedral angles for one of the simulations can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html).
 
 ## Results
 

@@ -5,12 +5,6 @@ channels:
 
 dependencies:
   - python=3.12
-  # handled by schnetpack:
-  # - pytorch>=2.5.0
-  # - pytorch-lightning>=2.0.0
-  # - numpy>=2.0.0
-  # - hydra-core>=1.1.0
-  # - ase>=3.21
   - pip=25.0
 
   - pip:
@@ -18,11 +12,18 @@ dependencies:
       - seaborn==0.13.2
       - statsmodels==0.14.4
       - git+https://github.com/Quantum-Accelerators/xtb_ase.git
+      - fastatomstruct==1.4.2
 
   # other dependencies
-  # - xtb=0.0.1
   - xtb=6.6.0
   - plotly=6.1.1
   - mdanalysis=2.9.0
   - ipykernel=6.29.5 # for jupyter lab in vs code
+
+  # handled by schnetpack:
+  # - pytorch>=2.5.0
+  # - pytorch-lightning>=2.0.0
+  # - numpy>=2.0.0
+  # - hydra-core>=1.1.0
+  # - ase>=3.21
   

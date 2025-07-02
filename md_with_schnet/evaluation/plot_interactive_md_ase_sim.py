@@ -341,7 +341,7 @@ def create_interactive_window_scatter(xtb_prop: np.ndarray, nn_prop: np.ndarray,
     )
     # Save the figure to a file
     # too large to be displayed without additional configuration
-    #fig.write_html(f"{plot_dir}/interactive_window_scatter.html")
+    fig.write_html(f"{plot_dir}/interactive_window_scatter.html")
 
     fig.show()
 
@@ -349,14 +349,12 @@ def create_interactive_window_scatter(xtb_prop: np.ndarray, nn_prop: np.ndarray,
 def rolling_corr(a: np.ndarray, b: np.ndarray, window: int) -> np.ndarray:
     """
     Compute the rolling Pearson correlation between two 1D arrays.
-
-    Parameters:
-    - a (np.ndarray): First input array.
-    - b (np.ndarray): Second input array.
-    - window (int): Size of the rolling window.
-
+    Args
+        a (np.ndarray): First input array.
+        b (np.ndarray): Second input array.
+        window (int): Size of the rolling window.
     Returns:
-    - np.ndarray: Array of rolling correlation coefficients.
+        np.ndarray: Array of rolling correlation coefficients.
     """
     if len(a) != len(b):
         raise ValueError("Input arrays must have the same length.")
@@ -395,7 +393,7 @@ def compute_rolling_correlations(data: dict, window_sizes: list) -> dict:
     Compute rolling correlations between XTB and NN potential and kinetic energies for given window sizes.
     Args:
         data (dict): Dictionary containing XTB and NN properties with keys:
-        window_sizes (list of int): List of rolling‐window sizes.
+        window_sizes (list of int): List of rolling-window sizes.
     Returns:
         dict: Dictionary containing rolling correlation data for potential and kinetic energies.
     """    
