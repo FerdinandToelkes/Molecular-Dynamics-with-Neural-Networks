@@ -32,7 +32,7 @@ awk -v float='[+-]?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?' '
 
     # 2) Look for the first line of three *pure* numbers (no element symbol) after the velocities block.
     #    That first 3 number line is the "energy" line we want to SKIP, so we mark force_block_seen.
-    #    The *next* 3-number line is the start of the forces proper.
+    #    The *next* 3-number line is the start of the gradients proper.
     #    We match:
     #      optional space, number (possibly with E-notation), space, number, space, number, optional space, end-of-line
     #    and ensure theres no letter in the line.
@@ -42,8 +42,8 @@ awk -v float='[+-]?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?' '
             energy_line_seen = 1
         }
         else {
-            # this is a line in the forces block, so we print it
-            # $1,$2,$3 = fx,fy,fz
+            # this is a line in the gradients block, so we print it
+            # $1,$2,$3 = gx,gy,gz
             print $1, $2, $3
         }
         next
@@ -53,7 +53,7 @@ awk -v float='[+-]?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?' '
 
 
 # NOTES
-# the mdlog.i file has the following format: 1. block: coordinates (Bohr), 2. block: velocities (Bohr/t_au), 3. block: forces (Hartree/Bohr), e.g.:
+# the mdlog.i file has the following format: 1. block: coordinates (Bohr), 2. block: velocities (Bohr/t_au), 3. block: gradients (Hartree/Bohr), e.g.:
 
 # # AIMD log file
 # $log

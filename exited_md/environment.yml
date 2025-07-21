@@ -1,0 +1,27 @@
+name: spainn
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12 # spainn needs at least python>=3.10 (not as in the docs >=3.8)
+  - numpy
+  - scipy
+  - h5py
+  - six
+  - matplotlib
+  - python-dateutil
+  - pyyaml
+  - pyparsing
+  - kiwisolver
+  - cycler
+  - netcdf4
+  - hdf5
+  - h5utils
+  - gfortran
+  - gcc
+  - fftw
+  - pip
+  # other dependencies
+  - ipykernel=6.29.5 # for jupyter notebooks in vs code
+  - pandas=2.2.3
+  - seaborn=0.13.2
+  - plotly=6.2.0

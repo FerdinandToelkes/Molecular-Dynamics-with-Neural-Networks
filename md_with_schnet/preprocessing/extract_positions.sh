@@ -44,7 +44,7 @@ awk '
 
 
 # NOTES
-# the mdlog.i file has the following format: 1. block: coordinates (Bohr), 2. block: velocities (Bohr/t_au), 3. block: forces (Hartree/Bohr), e.g.:
+# the mdlog.i file has the following format: 1. block: coordinates (Bohr), 2. block: velocities (Bohr/t_au), 3. block: gradients (Hartree/Bohr), e.g.:
 
 # # AIMD log file
 # $log

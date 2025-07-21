@@ -15,7 +15,7 @@ KCAL_PER_MOL_TO_EV = ase_units.kcal / ase_units.mol  # 1 kcal/mol = 0.0433641 eV
 AUT_TO_FS = ase_units._aut * 1e15 # 1 AUT = 2.4188843265864e-2 fs
 AUT_TO_PS = AUT_TO_FS * 1e-3  # 1 AUT = 2.4188843265864e-5 ps
 AUT_TO_S = ase_units._aut * 1e-15  # 1 AUT = 2.4188843265864e-17 s
-FS_TO_ASE_TIME = ase_units.fs
+FS_TO_ASE_TIME = ase_units.fs # 0.09822694788464063
 
 
 

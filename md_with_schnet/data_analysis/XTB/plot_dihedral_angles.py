@@ -1,7 +1,6 @@
 import argparse
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 
 # for interactive plotting
 import plotly.graph_objects as go
