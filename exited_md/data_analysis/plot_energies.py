@@ -10,6 +10,7 @@ pio.renderers.default = 'browser'
 
 from md_with_schnet.setup_logger import setup_logger
 from md_with_schnet.utils import set_data_prefix
+from exited_md.preprocessing.extract_energies import read_ex_energies_file, convert_ex_energies_to_absolute
 
 
 logger = setup_logger(logging_level_str="debug")
@@ -31,21 +32,7 @@ def parse_args() -> dict:
     parser.add_argument("--nr_of_configs", type=int, default=-1, help="Number of configurations to use (default: -1). If negative, all available configurations will be used.")
     return vars(parser.parse_args())
 
-def read_three_energies(path):
-    energies = []
-    with open(path, 'r') as f:
-        for line in f:
-            if 'SCF energy =' in line:
-                # parse the SCF value
-                scf_str = line.split('SCF energy =')[-1].strip()
-                scf = float(scf_str)
-                
-                # read the next two lines, convert Fortran D→E
-                e1 = float(next(f).strip().replace('D', 'E'))
-                e2 = float(next(f).strip().replace('D', 'E'))
-                
-                energies.append([scf, e1, e2])
-    return np.array(energies)
+
 
 
 def create_interactive_energies_plot(energies: dict, index: np.ndarray, plot_dir: str, trajectory_dir: str):
@@ -118,10 +105,8 @@ def main(trajectory_dir: str, nr_of_configs: int):
     logger.debug(f"First 5 rows of energies:\n{energies[:5]}")
 
     path_to_ex_energies = os.path.join(data_prefix, 'ex_energies')
-    rel_ex_energies = read_three_energies(path_to_ex_energies) # S0, S1-S0, S2-S0
-    s1 = rel_ex_energies[:, 1] + rel_ex_energies[:, 0]  # S1 = S0 + (S1-S0)
-    s2 = rel_ex_energies[:, 2] + rel_ex_energies[:, 0]  # S2 = S0 + (S2-S0)
-    ex_energies = np.column_stack((rel_ex_energies[:, 0], s1, s2))  # S0, S1, S2
+    rel_ex_energies = read_ex_energies_file(path_to_ex_energies) # S0, S1-S0, S2-S0
+    ex_energies = convert_ex_energies_to_absolute(rel_ex_energies)  # S0, S1, S2
     logger.info(f"Loaded potential energies from {path_to_ex_energies}, shape: {ex_energies.shape}")
 
     if nr_of_configs > energies.shape[0]:

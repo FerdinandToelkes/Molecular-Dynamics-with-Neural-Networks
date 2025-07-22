@@ -73,8 +73,7 @@ def main(target_dir: str, computed_cycles: int, total_cycles: int, time_step: in
         s0_gradient_path = os.path.join(data_path, "extra_ground_state_calculations", geo_dir, "ground_state_gradients.txt")
         s1_gradient_path = os.path.join(data_path, geo_dir, "test", "gradient_ex")
         if not os.path.exists(active_gradient_path) or not os.path.exists(s0_gradient_path) or not os.path.exists(s1_gradient_path):
-            logger.warning(f"File {active_gradient_path} or {s0_gradient_path} or {s1_gradient_path} does not exist. Skipping {geo_dir}.")
-            continue
+            raise FileNotFoundError(f"File {active_gradient_path} or {s0_gradient_path} or {s1_gradient_path} does not exist. Skipping {geo_dir}.")
 
         # extract s0 gradients -> see (*) for explanation
         os.system(f"bash {command_path} {s0_gradient_path} 1 {last_exited_cycle} {time_step} >> {s0_output_path}")
