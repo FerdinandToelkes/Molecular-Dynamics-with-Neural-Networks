@@ -1,0 +1,104 @@
+- QMMM für Flüssigkeit wobei QM Teil mit SchNetPack
+- QM MM wie verbunden? Nicht kovalent -> Lennard Jones plus elektrostatisch
+- protein -> aktives Zentrum, peptidkette -> kovalent, teils MM teils QM 
+- active learning
+- single reference methoden (1 slater determinate) -> dissozoiert nicht richtig -> multireferenz
+- konische durchschneidungen
+
+- Nebenher: Viele XTB Berechnungen, für manche XTB configs genauere DFT Rechnungen
+    - trainiere NN um die Differenzen in Kräften und Positionen hervorzusagen
+    - ML Polisher für schnelle XTB Rechnungen
+    - Ist der besser als einfach nur NN auf die paar DFT Configs zu trainieren
+
+
+# T300_i
+- in NVT
+- The T300_1, T300_2 etc. are different conformations 
+-> look at angle beta to differentiate between P and M
+-> look at multiplot.dat (second angle) and the paper
+
+# xyz files:
+- coordinates in angstrom
+- time in au
+- energy in au
+
+# mdlog files:
+- coordinates in atomic units (1 Bohr \approx 0.529 A)
+- time in au
+- energy in au
+1. block: coordinates (Bohr)
+2. block: velocities (Bohr/t_au)
+3. block: gradients (Hartree/Bohr)
+
+# more on units:
+- underlying data: atomic units
+- SchNetPack intern:
+- internal ASE: eV and eV/Ang atomic mass and weird time unit (maybe atomic?)
+
+
+# commands:
+- "log2x > traj.xyz" - put all coordinates from log files into one full trajectory
+- "log2egy > energies.txt" - put energies (kinetic, potential, total, temperature) for all md steps into one file
+- "en" to enable any of the preinstalled software 
+
+- "scp -r tof54964@uni54:/loctmp/tof54964/* ." - Copy everything from uni54 to the current directory, has thus to be executed from uni38
+
+
+
+# On the fly:
+    - Run MD with XTB and train on every MD sample the neural net
+    - As error gets smaller, let the NN predict every n sample instead of XTB 
+    - Still learn NN on those samples predicted by XTB
+    - Increase n as the NN gets better
+
+- multi reference methode für konische Überschneidungen
+
+# MM
+    - NRMD
+    - Gromex
+    - Lammps
+    - Charm
+
+
+# Exited state data
+
+- run xtb trajectory with 40 au time steps
+- at regular intervals, take config, exite it and use TDDFT -> GEO folders
+
+## GEO_100000:
+    - Take config + velocities at t=100000
+    - Exite config to S1 state (S2 values are included -> if it comes too close but you set coupling to 0)
+    - At some point trajectory jumps back to S0
+    - Each GEO contains 3000 time steps
+    - If trajectory < 3000 steps -> get rid of it
+    - Can also contain several jumps per GEO
+    - Theory TDDFT PBE0 and FSSH
+
+## GEO_100000/test
+- RUN.dat: shows when you are in which state -> to test whether 3000 steps were made and to identify hop
+- control: 
+    - NACs for all steps for S0 and S1 transitions, i.e. d_01 (or d_10, where d_01 = -d_10)
+    - d_01 have dimension 48x3 (since derivative dependent on atomic positions)
+- gradient: contains all active gradients
+- gradient_ex: contains exited gradients starting from the point where the trajectory jumped to the ground state
+- ex_energies: contains energies s0, s1-s0 and s2-s0 for all configurations (two comment lines starting with '$')
+
+## units
+- mdlog file again in atomic units
+
+
+
+
+- take all gradients starting from hop_cycle to the end from gradient
+-> should yield same number of gradient blocks as there are entries in RUN.dat
+
+- script for running some checks on the extracted gradients:
+    - are there exactly 3000 entries?
+    - does the time increase each step the same amount?
+    - continuity, i.e. are there large differnces between absolute values between two steps
+
+- extract energies via log2egy and add a column for the s0 and s1 energies
+- note that the potential energy column should correspond to the active energy i.e. s0 or s1
+- if not than error
+
+- use the extract_positions script to extract positions for all GEO folders from mdlog files

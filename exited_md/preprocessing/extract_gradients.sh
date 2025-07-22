@@ -2,50 +2,71 @@
 #
 # extract_gradients.sh
 #
-# Usage: ./extract_gradients.sh gradient 40 >> gradients_au.txt
+# Usage: ./extract_gradients.sh input_file [first_cycle] [last_cycle] [time_step] >> gradients.txt
 
 # if the script is run with more than four arguments, print usage and exit
-if [ $# -gt 4 ]; then
+if [ $# -gt 4 ] || [ $# -lt 1 ]; then
     cat <<EOF
 This script extracts gradients from an AIMD log file.
-It accepts up to two optional arguments:
-    1. The first cycle to extract gradients from (default: 1)
-    2. The last cycle to extract gradients from (default: 3000)
-    3. The input file (default: 'gradient')
+It accepts up to four arguments, three of which are optional:
+    1. The input file to extract gradients from (required).
+    2. The first cycle to extract gradients from (default: 1)
+    3. The last cycle to extract gradients from (default: 3000)
     4. The time step in atomic units (au) (default: 40)
 
 The output will be printed to stdout.
 
-Usage: $0 [input_file] [time_step_in_au]
+Usage: $0 input_file [first_cycle] [last_cycle] [time_step]
 EOF
     exit 1
 fi
 
-# set default values for input file and time step
-first_cycle="${1:-1}" # optional third argument for the first cycle, default is 1
-last_cycle="${2:-3000}" # optional fourth argument for the last cycle, default is 3000
-input_file="${3:-gradient}"
+# set default values for all arguments except the first one
+input_file="${1}"
+first_cycle="${2:-1}" 
+last_cycle="${3:-3000}"
 time_step="${4:-40}"
 
 
 
 # double backslash to escape the backslash in the regex -> otherwise warning from awk
 # Allow fortrans-style scientific notation (e.g., -.5D-10) in addition to the standard float format.
-awk -v float='[+-]?[0-9]*(\\.[0-9]+)?([dDeE][+-]?[0-9]+)?' -v dt="$time_step" '
-    # 1) When we see the cycle line (e.g. "cycle =     24   ex. state energy = ..."), capture and print the corresponding time.
-    /^[[:space:]]*cycle[[:space:]]*=[[:space:]]*[0-9]+.*ex\. state energy/ {
+awk \
+    -v float='[+-]?[0-9]*(\\.[0-9]+)?([dDeE][+-]?[0-9]+)?' \
+    -v first_cycle="$first_cycle" \
+    -v last_cycle="$last_cycle" \
+    -v dt="$time_step" '
+
+    # Initialize a variable to control whether we are extracting gradients
+    # and to store the current time.
+    BEGIN { extract = 0 }
+
+
+    # 1) When we see the cycle line (e.g. "cycle =     24   ..."), capture and print the corresponding time.
+    /^[[:space:]]*cycle[[:space:]]*=[[:space:]]*[0-9]+.*/ {
         # use match group () to extract the cycle number
         match($0, /cycle[[:space:]]*=[[:space:]]*([0-9]+)/, m)
         # m[0] is the whole match, m[1] is the first group (the cycle number)
         current_cycle = m[1]
         # trim leading/trailing spaces
         gsub(/^ +| +$/, "", current_cycle)
-        current_time = (current_cycle - 1) * dt
-        printf "t= %s au\n", current_time
+
+        if (current_cycle >= first_cycle && current_cycle <= last_cycle) {
+            extract=1
+            current_time = (current_cycle - 1) * dt
+            printf "t= %s au\n", current_time 
+        }
+        else {
+            extract=0
+        }
         next
+        
     }
 
-    # 2) Look for the first line of three *pure* numbers (no element symbol) after the coordinates block.
+    # 2) If we are not extracting, skip the rest of the lines
+    extract==0 {next}
+
+    # 3) Look for the first line of three *pure* numbers (no element symbol) after the coordinates block.
     #    We match:
     #      optional space, number (possibly with E-notation), space, number, space, number, optional space, end-of-line
     #    and ensure theres no letter in the line.
@@ -54,9 +75,10 @@ awk -v float='[+-]?[0-9]*(\\.[0-9]+)?([dDeE][+-]?[0-9]+)?' -v dt="$time_step" '
         # this is a line in the gradients block, so we print it
         # $1,$2,$3 = gx,gy,gz
         print $1, $2, $3
-        # exit 0 # exit after processing the first gradients line
         next
     }
+    
+    
 
 ' "$input_file" 
 
