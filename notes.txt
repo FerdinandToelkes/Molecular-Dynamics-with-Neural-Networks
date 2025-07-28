@@ -87,18 +87,23 @@
 - mdlog file again in atomic units
 
 
+Possible Improvements
+- use double when using np.loadtxt in the prepare_tddft_data.py script instead of single float
 
 
-- take all gradients starting from hop_cycle to the end from gradient
--> should yield same number of gradient blocks as there are entries in RUN.dat
-
-- script for running some checks on the extracted gradients:
+- script for running some checks on all the extracted data:
     - are there exactly 3000 entries?
-    - does the time increase each step the same amount?
-    - continuity, i.e. are there large differnces between absolute values between two steps
+    - shapes should match
+    - 
 
-- extract energies via log2egy and add a column for the s0 and s1 energies
-- note that the potential energy column should correspond to the active energy i.e. s0 or s1
-- if not than error
+- check in which format the data needs to be -> notebook for inspecting CH2NH2+.db
+- prepare one directory (GEO_100000) similar as we did for SchNetPack and use convert tutorial from spainn
+- compare data with pragati
+- final goal: 
+    - split the data by directories, e.g. 20 GEO directories for training, 10 for validation and 10 for testing
+    - how can one tell spainn or schnetpack to use all data within a .db file for training and for validation?
+- prepare_tddft_data: 
+    - run checks
+    - 
 
-- use the extract_positions script to extract positions for all GEO folders from mdlog files
+

@@ -71,9 +71,9 @@ def read_excluded_directories(data_path: str) -> list:
         list: List of geometry directories that are missing.
     """
     excluded_directories = []
-    with open(os.path.join(data_path, "extra_ground_state_calculations", "excluded_directories.txt"), 'r') as f:
+    with open(os.path.join(data_path, "from_preprocessing_excluded_directories.txt"), 'r') as f:
         for line in f:
-            if line.strip() != "" and not line.startswith("#"):
+            if line.strip() != "" and not line.startswith("#"):               
                 # add the line to excluded_directories if it is not empty
                excluded_directories.append(line.strip())
     logger.debug(f"excluded_directories: {excluded_directories}")

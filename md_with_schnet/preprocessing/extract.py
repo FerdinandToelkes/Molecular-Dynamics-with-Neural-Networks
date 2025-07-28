@@ -10,7 +10,7 @@ from md_with_schnet.setup_logger import setup_logger
 python -m md_with_schnet.preprocessing.extract --property gradients --target_dir MOTOR_MD_XTB/T300_1
 """
 
-logger = setup_logger(logging_level_str="debug")
+logger = setup_logger(logging_level_str="info")
 
 def parse_args() -> dict:
     """ Parse command-line arguments. 
@@ -23,6 +23,35 @@ def parse_args() -> dict:
     parser.add_argument("-p", "--property", type=str, default="gradients", choices=["positions", "gradients", "velocities"], help="Property to extract from log files (default: gradients)")
     return vars(parser.parse_args())
 
+def get_sorted_mdlog_files(path_to_mdlog_files: str) -> list:
+    """
+    Get sorted list of mdlog files in the target directory.
+    Args:
+        path_to_mdlog_files (str): Path to the directory containing mdlog files.
+    Returns:
+        list: Sorted list of mdlog files.
+    """
+    log_files = os.listdir(path_to_mdlog_files)
+    log_files = [f for f in log_files if f.startswith("mdlog.")]
+    # sort log files by their number (after the dot)
+    log_files.sort(key=lambda x: int(x.split(".")[1]))
+    return log_files
+
+def extract_property_from_log_files(log_files: list, path_to_mdlog_files: str, command_path: str, output_path: str):
+    """
+    Extracts a property from log files and appends to output file.
+    Args:
+        log_files (list): List of log files to process.
+        path_to_mdlog_files (str): Path to the directory containing mdlog files.
+        command_path (str): Path to the bash script that extracts the property.
+        output_path (str): Path to the output file where the extracted property will be saved.
+    """
+    for log_file in log_files:
+        logger.debug(f"Processing {log_file}")
+        log_path = os.path.join(path_to_mdlog_files, log_file)
+
+        # execute bash script, e.g. extract_gradient.sh
+        os.system(f"bash {command_path} {log_path} >> {output_path}")
 
 def main(target_dir: str, property: str):
     """
@@ -32,45 +61,36 @@ def main(target_dir: str, property: str):
         property (str): Property to extract from log files. Can be "positions", "gradients" or "velocities".
     """
     # setup
-    data_path = os.path.join(set_data_prefix(), target_dir)
+    path_to_mdlog_files = os.path.join(set_data_prefix(), target_dir)
     command_path = os.path.expanduser(f'~/whk/code/md_with_schnet/preprocessing/extract_{property}.sh')
     if not os.path.exists(command_path):
-        logger.error(f"Command path {command_path} does not exist. Please check the path.")
         raise FileNotFoundError(f"Command path {command_path} does not exist. Please check the path.")
 
-    output_path = os.path.join(data_path, f"{property}.txt")
+    output_path = os.path.join(path_to_mdlog_files, f"{property}.txt")
     if os.path.exists(output_path):
         logger.debug(f"Removing old {property}.txt file")
         os.remove(output_path)
     
     # log some info
-    logger.debug(f"data_path: {data_path}")
+    logger.debug(f"path_to_mdlog_files: {path_to_mdlog_files}")
     logger.debug(f"command_path: {command_path}")
     logger.debug(f"output_path: {output_path}")
     
-    # list all files in data_path
-    log_files = os.listdir(data_path)
-    log_files = [f for f in log_files if f.startswith("mdlog.")]
+    # get all mdlog files in the target directory
+    log_files = get_sorted_mdlog_files(path_to_mdlog_files)
     if "T300_1" in target_dir:
         # remove mdlog.78 because its where the H atom breaks away
         logger.info("Removing mdlog.78 from log files since it is where an H atom breaks away")
         log_files = [f for f in log_files if not f.startswith("mdlog.78")]
-
-    # sort log files by their number (after the dot)
-    log_files.sort(key=lambda x: int(x.split(".")[1]))
     logger.debug(f"log_files: {log_files}")
 
     # touch the output file and add header
     with open(output_path, "w") as f:
-        f.write(f"# Extracted {property} from AIMD log files in {data_path}\n")
+        f.write(f"# Extracted {property} from AIMD log files in {path_to_mdlog_files}\n")
         f.write("# All properties are in atomic units\n")
 
-    for log_file in log_files:
-        logger.debug(f"Processing {log_file}")
-        log_path = os.path.join(data_path, log_file)
-        
-        # execute bash script extract_gradients.sh
-        os.system(f"bash {command_path} {log_path} >> {output_path}")
+    # extract the property from the log files
+    extract_property_from_log_files(log_files, path_to_mdlog_files, command_path, output_path)
     logger.info(f"Extracted {property} saved to {output_path}")
 
 if __name__ == "__main__":
