@@ -5,16 +5,17 @@ import pandas as pd
 
 from schnetpack.data import ASEAtomsData
 from ase import Atoms
-from ase.data import atomic_numbers as ase_atomic_numbers
+from ase.db import connect
 
-from md_with_schnet.units import convert_distances, convert_energies, convert_forces, convert_velocities, get_ase_unit_format
+from md_with_schnet.units import convert_distances, convert_energies, convert_forces, convert_velocities, convert_nacs, convert_smooth_nacs, get_ase_unit_format
 from md_with_schnet.utils import set_data_prefix
 from md_with_schnet.setup_logger import setup_logger
+from md_with_schnet.preprocessing.prepare_xtb_data import get_trajectory_from_txt_and_reshape, get_atomic_numbers_from_xyz, get_overview_of_dataset
 
 from exited_md.preprocessing.utils import prepare_last_exited_cycles
 
 
-logger = setup_logger(logging_level_str="debug")
+logger = setup_logger(logging_level_str="info")
 
 
 # Example command to run the script from within code directory:
@@ -23,9 +24,14 @@ python -m exited_md.preprocessing.prepare_tddft_data  --num_atoms 48 --position_
 """
 
 # Note: 
+# - SPaiNN needs the energies and forces to be in the following shapes:
+#   - energies: (1, N_states) 
+#   - forces: (N_atoms, N_states, R)
+#   - nacs: (N_atoms, N_couplings, R)
+#   with R=3, N_states=2 and N_couplings=1 for our case
 # - The last mdlog file contains one extra cycle (marked by $current) 
-# -> warning will be logged when extracting the positions and velocities
-# - just take the first n cycles, that are also in the energies.csv file (which does not contain this $current cycle)
+#   -> warning will be logged when extracting the positions and velocities
+#   -> just take the first n cycles, that are also in the energies.csv file (which does not contain this $current cycle)
 # - Note that we only have the velocities for the active state
 
 def parse_args() -> dict:
@@ -43,30 +49,6 @@ def parse_args() -> dict:
     parser.add_argument('--time_unit', type=str, default='fs', choices=['fs', 'aut'], help='Target unit for time to transform from atomic units to (default: fs)')
     return vars(parser.parse_args())
 
-def get_atomic_numbers_from_xyz(path: str, number_of_atoms: int, extra_lines: int) -> list:
-    """
-    Extract atomic symbols from a .xyz file and convert them to atomic numbers.
-    Args:
-        path (str): Path to the .xyz file.
-        number_of_atoms (int): Number of atoms in the system.
-        extra_lines (int): Number of extra lines in each coordinates block, e.g., header lines.
-    Returns:
-        list: List of atomic numbers.
-    """
-    with open(path, 'r') as file:
-        lines = file.readlines()
-        atom_lines = lines[extra_lines:extra_lines + number_of_atoms]  # Skip the first n lines
-        symbols = [line.split()[0] for line in atom_lines]
-    logger.debug(f'symbols: {symbols}')
-
-    # Convert symbols to atomic numbers
-    atomic_numbers = [ase_atomic_numbers[symbol] for symbol in symbols]
-    logger.debug(f'atomic_numbers: {atomic_numbers}')
-
-    if len(atomic_numbers) != number_of_atoms:
-        raise ValueError(f"Number of atomic_numbers extracted ({len(atomic_numbers)}) does not match the expected number of atoms ({number_of_atoms}).")
-    
-    return atomic_numbers
 
 def get_all_energies_from_csv(path: str) -> tuple:
     """
@@ -80,99 +62,221 @@ def get_all_energies_from_csv(path: str) -> tuple:
     s0_energies = df['S0'].values
     s1_energies = df['S1'].values
     number_of_samples = df.shape[0]
-    logger.debug(f's0_energies.shape: {s0_energies.shape}')
-    logger.debug(f's1_energies.shape: {s1_energies.shape}') 
+    assert s0_energies.shape == s1_energies.shape, "S0 and S1 energies must have the same shape"
     logger.debug(f'number_of_samples: {number_of_samples}')
     return s0_energies, s1_energies, number_of_samples
 
-def get_trajectory_from_txt_and_reshape(path: str, number_of_samples: int, 
-                                        num_atoms: int, usecols: tuple[int] = (1, 2, 3)) -> np.ndarray:
+def get_property_paths(data_prefix: str) -> dict:
     """
-    Load trajectory data from a .txt file and reshape it to the desired format.
+    Get paths to the necessary property files.
     Args:
-        path (str): Path to the .txt file containing trajectory data.
-        number_of_samples (int): Number of samples to align with.
-        num_atoms (int): Number of atoms in the system.
-        usecols (tuple[int]): Columns to use from the .txt file. Default is (1, 2, 3) which skips the element symbols.
+        data_prefix (str): Path to the directory containing the trajectory data.
     Returns:
-        np.ndarray: Reshaped trajectory data with shape (Nframes, Natoms, 3).
+        dict: Dictionary containing paths to the necessary property files.
     """
-    traj = np.loadtxt(path, usecols=usecols, comments=["#", "t="]) 
-    traj = traj.reshape(-1, num_atoms, 3)  # Shape: (Nframes, Natoms, 3)
-    traj = align_shapes(number_of_samples, traj)
-    return traj
+    property_paths = {
+        'traj': os.path.join(data_prefix, 'positions.txt'),
+        'energy': os.path.join(data_prefix, 'energies.csv'),
+        's0_grads': os.path.join(data_prefix, 's0_gradients.txt'),
+        's1_grads': os.path.join(data_prefix, 's1_gradients.txt'),
+        'nacs': os.path.join(data_prefix, 'nacs.txt'),
+        'velocities': os.path.join(data_prefix, 'velocities.txt')
+    }
+    # check if all necessary files exist
+    for key, path in property_paths.items():
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"File {path} does not exist. Please check the path and ensure the file is present.\n"
+            "Try running the extract scripts for the different properties.")
+    return property_paths
 
-
-def align_shapes(number_of_samples: int, traj: np.ndarray) -> np.ndarray:
+def read_in_properties(property_paths, num_atoms) -> dict:
     """
-    Align the shape of the trajectory data with the number of samples given by the energy trajectory.
+    Read in all properties from the prepared .csv and .txt files.
     Args:
-        number_of_samples (int): Number of samples to align with.
-        traj (np.ndarray): Trajectory data to align.
+        property_paths (dict): Dictionary containing paths to the necessary property files.
+        num_atoms (int): Number of atoms in the simulation.
     Returns:
-        np.ndarray: Aligned trajectory data.
+        dict: Dictionary containing all properties.
     """
-    if traj.shape[0] != number_of_samples:
-        logger.warning(f'traj.shape[0] != number_of_samples: {traj.shape[0]} != {number_of_samples}')
-        logger.warning("Just using the first number_of_samples samples from grads_traj")
-        traj = traj[:number_of_samples]
-    return traj
+    logger.debug("Extracting data from prepared .csv and .txt files")
+    s0_energy_traj, s1_energy_traj, number_of_samples  = get_all_energies_from_csv(property_paths['energy'])
+    coords_traj = get_trajectory_from_txt_and_reshape(property_paths['traj'], number_of_samples, num_atoms, usecols=(1, 2, 3))
+    s0_grads_traj = get_trajectory_from_txt_and_reshape(property_paths['s0_grads'], number_of_samples, num_atoms, usecols=(0, 1, 2))
+    s1_grads_traj = get_trajectory_from_txt_and_reshape(property_paths['s1_grads'], number_of_samples, num_atoms, usecols=(0, 1, 2))
+    nacs_traj = get_trajectory_from_txt_and_reshape(property_paths['nacs'], number_of_samples, num_atoms, usecols=(0, 1, 2))
 
-def convert_trajectory_to_ase_and_append(
-        property_list: list, atoms_list: list, coords_traj: np.ndarray, s0_energy_traj: np.ndarray, s1_energy_traj: np.ndarray,
-        s0_forces_traj: np.ndarray, s1_forces_traj: np.ndarray, nacs_traj: np.ndarray, velocities_traj: np.ndarray, atomic_numbers: list
-    ) -> tuple:
+    # only needed as starting point for later md simulations
+    velocities_traj = get_trajectory_from_txt_and_reshape(property_paths['velocities'], number_of_samples, num_atoms, usecols=(1, 2, 3)) 
+    atomic_numbers = get_atomic_numbers_from_xyz(property_paths['traj'], num_atoms, extra_lines=3)
+
+    return {
+        'coords': coords_traj,
+        's0_energy': s0_energy_traj,
+        's1_energy': s1_energy_traj,
+        's0_grads': s0_grads_traj,
+        's1_grads': s1_grads_traj,
+        'nacs': nacs_traj,
+        'velocities': velocities_traj,
+        'atomic_numbers': atomic_numbers,
+        'number_of_samples': number_of_samples
+    }
+
+def convert_to_target_units(properties: dict, position_unit: str, energy_unit: str, time_unit: str) -> dict:
+    """
+    Convert the properties to the target units.
+    Args:
+        properties (dict): Dictionary containing all properties.
+        position_unit (str): Target unit for positions to transform from atomic units to (default: angstrom).
+        energy_unit (str): Target unit for energies to transform from atomic units to (default: kcal/mol).
+        time_unit (str): Target unit for time to transform from atomic units to (default: fs).
+    Returns:
+        dict: Dictionary containing all properties in the target units except the number of samples and the atomic
+            numbers, since they need no converting and have already been extracted from the dict.
+    """
+    # covert from atomic units to desired units
+    force_unit = f"{energy_unit}/{position_unit}"  # e.g., kcal/mol/Angstrom
+    velocity_unit = f"{position_unit}/{time_unit}"  # e.g., Angstrom/fs
+    nac_unit = f"1/{position_unit}"  # e.g., 1/Angstrom
+    smooth_nac_unit = f"{energy_unit}/{position_unit}"  # e.g., kcal/mol/Angstrom
+    logger.info(f"Converting units from atomic units to {position_unit}, {energy_unit} and {time_unit}")
+    coords_traj = convert_distances(properties['coords'], from_units='bohr', to_units=position_unit)  
+    s0_energy_traj = convert_energies(properties['s0_energy'], from_units='hartree', to_units=energy_unit)
+    s1_energy_traj = convert_energies(properties['s1_energy'], from_units='hartree', to_units=energy_unit)
+    s0_forces_traj = convert_forces(properties['s0_forces'], from_units='hartree/bohr', to_units=force_unit)
+    s1_forces_traj = convert_forces(properties['s1_forces'], from_units='hartree/bohr', to_units=force_unit)
+    nacs_traj = convert_nacs(properties['nacs'], from_units='1/bohr', to_units=nac_unit)
+    smooth_nacs_traj = convert_smooth_nacs(properties['smooth_nacs'], from_units='hartree/bohr', to_units=smooth_nac_unit)
+    velocities_traj = convert_velocities(properties['velocities'], from_units='bohr/aut', to_units=velocity_unit)
+    return {
+        'coords': coords_traj,
+        's0_energy': s0_energy_traj,
+        's1_energy': s1_energy_traj,
+        's0_forces': s0_forces_traj,
+        's1_forces': s1_forces_traj,
+        'nacs': nacs_traj,
+        'smooth_nacs': smooth_nacs_traj,
+        'velocities': velocities_traj
+    }
+
+def reshape_to_spainn_format(properties: dict, number_of_samples: int, num_atoms: int) -> dict:
+    """
+    Reshape the properties to the format expected by SPaiNN 
+    (see https://github.com/CompPhotoChem/SPaiNN/blob/main/tutorials/tut_01_preparing_data.ipynb).
+    Args:
+        properties (dict): Dictionary containing all properties.
+        number_of_samples (int): Number of samples in the trajectory.
+        num_atoms (int): Number of atoms in the simulation.
+    Returns:
+        dict: Dictionary containing all properties in the SPaiNN format.
+    """
+    combined_energy_traj = np.column_stack((properties['s0_energy'], properties['s1_energy']))
+    combined_energy_traj = combined_energy_traj.reshape((number_of_samples, 1, 2)) # ensure (Nframes, N_states)
+    combined_forces_traj = np.column_stack((properties['s0_forces'], properties['s1_forces']))  
+    combined_forces_traj = combined_forces_traj.reshape((number_of_samples, num_atoms, 2, 3))  # ensure (Nframes, Natoms, N_states, 3)
+    nacs_traj = properties['nacs'].reshape((number_of_samples, num_atoms, 1, 3))  # ensure (Nframes, Natoms, N_couplings, 3)
+    smooth_nacs_traj = properties['smooth_nacs'].reshape((number_of_samples, num_atoms, 1, 3))  
+    velocities_traj = properties['velocities'].reshape((number_of_samples, num_atoms, 1, 3))  # ensure (Nframes, Natoms, N_states, 3)
+    # return an updated version of the properties dict 
+    return {
+        'coords': properties['coords'],
+        'combined_energy': combined_energy_traj,
+        'combined_forces': combined_forces_traj,
+        'nacs': nacs_traj,
+        'smooth_nacs': smooth_nacs_traj,
+        'velocities': velocities_traj,
+    }
+
+
+def convert_trajectory_to_ase_and_append(property_list: list, atoms_list: list, properties: dict, atomic_numbers: list) -> tuple:
     """
     Convert current trajectory data to ASE Atoms objects and properties and append them to the lists.
     Args:
-        coords_traj (np.ndarray): Coordinates of the trajectory.
-        s0_energy_traj (np.ndarray): Energies of the ground state trajectory.
-        s1_energy_traj (np.ndarray): Energies of the excited state trajectory.
-        s0_forces_traj (np.ndarray): Forces of the ground state trajectory.
-        s1_forces_traj (np.ndarray): Forces of the excited state trajectory.
-        nacs_traj (np.ndarray): Non-adiabatic couplings of the trajectory.
-        velocities_traj (np.ndarray): Velocities of the trajectory.
+        property_list (list): List to store the properties.
+        atoms_list (list): List to store the ASE Atoms objects.
+        properties (dict): Dictionary containing the properties of the current trajectory.
         atomic_numbers (list): List of atomic numbers.
     Returns:
         tuple: Tuple containing a list of ASE Atoms objects and a list of properties.
     """
     logger.debug("Converting trajectory data to ASE Atoms objects and properties")
 
-    for positions, s0_energies, s1_energies, s0_forces, s1_forces, nacs, velocities in zip(coords_traj, s0_energy_traj, s1_energy_traj, s0_forces_traj, s1_forces_traj, nacs_traj, velocities_traj):
+    for positions, combined_energies, combined_forces, nacs, smooth_nacs, velocities in zip(properties['coords'], properties['combined_energy'], properties['combined_forces'], properties['nacs'], properties['smooth_nacs'], properties['velocities']):
         ats = Atoms(positions=positions, numbers=atomic_numbers)
         # convert energies to array if it is not already
-        if not isinstance(s0_energies, np.ndarray):
-            s0_energies = np.array([s0_energies]) # compare with shape of data within the SchNetPack tutorial
-        if not isinstance(s1_energies, np.ndarray):
-            s1_energies = np.array([s1_energies])
+        if not isinstance(combined_energies, np.ndarray):
+            combined_energies = np.array([combined_energies]) # compare with shape of data within the SchNetPack tutorial
 
-        properties = {'s0_energy': s0_energies, 's1_energy': s1_energies, 's0_forces': s0_forces, 
-                      's1_forces': s1_forces, 'nacs': nacs, 'velocities': velocities}
+        properties = {'energy': combined_energies, 'forces': combined_forces, 'nacs': nacs, 'smooth_nacs': smooth_nacs, 'velocities': velocities}
         property_list.append(properties)
         atoms_list.append(ats)
-    logger.debug(f'Properties: {property_list[0]}')
+
     return atoms_list, property_list
 
-def get_overview_of_dataset(new_dataset: ASEAtomsData):
+def convert_trajectory_to_ase(properties: dict, atomic_numbers: list) -> tuple:
     """
-    Get an overview of the dataset.
+    Convert current trajectory data to ASE Atoms objects and properties and append them to the lists.
     Args:
-        new_dataset (ASEAtomsData): The dataset to analyze.
+        property_list (list): List to store the properties.
+        atoms_list (list): List to store the ASE Atoms objects.
+        properties (dict): Dictionary containing the properties of the current trajectory.
+        atomic_numbers (list): List of atomic numbers.
+    Returns:
+        tuple: Tuple containing a list of ASE Atoms objects and a list of properties.
     """
-    logger.debug(f'Number of reference calculations: {len(new_dataset)}')
-    print('Available properties:')
+    logger.debug("Converting trajectory data to ASE Atoms objects and properties")
+    atoms_list = []
+    property_list = []
+    for positions, combined_energies, combined_forces, nacs, smooth_nacs, velocities in zip(properties['coords'], properties['combined_energy'], properties['combined_forces'], properties['nacs'], properties['smooth_nacs'], properties['velocities']):
+        ats = Atoms(positions=positions, numbers=atomic_numbers)
+        # convert energies to array if it is not already
+        if not isinstance(combined_energies, np.ndarray):
+            combined_energies = np.array([combined_energies]) # compare with shape of data within the SchNetPack tutorial
 
-    for p in new_dataset.available_properties:
-        print('-', p)
-    print()
+        properties = {'energy': combined_energies, 'forces': combined_forces, 'nacs': nacs, 'smooth_nacs': smooth_nacs, 'velocities': velocities}
+        property_list.append(properties)
+        atoms_list.append(ats)
 
-    print(f"new_dataset: {new_dataset}")
-    example = new_dataset[0]
-    print('Properties of molecule with id 0:')
+    return atoms_list, property_list
 
-    for k, v in example.items():
-        print('-', k, ':', v.shape)
+def add_metadata_to_dataset(db_path: str, ase_units: dict, property_unit_dict: dict):
+    """
+    Add metadata required by SPaiNN to the dataset.
+    Args:
+        db_path (str): Path to the database file.
+        ase_units (dict): Dictionary containing the units for distances, energies, time in ASE compatible format.
+        property_unit_dict (dict): Dictionary containing the units for energies, forces, nacs, smooth_nacs, and velocities
+        which has also been set in the ASEAtomsData.create() function.
+    """
+    metadata = {
+            '_distance_unit': ase_units['distance'],
+            '_property_unit_dict': property_unit_dict,
+            'n_singlets': 2, 'n_doublets': 0, 'n_triplets': 0,
+            'phasecorrected': False, 'states': 'S S', 'atomrefs': {}
+        }
+    db = connect(db_path)
+    db.metadata = metadata
 
+def write_used_dirs_to_info_file(used_dirs: list, info_path: str, num_samples: int, num_atoms: int, position_unit: str, energy_unit: str, time_unit: str):
+    """
+    Write the used directories and metadata to the info file.
+    Args:
+        used_dirs (list): List of used directories.
+        info_path (str): Path to the info file.
+        num_samples (int): Number of samples in the trajectory.
+        num_atoms (int): Number of atoms in the simulation.
+        position_unit (str): Target unit for positions.
+        energy_unit (str): Target unit for energies.
+        time_unit (str): Target unit for time.
+    """ 
+    with open(info_path, 'w') as f:
+        f.write(f"Number of samples per directory: {num_samples}\n")
+        f.write(f"Number of atoms: {num_atoms}\n")
+        f.write(f"Position unit: {position_unit}\n")
+        f.write(f"Energy unit: {energy_unit}\n")
+        f.write(f"Time unit: {time_unit}\n")
+        f.write(f"Used directories:\n")
+        for geo_dir in used_dirs:
+            f.write(f"{geo_dir}\n")
 
 
 def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: str, energy_unit: str, time_unit: str):
@@ -189,91 +293,86 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: s
     # setup paths to the necessary files
     data_path = os.path.join(set_data_prefix(), target_dir)
 
-    # get all viable GEO folders
     # get all valid trajectories and the number of their last exited cycles
     geo_dirs_with_last_exited_cycles = prepare_last_exited_cycles(data_path, computed_cycles)
-    print(f"Found {len(geo_dirs_with_last_exited_cycles)} valid GEO folders in {data_path}")
-    print(f"Last exited cycles: {geo_dirs_with_last_exited_cycles}")
+
+
+    # setup paths for the new dataset    
+    file_name = f"md_trajectory_{position_unit}_{energy_unit.replace('/', '_per_')}_{time_unit}"
+    db_dir = os.path.join(data_path, "spainn_datasets")
+    os.makedirs(db_dir, exist_ok=True)
+    db_path = os.path.join(db_dir, f"{file_name}.db")
+    info_path = os.path.join(db_dir, f"{file_name}_info.txt")
+
+    if os.path.exists(db_path):
+        logger.info(f"File {db_path} already exists, loading it.")
+        new_dataset = ASEAtomsData(db_path)
+        # get overview of the dataset
+        get_overview_of_dataset(new_dataset)
+        return 0
+
 
     # setup lists to store data in ase format
     atoms_list = []
     property_list = []
+    props_all_dirs = None
     for geo_dir, _last_exited_cycle in geo_dirs_with_last_exited_cycles.items():
         logger.debug(f"Processing GEO folder: {geo_dir}")
         # setup paths to the necessary files
         data_prefix = os.path.join(data_path, geo_dir, "test")
-        logger.debug(f"data_prefix: {data_prefix}")
+        property_paths = get_property_paths(data_prefix)
 
-        traj_path = os.path.join(data_prefix, 'positions.txt')
-        energy_path = os.path.join(data_prefix, 'energies.csv')
-        s0_grads_path = os.path.join(data_prefix, 's0_gradients.txt')
-        s1_grads_path = os.path.join(data_prefix, 's1_gradients.txt')
-        nacs_path = os.path.join(data_prefix, 'nacs.txt')
-        vels_path = os.path.join(data_prefix, 'velocities.txt')
+        # read in all properties from the prepared .csv and .txt files
+        properties = read_in_properties(property_paths, num_atoms)
+        number_of_samples = properties['number_of_samples']
+        atomic_numbers = properties['atomic_numbers']
 
-        # check if all necessary files exist
-        if not os.path.exists(traj_path) or not os.path.exists(energy_path) or not os.path.exists(s0_grads_path) or not os.path.exists(s1_grads_path) or not os.path.exists(nacs_path) or not os.path.exists(vels_path):
-            raise FileNotFoundError(f"One or more files do not exist in the specified directory: {data_prefix}\n"
-                                    "Try running the extract scripts for the different properties.")
+        # Convert gradients to forces and compute smooth NACs
+        properties['s0_forces'] = - properties['s0_grads']
+        properties['s1_forces'] = - properties['s1_grads']  
+        # shape (N_samples, 1, 1), needed for numpy broadcasting
+        energy_diff = (properties['s1_energy'] - properties['s0_energy'])[:, np.newaxis, np.newaxis] 
+        properties['smooth_nacs'] = properties['nacs'] * energy_diff
+        assert properties['smooth_nacs'].shape == properties['s0_forces'].shape, "smooth_nacs and s0_forces must have the same shape"
         
-        logger.debug("Extracting data from prepared .csv and .txt files")
-        db_name = f"md_trajectory_{position_unit}_{energy_unit.replace('/', '_per_')}_{time_unit}.db"
-        target_path = os.path.join(data_prefix, db_name)
-
-        s0_energy_traj, s1_energy_traj, number_of_samples  = get_all_energies_from_csv(energy_path)
-        coords_traj = get_trajectory_from_txt_and_reshape(traj_path, number_of_samples, num_atoms, usecols=(1, 2, 3))
-        s0_grads_traj = get_trajectory_from_txt_and_reshape(s0_grads_path, number_of_samples, num_atoms, usecols=(0, 1, 2))
-        s1_grads_traj = get_trajectory_from_txt_and_reshape(s1_grads_path, number_of_samples, num_atoms, usecols=(0, 1, 2))
-        s0_forces_traj = -s0_grads_traj  # Convert gradients to forces
-        s1_forces_traj = -s1_grads_traj  # Convert gradients to forces
-        nacs_traj = get_trajectory_from_txt_and_reshape(nacs_path, number_of_samples, num_atoms, usecols=(0, 1, 2))
-        velocities_traj = get_trajectory_from_txt_and_reshape(vels_path, number_of_samples, num_atoms, usecols=(1, 2, 3))
-        atomic_numbers = get_atomic_numbers_from_xyz(traj_path, num_atoms, extra_lines=3)
-
         # covert from atomic units to desired units
-        force_unit = f"{energy_unit}/{position_unit}"  # e.g., kcal/mol/Angstrom
-        velocity_unit = f"{position_unit}/{time_unit}"  # e.g., Angstrom/fs
-        logger.info(f"Converting units from atomic units to {position_unit}, {energy_unit} and {time_unit} (and {force_unit}, {velocity_unit})")
-        coords_traj = convert_distances(coords_traj, from_units='bohr', to_units=position_unit)  
-        s0_energy_traj = convert_energies(s0_energy_traj, from_units='hartree', to_units=energy_unit)
-        s1_energy_traj = convert_energies(s1_energy_traj, from_units='hartree', to_units=energy_unit)
-        s0_forces_traj = convert_forces(s0_forces_traj, from_units='hartree/bohr', to_units=force_unit)
-        s1_forces_traj = convert_forces(s1_forces_traj, from_units='hartree/bohr', to_units=force_unit)
-        velocities_traj = convert_velocities(velocities_traj, from_units='bohr/aut', to_units=velocity_unit)
+        properties = convert_to_target_units(properties, position_unit, energy_unit, time_unit)
 
-        # convert trajectory data to ASE Atoms objects and properties
-        atoms_list, property_list = convert_trajectory_to_ase_and_append(
-            atoms_list, property_list, coords_traj, s0_energy_traj, s1_energy_traj, s0_forces_traj, 
-            s1_forces_traj, nacs_traj, velocities_traj, atomic_numbers
-            )
-        break
-    
-    # Create a new dataset in the schnetpack format
-    if os.path.exists(target_path):
-        logger.info(f"File {target_path} already exists, loading it.")
-        new_dataset = ASEAtomsData(target_path)
-    else:
-        logger.info(f"File {target_path} does not exist, creating it.")
-        # create a new dataset
-        # ase needs the distance unit in capitalized form
-        ase_units = get_ase_unit_format(position_unit, energy_unit, time_unit)
-        new_dataset = ASEAtomsData.create(
-            target_path, 
-            distance_unit=ase_units['distance'],
-            property_unit_dict={
-                's0_energy': ase_units['energy'],
-                's1_energy': ase_units['energy'],
-                's0_forces': ase_units['forces'],
-                's1_forces': ase_units['forces'],
-                'nacs': f"1/{ase_units['distance']}",
-                'velocities': ase_units['velocities']
-                },
-        )
-        # add systems to the dataset
-        new_dataset.add_systems(property_list, atoms_list)
+        # bring data into the right shape for SPaiNN
+        properties = reshape_to_spainn_format(properties, number_of_samples, num_atoms)
+
+        if props_all_dirs is None:
+            props_all_dirs = properties
+        else:
+            # combine properties from all directories
+            for key in props_all_dirs.keys():
+                props_all_dirs[key] = np.concatenate((props_all_dirs[key], properties[key]), axis=0)
+
+        
+    # convert trajectory data to ASE Atoms objects and properties
+    logger.info(f"File {db_path} does not exist, creating it.")
+    atoms_list, property_list = convert_trajectory_to_ase(props_all_dirs, atomic_numbers)
+
+    # ase needs the distance unit in capitalized form
+    ase_units = get_ase_unit_format(position_unit, energy_unit, time_unit)
+    property_unit_dict = {
+        'energy': ase_units['energy'], 'forces': ase_units['forces'], 'nacs': f"1/{ase_units['distance']}", 
+        'smooth_nacs': f"{ase_units['energy']}/{ase_units['distance']}", 'velocities': ase_units['velocities']
+    }
+    # Create a new dataset in the SPaiNN format
+    new_dataset = ASEAtomsData.create(db_path, distance_unit=ase_units['distance'], property_unit_dict=property_unit_dict)
+    new_dataset.add_systems(property_list, atoms_list)
+
+    # add metadata to the dataset
+    add_metadata_to_dataset(db_path, ase_units, property_unit_dict)
+
+    # write the used directories into the info file
+    used_dirs = geo_dirs_with_last_exited_cycles.keys()
+    write_used_dirs_to_info_file(used_dirs, info_path, len(atoms_list), num_atoms, position_unit, energy_unit, time_unit)
 
     # get overview of the dataset
     get_overview_of_dataset(new_dataset)
+    
 
 if __name__=="__main__":
     args = parse_args()

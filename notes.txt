@@ -91,17 +91,10 @@ Possible Improvements
 - use double when using np.loadtxt in the prepare_tddft_data.py script instead of single float
 
 
-- script for running some checks on all the extracted data:
-    - are there exactly 3000 entries?
-    - shapes should match
-    - 
 
-- check in which format the data needs to be -> notebook for inspecting CH2NH2+.db
-- prepare one directory (GEO_100000) similar as we did for SchNetPack and use convert tutorial from spainn
 - compare data with pragati
 - final goal: 
-    - split the data by directories, e.g. 20 GEO directories for training, 10 for validation and 10 for testing
-    - how can one tell spainn or schnetpack to use all data within a .db file for training and for validation?
+    - generate one huge .db file and just define the splits, such that data from one directory does not end up in train and val or test set
 - prepare_tddft_data: 
     - run checks
     - 

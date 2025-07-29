@@ -118,6 +118,52 @@ def convert_distances(distances: np.ndarray | torch.Tensor, from_units: str, to_
         return distances / BOHR_TO_ANGSTROM
     else:
         raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
+
+def convert_nacs(nacs: np.ndarray | torch.Tensor, from_units: str, to_units: str) -> np.ndarray | torch.Tensor:
+    """ 
+    Convert non-adiabatic couplings (NACs) C_ij between different units.
+    Args:
+        nacs (np.ndarray or torch.Tensor): NACs to convert.
+        from_units (str): Units of the input NACs.
+        to_units (str): Units to convert the NACs to.
+    Returns:
+        np.ndarray or torch.Tensor: Converted NACs.
+    """
+    if from_units == to_units:
+        return nacs
+    elif from_units == "1/bohr" and to_units == "1/angstrom":
+        return nacs / BOHR_TO_ANGSTROM
+    elif from_units == "1/angstrom" and to_units == "1/bohr":
+        return nacs * BOHR_TO_ANGSTROM
+    else:
+        raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
+    
+def convert_smooth_nacs(nacs: np.ndarray | torch.Tensor, from_units: str, to_units: str) -> np.ndarray | torch.Tensor:
+    """ 
+    Convert smooth non-adiabatic couplings (NACs) C_il*(E_j-E_i) between different units.
+    The definition of smooth NACs is taken from (https://pubs.acs.org/doi/pdf/10.1021/acs.jpclett.0c00527).
+    Args:
+        nacs (np.ndarray or torch.Tensor): NACs to convert.
+        from_units (str): Units of the input NACs.
+        to_units (str): Units to convert the NACs to.
+    Returns:
+        np.ndarray or torch.Tensor: Converted NACs.
+    """
+    if from_units == to_units:
+        return nacs
+    elif from_units == "hartree/bohr" and to_units == "ev/angstrom":
+        return nacs * HARTREE_TO_EV / BOHR_TO_ANGSTROM
+    elif from_units == "ev/angstrom" and to_units == "hartree/bohr":
+        return nacs / HARTREE_TO_EV * BOHR_TO_ANGSTROM
+    elif from_units == "hartree/bohr" and to_units == "kcal/mol/angstrom":
+        return nacs * HARTREE_TO_KCAL_PER_MOL / BOHR_TO_ANGSTROM
+    elif from_units == "kcal/mol/angstrom" and to_units == "hartree/bohr":
+        return nacs / HARTREE_TO_KCAL_PER_MOL * BOHR_TO_ANGSTROM
+    else:
+        raise ValueError(f"Unsupported conversion from {from_units} to {to_units}")
+
+
+        
     
 def convert_velocities(velocities: np.ndarray | torch.Tensor, from_units: str, to_units: str) -> np.ndarray | torch.Tensor:
     """ 

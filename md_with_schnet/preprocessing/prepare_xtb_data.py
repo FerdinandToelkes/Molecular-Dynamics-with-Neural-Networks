@@ -11,7 +11,7 @@ from md_with_schnet.utils import set_data_prefix
 from md_with_schnet.setup_logger import setup_logger
 
 
-logger = setup_logger(logging_level_str="debug")
+logger = setup_logger(logging_level_str="info")
 
 
 # Example command to run the script from within code directory:
