@@ -6,9 +6,10 @@ This project was part of a six-month, part-time research assistant position unde
 
 1. [Project Structure](#project-structure)
 2. [Installation](#installation)
-3. [Workflow](#workflow)
-4. [Contributing](#contributing)
-5. [License](#license)
+3. [Ground State Molecular Dynamics](#ground-state-molecular-dynamics)
+4. [Exited State Molecular Dynamics](#exited-state-molecular-dynamics)
+5. [Contributing](#contributing)
+6. [License](#license)
 
 ## Project Structure
 
@@ -24,7 +25,7 @@ This project is split into two main parts, namely the **ground_state_md** and **
 Since I started with the code for ground state MD without knowing the exact direction of this project, much of the code for the exited state MD is based on or directly using code from ground_state_md.
 The "deprecated" directory contains every outdated piece of code, that at some point may be removed from this project.
 
-# Ground State Molecular Dynamics with Neural Networks
+# Ground State Molecular Dynamics
 
 ## Data Overview
 
@@ -39,7 +40,7 @@ Once you have cloned this project, you can use the environment.yaml file to buil
 ```bash
 git clone git@github.com:FerdinandToelkes/whk.git
 cd /path/to/cloned/directory
-conda env create -f md_with_schnet/environment.yml
+conda env create -f ground_state_md/environment.yml
 conda activate schnet
 ```
 
@@ -113,6 +114,8 @@ python -m ground_state_md.neural_net.plot_interactive_md_ase_sim \
 
 Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html)
  
+# Ground State Molecular Dynamics
+
 
 ## Contributing
 
