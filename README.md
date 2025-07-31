@@ -1,6 +1,6 @@
 # Molecular Dynamics with Neural Networks
 
-This project was part of a six-month, part-time research assistant position under the supervision of Professor Enrico Tapavicza. The main goal is to speed up the prediction of forces and the energy of a second-generation Feringa-type molecular nanomotor. In our case this is 9-(2’-methyl-2’,3’-dihydro-1’H-cyclopenta[a]naphthalen-1’-ylidene)-9H-xanthene (CPNX). 
+This project was part of a six-month, part-time research assistant position under the supervision of Professor Enrico Tapavicza. The main goal is to speed up the simulation of molecular dynamics (MDs) of a second-generation Feringa-type molecular nanomotor. In our case this is 9-(2’-methyl-2’,3’-dihydro-1’H-cyclopenta[a]naphthalen-1’-ylidene)-9H-xanthene (CPNX) (see for example the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b)). 
 
 ## Outline
 
@@ -12,7 +12,20 @@ This project was part of a six-month, part-time research assistant position unde
 
 ## Project Structure
 
-The "md_with_schnet" directory contains everything of the project, as we have only worked with [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) so far. The "deprecated" directory contains every outdated piece of code, that at some point will be removed from this project.
+This project is split into two main parts, namely the "ground_state_md" and "exited_state_md" directories. The training of neural networks (NNs) to predict ground state MDs is done by employing the [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) package, whereas the [SPaiNN](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j) package was used to train NNs for the prediction of exited state trajectories. The main differences between these two tasks are summarized below
+
+| Feature / Task                       | Ground State MD (`ground_state_md`)               | Excited State MD (`exited_state_md`)                      |
+|--------------------------------------|---------------------------------------------------|-----------------------------------------------------------|
+| Target Properties                    | Potential energy S0 and resulting forces          | Potential energies S0 and S1, resulting forces and non‑adiabatic couplings S0 -> S1 |
+| Training Data                        | Ground‑state trajectories using xTB with REMD     | Ground MD with xTB + excited‑state MD with TDDFT and fewest switches surface-hopping |
+| ML Framework                         | SchNetPack + ASE Interface                        | SPaiNN (PaiNN + SchNetPack + SHARC interface) |
+| Dynamics Setup                       | Adiabatic MD on a single PES                      | Non‑adiabatic MD using fewest switches surface‑hopping  (via SHARC)  |
+
+The "deprecated" directory contains every outdated piece of code, that at some point may be removed from this project.
+
+## Data Overview
+
+The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the xTB software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms, and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four confirmations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data. The evolution of the dihedral angles for one of the simulations can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html).
 
 
 ## Installation
@@ -32,11 +45,11 @@ Each script should include an example of how to execute it at the top.
 
 ### preprocessing
 
-- All python scripts are to be executed from the root directory of the project, i.e. the directory containing the "md_with_schnet" directory.
+- All python scripts are to be executed from the root directory of the project, i.e. the directory containing the "ground_state_md" directory.
 - The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = MOTOR_MD_XTB/T300_1
 - Obtain gradients, positions and velocities from mdlog.i files with the extract.py script:
 ```bash
-python -m md_with_schnet.preprocessing.extract \
+python -m ground_state_md.preprocessing.extract \
     --property gradients \
     --target_dir path/to/dir/with/mdlog.i/files
 ```
@@ -46,20 +59,20 @@ log2egy > energies.txt
 ```
 - Transform the extracted properties into a .db file (which is the format used within SchNetPack) by employing the prepare_xtb_in_atomic_units.py or the prepare_xtb_ang_kcal_mol.py  script
 ```bash
-python -m md_with_schnet.preprocessing.prepare_xtb_data \
+python -m ground_state_md.preprocessing.prepare_xtb_data \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --num_atoms 48 --position_unit angstrom \
     --energy_unit kcal/mol --time_unit fs
 ```
 - Define how the data later should be splitted into training, validation and test data via the create_splits.py script:
 ```bash
-python -m md_with_schnet.preprocessing.create_splits \
+python -m ground_state_md.preprocessing.create_splits \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --units angstrom_kcal_per_mol_fs 
 ```
 - If needed, compute the mean and standard deviation of the various properties in the training set via the compute_means_and_stds.py script:
 ```bash
-python -m md_with_schnet.preprocessing.compute_means_and_stds \
+python -m ground_state_md.preprocessing.compute_means_and_stds \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --num_atoms=48 --units angstrom_kcal_per_mol_fs
 ```
@@ -69,7 +82,7 @@ Note that paths need to be updated depending on the local setup especially of th
 
 - Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the .yml config file if necessary)
 ```bash
-screen -dmS xtb_train sh -c 'python -m md_with_schnet.neural_net.train \ 
+screen -dmS xtb_train sh -c 'python -m ground_state_md.neural_net.train \ 
     --trajectory_dir path/to/dir/with/mdlog.i/files --epochs 1000  \ 
     --batch_size 100 --learning_rate 0.0001 --seed 42 \
     --config_name train_config_default_transforms 
@@ -77,26 +90,22 @@ screen -dmS xtb_train sh -c 'python -m md_with_schnet.neural_net.train \
 ```
 - Use get_test_metrics.py to predict the energies, forces and gradients of the test set with the trained model
 ```bash
-python -m md_with_schnet.neural_net.get_test_metrics \
+python -m ground_state_md.neural_net.get_test_metrics \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
 ```
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.neural_net.inference_with_ase \
+screen -dmS inference_xtb sh -c 'python -m ground_state_md.neural_net.inference_with_ase \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
 ```bash
-python -m md_with_schnet.neural_net.plot_interactive_md_ase_sim \
+python -m ground_state_md.neural_net.plot_interactive_md_ase_sim \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
     --n_samples 5000 --units angstrom_kcal_per_mol_fs
 ```
-
-## Data Overview
-
-The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the xTB software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms, and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four confirmations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data. The evolution of the dihedral angles for one of the simulations can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html).
 
 ## Results
 
