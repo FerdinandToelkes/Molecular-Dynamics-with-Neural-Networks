@@ -17,7 +17,7 @@ This project was part of a six-month, part-time research assistant position unde
 5. [Contributing](#contributing)
 6. [License](#license)
 
-## Project Structure
+# Project Structure
 
 This project is split into two main parts, namely the **ground_state_md** and **exited_state_md** directories. The training of neural networks (NNs) to predict ground state MDs is done by employing the [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) package, whereas the [SPaiNN](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j) package was used to train NNs for the prediction of exited state trajectories. The main differences between these two tasks are summarized below
 
@@ -122,18 +122,18 @@ Here is a quick overview of results for training a neural network on the MOTOR_M
  
 # Exited State Molecular Dynamics
 
-## Resources
+# Resources
 
-### Data
+## Data
 - [First principles prediction of wavelength-dependent isomerization quantum yields of a second-generation molecular nanomotor](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b)
 
-### Ground State Dynamics
+## Ground State Dynamics
 - [SchNetPack: A Deep Learning Toolbox For Atomistic Systems](https://pubs.acs.org/doi/pdf/10.1021/acs.jctc.8b00908)
 - [SchNetPack documentation](https://schnetpack.readthedocs.io/en/latest/)
 - [SchNetPack GitHub Page](https://github.com/atomistic-machine-learning/schnetpack)
 - [SchNet – A deep learning architecture for molecules and materials](https://pubs.aip.org/aip/jcp/article/148/24/241722/962591/SchNet-A-deep-learning-architecture-for-molecules)
 
-### Exited State Dynamics
+## Exited State Dynamics
 - [SPAINN: equivariant message passing for excited-state nonadiabatic molecular dynamics](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j)
 - [SpaiNN documentation](https://spainn.readthedocs.io/en/latest/index.html)
 - [SpaiNN GitHub Page](https://github.com/CompPhotoChem/SPaiNN)
@@ -141,17 +141,17 @@ Here is a quick overview of results for training a neural network on the MOTOR_M
 - [Pedagogical Overview of the Fewest Switches Surface Hopping Method](https://pubs.acs.org/doi/pdf/10.1021/acsomega.2c04843?ref=article_openPDF)
 - [Ab initio non-adiabatic molecular dynamics](https://pubs.rsc.org/en/content/articlepdf/2013/cp/c3cp51514a)
 
-### General Methods
+## General Methods
 - [Dynamic Filter Networks](https://proceedings.neurips.cc/paper/2016/file/8bf1211fd4b7b94528899de0a43b9fb3-Paper.pdf)
 - [Neural Message Passing for Quantum Chemistry](https://proceedings.mlr.press/v70/gilmer17a/gilmer17a.pdf)
 - [Graph Neural Networks Series (Blog post)](https://medium.com/the-modern-scientist/graph-neural-networks-series-part-4-the-gnns-message-passing-over-smoothing-e77ffee523cc)
 - [Lecture Notes on Data Analysis](https://indico.in2p3.fr/event/2086/contributions/22818/attachments/18562/22658/cowan_statnote.pdf)
 
-## Contributing
+# Contributing
 
 If you would like to contribute to the project, please open an issue or a pull request.
 
-## License
+# License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
