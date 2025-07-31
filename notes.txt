@@ -90,7 +90,7 @@
 Possible Improvements
 - use double when using np.loadtxt in the prepare_tddft_data.py script instead of single float
 
-
+- split the 53 as follows: 25 for training, three for validation and 25 for testing
 
 - compare data with pragati
 - final goal: 

@@ -15,7 +15,7 @@ from md_with_schnet.preprocessing.prepare_xtb_data import get_trajectory_from_tx
 from exited_md.preprocessing.utils import prepare_last_exited_cycles
 
 
-logger = setup_logger(logging_level_str="info")
+logger = setup_logger("info")
 
 
 # Example command to run the script from within code directory:
@@ -256,7 +256,7 @@ def add_metadata_to_dataset(db_path: str, ase_units: dict, property_unit_dict: d
     db = connect(db_path)
     db.metadata = metadata
 
-def write_used_dirs_to_info_file(used_dirs: list, info_path: str, num_samples: int, num_atoms: int, position_unit: str, energy_unit: str, time_unit: str):
+def write_used_dirs_to_info_file(used_dirs: list, info_path: str, num_samples: int, num_atoms: int, position_unit: str, energy_unit: str, time_unit: str, samples_per_geo_dir: int):
     """
     Write the used directories and metadata to the info file.
     Args:
@@ -267,9 +267,12 @@ def write_used_dirs_to_info_file(used_dirs: list, info_path: str, num_samples: i
         position_unit (str): Target unit for positions.
         energy_unit (str): Target unit for energies.
         time_unit (str): Target unit for time.
+        samples_per_geo_dir (int): Number of samples per directory.
     """ 
     with open(info_path, 'w') as f:
-        f.write(f"Number of samples per directory: {num_samples}\n")
+        f.write(f"Number of samples in total: {num_samples}\n")
+        f.write(f"Number of used directories: {len(used_dirs)}\n")
+        f.write(f"Number of samples per directory: {samples_per_geo_dir}\n")
         f.write(f"Number of atoms: {num_atoms}\n")
         f.write(f"Position unit: {position_unit}\n")
         f.write(f"Energy unit: {energy_unit}\n")
@@ -296,7 +299,6 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: s
     # get all valid trajectories and the number of their last exited cycles
     geo_dirs_with_last_exited_cycles = prepare_last_exited_cycles(data_path, computed_cycles)
 
-
     # setup paths for the new dataset    
     file_name = f"md_trajectory_{position_unit}_{energy_unit.replace('/', '_per_')}_{time_unit}"
     db_dir = os.path.join(data_path, "spainn_datasets")
@@ -317,7 +319,7 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: s
     property_list = []
     props_all_dirs = None
     for geo_dir, _last_exited_cycle in geo_dirs_with_last_exited_cycles.items():
-        logger.debug(f"Processing GEO folder: {geo_dir}")
+        logger.info(f"Processing GEO folder: {geo_dir}")
         # setup paths to the necessary files
         data_prefix = os.path.join(data_path, geo_dir, "test")
         property_paths = get_property_paths(data_prefix)
@@ -347,6 +349,12 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: s
             # combine properties from all directories
             for key in props_all_dirs.keys():
                 props_all_dirs[key] = np.concatenate((props_all_dirs[key], properties[key]), axis=0)
+            # check if each directory has the same number of samples
+            assert samples_per_geo_dir == properties['coords'].shape[0], \
+                f"Number of samples in {geo_dir} does not match the number of samples in the previous directories. " \
+                f"Expected {samples_per_geo_dir}, got {properties['coords'].shape[0]}."
+
+        samples_per_geo_dir = properties['coords'].shape[0]
 
         
     # convert trajectory data to ASE Atoms objects and properties
@@ -368,7 +376,7 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: s
 
     # write the used directories into the info file
     used_dirs = geo_dirs_with_last_exited_cycles.keys()
-    write_used_dirs_to_info_file(used_dirs, info_path, len(atoms_list), num_atoms, position_unit, energy_unit, time_unit)
+    write_used_dirs_to_info_file(used_dirs, info_path, len(atoms_list), num_atoms, position_unit, energy_unit, time_unit, samples_per_geo_dir)
 
     # get overview of the dataset
     get_overview_of_dataset(new_dataset)

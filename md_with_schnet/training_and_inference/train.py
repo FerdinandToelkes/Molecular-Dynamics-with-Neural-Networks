@@ -111,7 +111,7 @@ def update_config(cfg: DictConfig, run_path: str, ase_units: dict, batch_size: i
     cfg.data.property_units.energy = ase_units['energy']
     cfg.data.property_units.forces = ase_units['forces']
 
-    # If using Bohr, convert the cutoff distance to Angstrom
+    # If using Bohr, convert the cutoff distance from Angstrom to Bohr
     if ase_units['distance'] == "Bohr":
         cfg.globals.cutoff = convert_distances(cfg.globals.cutoff, "angstrom", "bohr")
     return cfg

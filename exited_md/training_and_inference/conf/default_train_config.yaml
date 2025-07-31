@@ -1,28 +1,37 @@
-# @package _global_
+# if a block/line is enclosed by '#!' than it means that the values were taken from train_config_default_transforms.yaml which was used for the ground state. It implies that the values could not be found in the spainn context
 
-defaults:
-  - override /model: nnp
-  - override /data: methylenimmonium
+# line with #!? need to be checked
 
 run:
-  experiment: methylenimmonium
+  work_dir: null
+  path: null
+  ckpt_path: null
+  mean_std_path: null
 
 globals:
+  model_path: ${run.path}/best_model
   cutoff: 10.0 # in atomic units
   lr: 1e-4
   n_states: 2 # S0, S1
+  n_nacs: 1 # S0 -> S1
   n_atoms: 48
   energy_key: energy
   forces_key: forces
-  nac_key: nacs
-  # nac_key: smooth_nacs
+  nacs_key: smooth_nacs
 
 data:
-  distance_unit: Bohr
+  _target_: spainn.SPAINN
+  n_states: ${globals.n_states}
+  n_nacs: ${globals.n_nacs}
+  batch_size: 32
+  num_workers: 8
+  pin_memory: false # true causes problems
+  distance_unit: null # units are set in train.py
   property_units:
-    energy: Hartree
-    forces: Hartree/Bohr
+    energy: null
+    forces: null
   transforms:
+    - _target_: schnetpack.transform.SubtractCenterOfMass #!
     - _target_: schnetpack.transform.RemoveOffsets
       property: energy
       remove_mean: True
@@ -31,24 +40,39 @@ data:
     - _target_: schnetpack.transform.CastTo32
 
 model:
+  representation:
+    radial_basis:
+      _target_: schnetpack.nn.GaussianRBF
+      n_rbf: 20
+      cutoff: ${globals.cutoff}
+    _target_: schnetpack.representation.PaiNN
+    n_atom_basis: 50 # increasing this, leads to much more parameters
+    n_interactions: 6
+    shared_interactions: false #!
+    shared_filters: false #!
+    cutoff_fn:
+      _target_: schnetpack.nn.cutoff.CosineCutoff
+      cutoff: ${globals.cutoff}
+  _target_: schnetpack.model.NeuralNetworkPotential 
+  input_modules: 
+  - _target_: schnetpack.atomistic.PairwiseDistances 
   output_modules:
     - _target_: spainn.Atomwise
       output_key: ${globals.energy_key}
+      n_in: ${model.representation.n_atom_basis}
       n_out: ${globals.n_states} 
       n_layers: 3
-      n_in: ${model.representation.n_atom_basis}
       aggregation_mode: sum
     - _target_: spainn.Forces
       energy_key: ${globals.energy_key}
       force_key: ${globals.forces_key}
-      n_states: ${globals.n_states} 
+      #n_states: ${globals.n_states} 
     - _target_: spainn.Nacs
+      nac_key: ${globals.nacs_key}
       n_in: ${model.representation.n_atom_basis}
-      n_out: 1 # S0 -> S1
-      nac_key: ${globals.nac_key}
+      n_out: ${globals.n_nacs}
       n_layers: 3
       use_vector_repr: True
-
   postprocessors:
     - _target_: schnetpack.transform.CastTo64
     - _target_: schnetpack.transform.AddOffsets
@@ -56,6 +80,7 @@ model:
       add_mean: True
 
 task:
+  _target_: schnetpack.AtomisticTask #!
   outputs:
     - _target_: schnetpack.task.ModelOutput
       name: ${globals.energy_key}
@@ -64,6 +89,9 @@ task:
       metrics:
         mae:
           _target_: torchmetrics.regression.MeanAbsoluteError
+        rmse:
+          _target_: torchmetrics.regression.MeanSquaredError
+          squared: false
       loss_weight: 0.01
     - _target_: schnetpack.task.ModelOutput
       name: ${globals.forces_key}
@@ -72,14 +100,97 @@ task:
       metrics:
         mae:
           _target_: torchmetrics.regression.MeanAbsoluteError
+        rmse:
+          _target_: torchmetrics.regression.MeanSquaredError
+          squared: false
       loss_weight: 0.495
     - _target_: schnetpack.task.ModelOutput
-      name: ${globals.nac_key}
+      name: ${globals.nacs_key}
       loss_fn:
-        _target_: spainn.loss.PhaseLossNacMSE
+        _target_: spainn.loss.PhaseLossAtomisticMSE
         atoms: ${globals.n_atoms}
       metrics:
         mae:
-          _target_: spainn.metric.PhaselessNAC
+          _target_: spainn.metric.PhaseAtomisticMSE
           atoms: ${globals.n_atoms}
       loss_weight: 0.495
+  
+  warmup_steps: 0 #!
+  optimizer_cls: torch.optim.AdamW
+  optimizer_args:
+    lr: ${globals.lr}
+    weight_decay: 0.0 #!
+  scheduler_cls: schnetpack.train.ReduceLROnPlateau #!?
+  scheduler_monitor: val_loss
+  #!
+  scheduler_args:
+    mode: min
+    factor: 0.5
+    patience: 75
+    threshold: 0.0
+    threshold_mode: rel
+    cooldown: 10
+    min_lr: 0.0
+    smoothing_factor: 0.0
+  #!
+
+#!
+logger:
+  tensorboard:
+    _target_: pytorch_lightning.loggers.tensorboard.TensorBoardLogger
+    save_dir: ${run.path}/tensorboard/
+    name: default
+#!
+
+callbacks:
+  model_checkpoint:
+    _target_: schnetpack.train.ModelCheckpoint
+    monitor: val_loss
+    save_top_k: 1
+    model_path: ${globals.model_path}
+    #!
+    save_last: true
+    mode: min
+    verbose: false
+    dirpath: ${run.path}/checkpoints/
+    filename: '{epoch:02d}'
+  early_stopping:
+    _target_: pytorch_lightning.callbacks.EarlyStopping
+    monitor: val_loss
+    patience: 200
+    mode: min
+    min_delta: 0.0
+    check_on_train_epoch_end: false
+  lr_monitor:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+    logging_interval: epoch
+  ema:
+    _target_: schnetpack.train.ExponentialMovingAverage
+    decay: 0.995
+  #!
+
+#! (at least most of the values)
+trainer:
+  _target_: pytorch_lightning.Trainer
+  devices: 1
+  min_epochs: null
+  max_epochs: 1
+  enable_model_summary: true
+  profiler: null
+  gradient_clip_val: 0
+  accumulate_grad_batches: 1
+  val_check_interval: 1.0
+  check_val_every_n_epoch: 1
+  num_sanity_val_steps: 0
+  fast_dev_run: false
+  overfit_batches: 0
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+  limit_test_batches: 1.0
+  detect_anomaly: false
+  precision: 32
+  accelerator: auto
+  num_nodes: 1
+  deterministic: true # for reproducibility
+  inference_mode: false
+#!

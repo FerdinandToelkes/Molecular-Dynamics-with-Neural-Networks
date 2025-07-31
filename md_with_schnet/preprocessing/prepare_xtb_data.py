@@ -93,6 +93,9 @@ def get_trajectory_from_txt_and_reshape(path: str, number_of_samples: int,
 def align_shapes(number_of_samples: int, traj: np.ndarray) -> np.ndarray:
     """
     Align the shape of the trajectory data with the number of samples given by the energy trajectory.
+    Note: The last mdlog file contains one extra cycle (marked by $current) 
+        -> info will be logged when extracting the positions and velocities
+        -> just take the first n cycles, that are also in the energies.csv file (which does not contain this $current cycle)
     Args:
         number_of_samples (int): Number of samples to align with.
         traj (np.ndarray): Trajectory data to align.
@@ -100,8 +103,8 @@ def align_shapes(number_of_samples: int, traj: np.ndarray) -> np.ndarray:
         np.ndarray: Aligned trajectory data.
     """
     if traj.shape[0] != number_of_samples:
-        logger.warning(f'traj.shape[0] != number_of_samples: {traj.shape[0]} != {number_of_samples}')
-        logger.warning("Just using the first number_of_samples samples from grads_traj")
+        logger.info(f'traj.shape[0] != number_of_samples: {traj.shape[0]} != {number_of_samples}')
+        logger.info("Just using the first number_of_samples samples from grads_traj")
         traj = traj[:number_of_samples]
     return traj
 

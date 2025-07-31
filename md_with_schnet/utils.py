@@ -7,6 +7,7 @@ import torch
 import numpy as np
 import pytorch_lightning as pl
 import os
+import spainn
 
 from schnetpack.datasets import MD17
 from hydra import initialize, compose
@@ -305,7 +306,7 @@ def get_split_path(data_prefix: str, trajectory_dir: str, fold: int = 0) -> str:
     logger.debug(f"Split file: {split_file}")
     return split_file
 
-def setup_datamodule(data_cfg: DictConfig, datapath: str, split_file: str) -> spk.data.AtomsDataModule:
+def setup_datamodule(data_cfg: DictConfig, datapath: str, split_file: str) -> spk.data.AtomsDataModule | spainn.SPAINN:
     """
     Setup the data module for the given configuration.
     Args:
@@ -313,9 +314,9 @@ def setup_datamodule(data_cfg: DictConfig, datapath: str, split_file: str) -> sp
         datapath (str): Path to the data.
         split_file (str): Path to the split file.
     Returns:
-        spk.data.AtomsDataModule: Configured data module.
+        spk.data.AtomsDataModule | spainn.SPAINN: The instantiated data module for usage with SchNetPack (ground state) or SPaiNN (exited state).
     """
-    dm: spk.data.AtomsDataModule = instantiate(data_cfg, datapath=datapath, split_file=split_file)
+    dm = instantiate(data_cfg, datapath=datapath, split_file=split_file)
     dm.prepare_data()
     dm.setup()
     logger.info(f"Loaded datamodule: {dm}")
