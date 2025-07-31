@@ -12,20 +12,23 @@ This project was part of a six-month, part-time research assistant position unde
 
 ## Project Structure
 
-This project is split into two main parts, namely the "ground_state_md" and "exited_state_md" directories. The training of neural networks (NNs) to predict ground state MDs is done by employing the [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) package, whereas the [SPaiNN](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j) package was used to train NNs for the prediction of exited state trajectories. The main differences between these two tasks are summarized below
+This project is split into two main parts, namely the **ground_state_md** and **exited_state_md** directories. The training of neural networks (NNs) to predict ground state MDs is done by employing the [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) package, whereas the [SPaiNN](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j) package was used to train NNs for the prediction of exited state trajectories. The main differences between these two tasks are summarized below
 
 | Feature / Task                       | Ground State MD (`ground_state_md`)               | Excited State MD (`exited_state_md`)                      |
 |--------------------------------------|---------------------------------------------------|-----------------------------------------------------------|
 | Target Properties                    | Potential energy S0 and resulting forces          | Potential energies S0 and S1, resulting forces and non‑adiabatic couplings S0 -> S1 |
-| Training Data                        | Ground‑state trajectories using xTB with REMD     | Ground MD with xTB + excited‑state MD with TDDFT and fewest switches surface-hopping |
+| Training Data                        | Ground‑state trajectories using xTB with REMD     | Ground MD with xTB + excited‑state MD with TDDFT and FSSH |
 | ML Framework                         | SchNetPack + ASE Interface                        | SPaiNN (PaiNN + SchNetPack + SHARC interface) |
-| Dynamics Setup                       | Adiabatic MD on a single PES                      | Non‑adiabatic MD using fewest switches surface‑hopping  (via SHARC)  |
+| Dynamics Setup                       | Adiabatic MD on a single PES                      | Non‑adiabatic MD using FSSH  (via SHARC)  |
 
+Since I started with the code for ground state MD without knowing the exact direction of this project, much of the code for the exited state MD is based on or directly using code from ground_state_md.
 The "deprecated" directory contains every outdated piece of code, that at some point may be removed from this project.
+
+# Ground State Molecular Dynamics with Neural Networks
 
 ## Data Overview
 
-The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the xTB software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms, and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four confirmations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data. The evolution of the dihedral angles for one of the simulations can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html).
+The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the extended tight binding (xTB) software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms, and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four conformations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data and this clustering. The evolution of the dihedral angles for one of the simulations (T300_1) can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html). As one can see, the configurations of this simulations are mostly in anti-M conformation. Throughout the following we will only focus on the T300_1 data when training our networks.
 
 
 ## Installation
@@ -35,29 +38,28 @@ Once you have cloned this project, you can use the environment.yaml file to buil
 
 ```bash
 git clone git@github.com:FerdinandToelkes/whk.git
-conda env create -f path/to/environment.yml
+cd /path/to/cloned/directory
+conda env create -f md_with_schnet/environment.yml
 conda activate schnet
 ```
 
 ## Workflow
 
-Each script should include an example of how to execute it at the top.
+Each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = MOTOR_MD_XTB/T300_1.
 
-### preprocessing
+### Preprocessing
 
-- All python scripts are to be executed from the root directory of the project, i.e. the directory containing the "ground_state_md" directory.
-- The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = MOTOR_MD_XTB/T300_1
 - Obtain gradients, positions and velocities from mdlog.i files with the extract.py script:
 ```bash
 python -m ground_state_md.preprocessing.extract \
     --property gradients \
     --target_dir path/to/dir/with/mdlog.i/files
 ```
-- Obtain energies from mdlog.i files with Turbomole by executing directly in the directory with the mdlog.i files:
+- Obtain energies from mdlog.i files with Turbomole by executing directly in the directory with the mdlog.i files (make sure that Turbomole is installed and enabled):
 ```bash
 log2egy > energies.txt
 ```
-- Transform the extracted properties into a .db file (which is the format used within SchNetPack) by employing the prepare_xtb_in_atomic_units.py or the prepare_xtb_ang_kcal_mol.py  script
+- Transform the extracted properties into a .db file (which is the format used within SchNetPack) by employing the prepare_xtb_data.py script
 ```bash
 python -m ground_state_md.preprocessing.prepare_xtb_data \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
@@ -78,7 +80,7 @@ python -m ground_state_md.preprocessing.compute_means_and_stds \
 ```
 Note that paths need to be updated depending on the local setup especially of the data. 
 
-### neural_net
+### Training and Inference
 
 - Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the .yml config file if necessary)
 ```bash
