@@ -8,8 +8,8 @@ import spainn
 
 from ase.db import connect
 
-from md_with_schnet.utils import set_data_prefix
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.utils import set_data_prefix
+from ground_state_md.setup_logger import setup_logger
 
 
 logger = setup_logger(logging_level_str="debug")

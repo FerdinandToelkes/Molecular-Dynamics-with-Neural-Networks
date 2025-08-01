@@ -12,9 +12,9 @@ from schnetpack.md.data import HDF5Loader, PowerSpectrum
 from ase.io import write, read
 
 
-from md_with_schnet.utils import set_data_prefix, set_plotting_config, load_xtb_dataset
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.training_and_inference.inference_with_ase import update_config_with_train_config
+from ground_state_md.utils import set_data_prefix, set_plotting_config, load_xtb_dataset
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.training_and_inference.inference_with_ase import update_config_with_train_config
 
 # for interactive plotting
 import plotly.graph_objects as go
@@ -251,7 +251,7 @@ def main(trajectory_dir: str, model_dir: str, simulation_name: str, n_samples: i
             break
         test_energies.append(d["energy"])
     test_energies = np.array(test_energies)
-    plot_energies(data, test_energies, energies_system)
+    plot_energies(nn_data, test_energies, energies_system)
     exit()
 
     

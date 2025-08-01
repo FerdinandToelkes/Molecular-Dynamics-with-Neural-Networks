@@ -2,9 +2,9 @@ import argparse
 import os
 import numpy as np
 
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import set_data_prefix
-from md_with_schnet.preprocessing.create_splits import check_overlap_inner_split, check_overlap_outer_split
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.utils import set_data_prefix
+from ground_state_md.preprocessing.create_splits import check_overlap_inner_split, check_overlap_outer_split
 
 logger = setup_logger(logging_level_str="debug")
 

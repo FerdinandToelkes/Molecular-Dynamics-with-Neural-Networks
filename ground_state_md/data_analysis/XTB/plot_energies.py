@@ -3,8 +3,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import set_plotting_config, set_data_prefix
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.utils import set_plotting_config, set_data_prefix
 
 
 logger = setup_logger(logging_level_str="debug")

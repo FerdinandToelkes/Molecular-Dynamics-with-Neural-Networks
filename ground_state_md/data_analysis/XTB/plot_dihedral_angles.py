@@ -8,9 +8,9 @@ import plotly.graph_objects as go
 import plotly.io as pio
 pio.renderers.default = 'browser'
 
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import set_data_prefix
-from md_with_schnet.units import convert_time
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.utils import set_data_prefix
+from ground_state_md.units import convert_time
 
 
 logger = setup_logger(logging_level_str="debug")

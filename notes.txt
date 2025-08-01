@@ -75,6 +75,7 @@
     - Theory TDDFT PBE0 and FSSH
 
 ## GEO_100000/test
+- in NVE
 - RUN.dat: shows when you are in which state -> to test whether 3000 steps were made and to identify hop
 - control: 
     - NACs for all steps for S0 and S1 transitions, i.e. d_01 (or d_10, where d_01 = -d_10)
@@ -90,13 +91,14 @@
 Possible Improvements
 - use double when using np.loadtxt in the prepare_tddft_data.py script instead of single float
 
-- split the 53 as follows: 25 for training, three for validation and 25 for testing
 
-- compare data with pragati
-- final goal: 
-    - generate one huge .db file and just define the splits, such that data from one directory does not end up in train and val or test set
+TODOS
 - prepare_tddft_data: 
     - run checks
-    - 
+- update readme for exited state md
+- add check if metadata matches config (in train.py)
+- learn how to use trained model for exited md 
+- try different units
+- try different weights
 
 

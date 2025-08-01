@@ -9,10 +9,10 @@ from hydra.utils import instantiate, get_class
 from omegaconf import OmegaConf, DictConfig
 
 from exited_md.utils import get_split_path, remove_splitting_lock_file, load_config
-from md_with_schnet.utils import set_data_prefix, get_num_workers, setup_datamodule
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.units import get_ase_units_from_str, convert_distances
-from md_with_schnet.training_and_inference.train import get_data_paths
+from ground_state_md.utils import set_data_prefix, get_num_workers, setup_datamodule
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.units import get_ase_units_from_str, convert_distances
+from ground_state_md.training_and_inference.train import get_data_paths
 
 
 logger = setup_logger(logging_level_str="debug")
@@ -23,7 +23,7 @@ torch.set_float32_matmul_precision('highest')
 
 # Example command to run the script from within code directory:
 """
-screen -dmS tddft_train sh -c 'python -m exited_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut -e 100 ; exec bash'
+screen -dmS tddft_train sh -c 'python -m exited_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units angstrom_kcal_per_mol_fs -e 100 ; exec bash'
 """
 
 # or smaller for debugging:
@@ -78,7 +78,8 @@ def set_run_path(trajectory_dir: str, units: str, num_epochs: int, batch_size: i
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
     run_name = f"epochs_{num_epochs}_bs_{batch_size}_lr_{learning_rate}_flw_{forces_loss_weight}_elw_{energy_loss_weight}_nlw_{nacs_loss_weight}_seed_{seed}"
-    run_path = os.path.join(current_dir, "runs", units, trajectory_dir, run_name)
+    traj_dir = trajectory_dir.replace("/", "_")
+    run_path = os.path.join(current_dir, "runs", units, traj_dir, run_name)
     return run_path
 
 def update_config(cfg: DictConfig, run_path: str, ase_units: dict, batch_size: int, num_epochs: int, learning_rate: float, forces_loss_weight: float, energy_loss_weight: float, nacs_loss_weight: float, num_workers: int, path_to_stats: str) -> DictConfig:

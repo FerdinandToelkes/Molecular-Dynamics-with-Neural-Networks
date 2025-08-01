@@ -9,7 +9,7 @@ import argparse
 
 from schnetpack.datasets import MD17
 
-from md_with_schnet.utils import setup_logger, load_md17_dataset, set_data_prefix
+from ground_state_md.utils import setup_logger, load_md17_dataset, set_data_prefix
 
 
 logger = setup_logger(logging.INFO)

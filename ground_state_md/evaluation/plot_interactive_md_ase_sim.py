@@ -2,9 +2,9 @@ import os
 import argparse
 import numpy as np
 
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import load_config
-from md_with_schnet.training_and_inference.inference_with_ase import update_config_with_train_config
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.utils import load_config
+from ground_state_md.training_and_inference.inference_with_ase import update_config_with_train_config
 
 # for interactive plotting
 import plotly.graph_objects as go

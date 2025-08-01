@@ -6,9 +6,9 @@ import time
 
 from torch.utils.data import DataLoader
 
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import set_plotting_config, load_xtb_dataset_without_given_splits, set_data_prefix
-from md_with_schnet.data_analysis.MD17_vs_rMD17.molecule_analyzer import MoleculeTrajectoryAnalyzer
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.utils import set_plotting_config, load_xtb_dataset_without_given_splits, set_data_prefix
+from ground_state_md.data_analysis.MD17_vs_rMD17.molecule_analyzer import MoleculeTrajectoryAnalyzer
 
 logger = setup_logger(logging_level_str="debug")
 

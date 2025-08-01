@@ -3,7 +3,7 @@ import os
 from hydra import initialize, compose
 from omegaconf import DictConfig
 
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.setup_logger import setup_logger
 
 logger = setup_logger("debug")
 

@@ -12,8 +12,8 @@ import schnetpack as spk
 import spainn
 
 from exited_md.utils import get_split_path, remove_splitting_lock_file
-from md_with_schnet.utils import set_data_prefix
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.utils import set_data_prefix
+from ground_state_md.setup_logger import setup_logger
 
 
 logger = setup_logger(logging_level_str="debug")

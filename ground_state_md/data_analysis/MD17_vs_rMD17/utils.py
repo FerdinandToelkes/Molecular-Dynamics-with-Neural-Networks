@@ -4,7 +4,7 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 from schnetpack.datasets import MD17
 
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.setup_logger import setup_logger
 
 logger = setup_logger(logging_level_str="info")
 

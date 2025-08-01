@@ -13,9 +13,9 @@ from omegaconf import OmegaConf, DictConfig
 from schnetpack.utils.compatibility import load_model
 from tqdm import tqdm
 
-from md_with_schnet.units import convert_energies, convert_forces, get_ase_units_from_str
-from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers, set_data_units_in_config
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.units import convert_energies, convert_forces, get_ase_units_from_str
+from ground_state_md.utils import set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers, set_data_units_in_config
+from ground_state_md.setup_logger import setup_logger
 
 BATCH_SIZE = 1
 

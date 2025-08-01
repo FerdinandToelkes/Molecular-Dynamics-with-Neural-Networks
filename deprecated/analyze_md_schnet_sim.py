@@ -10,8 +10,8 @@ from schnetpack import units as spk_units
 from schnetpack.md.data import HDF5Loader, PowerSpectrum
 from ase.io import write
 
-from md_with_schnet.utils import set_data_prefix, set_plotting_config, load_xtb_dataset
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.utils import set_data_prefix, set_plotting_config, load_xtb_dataset
+from ground_state_md.setup_logger import setup_logger
 
 logger = setup_logger("debug")
 

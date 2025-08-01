@@ -1,7 +1,7 @@
 import os
 
 
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.setup_logger import setup_logger
 
 logger = setup_logger("debug")
 

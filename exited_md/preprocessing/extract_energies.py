@@ -9,8 +9,8 @@ import pandas as pd
 from tqdm import tqdm
 
 from exited_md.preprocessing.utils import prepare_last_exited_cycles, set_path_and_remove_old_file
-from md_with_schnet.utils import set_data_prefix
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.utils import set_data_prefix
+from ground_state_md.setup_logger import setup_logger
 
 # Example command to run the script from within code directory:
 """

@@ -2,8 +2,8 @@ import argparse
 import os
 import numpy as np
 
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import load_xtb_dataset_without_given_splits, set_data_prefix
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.utils import load_xtb_dataset_without_given_splits, set_data_prefix
 
 logger = setup_logger(logging_level_str="debug")
 

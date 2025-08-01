@@ -5,8 +5,8 @@ import torch
 from tqdm import tqdm
 from omegaconf import DictConfig, OmegaConf
 
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.utils import set_data_prefix, get_split_path, load_config, setup_datamodule
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.utils import set_data_prefix, get_split_path, load_config, setup_datamodule
 
 logger = setup_logger("debug")
 

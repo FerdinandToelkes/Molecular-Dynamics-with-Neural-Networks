@@ -4,9 +4,9 @@ import argparse
 from tqdm import tqdm
 
 from exited_md.preprocessing.utils import prepare_last_exited_cycles, set_path_and_remove_old_file
-from md_with_schnet.utils import set_data_prefix
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.preprocessing.extract import get_sorted_mdlog_files, extract_property_from_log_files
+from ground_state_md.utils import set_data_prefix
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.preprocessing.extract import get_sorted_mdlog_files, extract_property_from_log_files
 
 # Example command to run the script from within code directory:
 """

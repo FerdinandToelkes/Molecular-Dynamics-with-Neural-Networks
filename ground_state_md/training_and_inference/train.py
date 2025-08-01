@@ -8,8 +8,8 @@ from omegaconf import OmegaConf, DictConfig
 
 
 # own imports
-from md_with_schnet.utils import setup_logger, set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers
-from md_with_schnet.units import get_ase_units_from_str, convert_distances
+from ground_state_md.utils import setup_logger, set_data_prefix, get_split_path, load_config, setup_datamodule, get_num_workers
+from ground_state_md.units import get_ase_units_from_str, convert_distances
 
 logger = setup_logger("debug")
 

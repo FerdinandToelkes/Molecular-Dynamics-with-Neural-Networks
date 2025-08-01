@@ -17,8 +17,8 @@ from schnetpack.transform import ASENeighborList
 from schnetpack.md.calculators import SchNetPackCalculator
 from schnetpack.md.simulation_hooks import LangevinThermostat, callback_hooks
 
-from md_with_schnet.utils import set_data_prefix, load_xtb_dataset
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.utils import set_data_prefix, load_xtb_dataset
+from ground_state_md.setup_logger import setup_logger
 
 # TODO: update with the functions of inference_with_ase.py if needed
 # Example command to run the script from within code directory:

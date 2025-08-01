@@ -7,10 +7,10 @@ from schnetpack.data import ASEAtomsData
 from ase import Atoms
 from ase.db import connect
 
-from md_with_schnet.units import convert_distances, convert_energies, convert_forces, convert_velocities, convert_nacs, convert_smooth_nacs, get_ase_unit_format
-from md_with_schnet.utils import set_data_prefix
-from md_with_schnet.setup_logger import setup_logger
-from md_with_schnet.preprocessing.prepare_xtb_data import get_trajectory_from_txt_and_reshape, get_atomic_numbers_from_xyz, get_overview_of_dataset
+from ground_state_md.units import convert_distances, convert_energies, convert_forces, convert_velocities, convert_nacs, convert_smooth_nacs, get_ase_unit_format
+from ground_state_md.utils import set_data_prefix
+from ground_state_md.setup_logger import setup_logger
+from ground_state_md.preprocessing.prepare_xtb_data import get_trajectory_from_txt_and_reshape, get_atomic_numbers_from_xyz, get_overview_of_dataset
 
 from exited_md.preprocessing.utils import prepare_last_exited_cycles
 

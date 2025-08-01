@@ -2,7 +2,7 @@ import os
 import argparse
 import pandas as pd
 
-from md_with_schnet.setup_logger import setup_logger
+from ground_state_md.setup_logger import setup_logger
 
 
 # Example command to run the script from within code directory:
