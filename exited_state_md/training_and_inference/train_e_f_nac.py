@@ -11,7 +11,7 @@ import schnetpack as spk
 
 import spainn
 
-from exited_md.utils import get_split_path, remove_splitting_lock_file
+from exited_state_md.utils import get_split_path, remove_splitting_lock_file
 from ground_state_md.utils import set_data_prefix
 from ground_state_md.setup_logger import setup_logger
 

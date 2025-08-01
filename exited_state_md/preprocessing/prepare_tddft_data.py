@@ -12,7 +12,7 @@ from ground_state_md.utils import set_data_prefix
 from ground_state_md.setup_logger import setup_logger
 from ground_state_md.preprocessing.prepare_xtb_data import get_trajectory_from_txt_and_reshape, get_atomic_numbers_from_xyz, get_overview_of_dataset
 
-from exited_md.preprocessing.utils import prepare_last_exited_cycles
+from exited_state_md.preprocessing.utils import prepare_last_exited_cycles
 
 
 logger = setup_logger("info")

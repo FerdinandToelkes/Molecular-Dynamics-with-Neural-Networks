@@ -10,7 +10,7 @@ pio.renderers.default = 'browser'
 
 from ground_state_md.setup_logger import setup_logger
 from ground_state_md.utils import set_data_prefix
-from exited_md.preprocessing.extract_energies import read_ex_energies_file, convert_ex_energies_to_absolute
+from exited_state_md.preprocessing.extract_energies import read_ex_energies_file, convert_ex_energies_to_absolute
 
 
 logger = setup_logger(logging_level_str="debug")
