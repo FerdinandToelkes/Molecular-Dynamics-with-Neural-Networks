@@ -17,7 +17,7 @@ logger = setup_logger(logging_level_str="debug")
 
 # Example command to run the script from within code directory:
 """
-python -m exited_md.training_and_inference.train_e_f
+python -m exited_state_md.training_and_inference.train_e_f
 """
 
 

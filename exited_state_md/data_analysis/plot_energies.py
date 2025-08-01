@@ -17,7 +17,7 @@ logger = setup_logger(logging_level_str="debug")
 
 # Example command to run the script from within code directory:
 """
-python3 -m exited_md.data_analysis.plot_energies --trajectory_dir PREPARE_12/GEO_100000/test
+python3 -m exited_state_md.data_analysis.plot_energies --trajectory_dir PREPARE_12/GEO_100000/test
 """
 
 
@@ -93,7 +93,7 @@ def create_interactive_energies_plot(energies: dict, index: np.ndarray, plot_dir
 
 def main(trajectory_dir: str, nr_of_configs: int):
     # setup
-    plot_dir = os.path.expanduser('~/whk/code/exited_md/data_analysis/plots')
+    plot_dir = os.path.expanduser('~/whk/code/exited_state_md/data_analysis/plots')
     os.makedirs(plot_dir, exist_ok=True)
     data_prefix = os.path.join(set_data_prefix(), trajectory_dir)
     

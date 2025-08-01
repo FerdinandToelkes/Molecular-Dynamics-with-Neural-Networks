@@ -14,7 +14,7 @@ from ground_state_md.setup_logger import setup_logger
 
 # Example command to run the script from within code directory:
 """
-python3 -m exited_md.preprocessing.extract_energies --target_dir PREPARE_12
+python3 -m exited_state_md.preprocessing.extract_energies --target_dir PREPARE_12
 """
 
 # (*) We work under the assumption, the only possible active states are S0 and S1, NOT S2.

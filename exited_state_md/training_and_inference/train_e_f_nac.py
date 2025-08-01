@@ -21,7 +21,7 @@ logger = setup_logger(logging_level_str="debug")
 
 # Example command to run the script from within code directory:
 """
-python -m exited_md.training_and_inference.train_e_f_nac --trajectory_dir PREPARE_12/spainn_datasets/toy_data
+python -m exited_state_md.training_and_inference.train_e_f_nac --trajectory_dir PREPARE_12/spainn_datasets/toy_data
 """
 
 

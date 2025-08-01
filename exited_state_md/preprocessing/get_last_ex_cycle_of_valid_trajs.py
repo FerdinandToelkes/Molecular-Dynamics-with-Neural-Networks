@@ -6,7 +6,7 @@ from ground_state_md.setup_logger import setup_logger
 
 # Example command to run the script from within code directory:
 """
-python3 -m exited_md.preprocessing.get_last_ex_cycle_of_valid_trajs --target_dir PREPARE_12
+python3 -m exited_state_md.preprocessing.get_last_ex_cycle_of_valid_trajs --target_dir PREPARE_12
 """
 
 logger = setup_logger(logging_level_str="info")

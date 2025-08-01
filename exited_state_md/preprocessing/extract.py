@@ -10,7 +10,7 @@ from ground_state_md.preprocessing.extract import get_sorted_mdlog_files, extrac
 
 # Example command to run the script from within code directory:
 """
-python3 -m exited_md.preprocessing.extract --property positions --target_dir PREPARE_12
+python3 -m exited_state_md.preprocessing.extract --property positions --target_dir PREPARE_12
 """
 
 logger = setup_logger(logging_level_str="info")
@@ -45,7 +45,7 @@ def main(target_dir: str, computed_cycles: int, property: str):
     # setup
     data_path = os.path.join(set_data_prefix(), target_dir)
     logger.debug(f"data_path: {data_path}")
-    command_path = os.path.expanduser(f'~/whk/code/md_with_schnet/preprocessing/extract_{property}.sh')
+    command_path = os.path.expanduser(f'~/whk/code/ground_state_md/preprocessing/extract_{property}.sh')
     if not os.path.exists(command_path):
         raise FileNotFoundError(f"Command path {command_path} does not exist. Please check the path.")
 

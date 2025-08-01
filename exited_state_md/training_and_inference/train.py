@@ -23,12 +23,12 @@ torch.set_float32_matmul_precision('highest')
 
 # Example command to run the script from within code directory:
 """
-screen -dmS tddft_train sh -c 'python -m exited_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units angstrom_kcal_per_mol_fs -e 100 ; exec bash'
+screen -dmS tddft_train sh -c 'python -m exited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut -e 500 ; exec bash'
 """
 
 # or smaller for debugging:
 """
-python -m exited_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets/toy_data --units bohr_hartree_aut -e 1
+python -m exited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets/toy_data --units bohr_hartree_aut -e 1
 """
 
 
@@ -58,7 +58,7 @@ def parse_args() -> dict:
 
 
 ####################################################################################
-### Functions mostly copied from md_with_schnet.training_and_inference.train.py ####
+### Functions mostly copied from ground_state_md.training_and_inference.train.py ####
 ####################################################################################
 def set_run_path(trajectory_dir: str, units: str, num_epochs: int, batch_size: int, learning_rate: float, forces_loss_weight: float, energy_loss_weight: float, nacs_loss_weight: float, seed: int) -> str:
     """ 

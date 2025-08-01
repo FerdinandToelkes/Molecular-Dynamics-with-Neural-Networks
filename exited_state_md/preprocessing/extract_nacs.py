@@ -11,7 +11,7 @@ from ground_state_md.setup_logger import setup_logger
 # Script uses the bash script extract_nacs.sh to extract nacs from the control file for all GEO folders.
 # Example command to run the script from within code directory:
 """
-python3 -m exited_md.preprocessing.extract_nacs --target_dir PREPARE_12
+python3 -m exited_state_md.preprocessing.extract_nacs --target_dir PREPARE_12
 """
 
 logger = setup_logger(logging_level_str="info")
@@ -37,7 +37,7 @@ def main(target_dir: str, computed_cycles: int):
     # setup
     data_path = os.path.join(set_data_prefix(), target_dir)
     logger.debug(f"data_path: {data_path}")
-    command_path = os.path.expanduser(f'~/whk/code/exited_md/preprocessing/extract_nacs.sh')
+    command_path = os.path.expanduser(f'~/whk/code/exited_state_md/preprocessing/extract_nacs.sh')
     if not os.path.exists(command_path):
         raise FileNotFoundError(f"Command path {command_path} does not exist. Please check the path.")
 

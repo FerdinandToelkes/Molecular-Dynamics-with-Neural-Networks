@@ -20,7 +20,7 @@ logger = setup_logger("info")
 
 # Example command to run the script from within code directory:
 """
-python -m exited_md.preprocessing.prepare_tddft_data  --num_atoms 48 --position_unit bohr --energy_unit hartree --time_unit aut
+python -m exited_state_md.preprocessing.prepare_tddft_data  --num_atoms 48 --position_unit bohr --energy_unit hartree --time_unit aut
 """
 
 # Note: 

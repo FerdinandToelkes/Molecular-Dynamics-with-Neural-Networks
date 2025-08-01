@@ -15,7 +15,7 @@ logger = setup_logger(logging_level_str="info")
 # This is the code from the first SPaiNN tutorial, which is used to plot the energy distribution of the prepared dataset.
 # Example command to run the script from within code directory:
 """
-python -m exited_md.data_analysis.plot_energy_distribution --trajectory_dir PREPARE_12/spainn_datasets/sandbox_data --units bohr_hartree_aut
+python -m exited_state_md.data_analysis.plot_energy_distribution --trajectory_dir PREPARE_12/spainn_datasets/sandbox_data --units bohr_hartree_aut
 """
 
 def parse_args() -> dict:
@@ -66,7 +66,7 @@ def main(trajectory_dir: str, units: str, dirs_to_plot: int):
     plt.title('Distribution of Energies in the Dataset')
 
     # Save the plot
-    plot_dir_path = os.path.expanduser("~/whk/code/exited_md/data_analysis/plots")
+    plot_dir_path = os.path.expanduser("~/whk/code/exited_state_md/data_analysis/plots")
     os.makedirs(plot_dir_path, exist_ok=True)
     plot_path = os.path.join(plot_dir_path, f"energy_distribution_{units}_first_{dirs_to_plot}_dirs.png")
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
