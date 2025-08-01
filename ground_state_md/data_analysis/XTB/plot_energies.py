@@ -12,7 +12,7 @@ logger = setup_logger(logging_level_str="debug")
 # Script to generate plots comparing the different energies (compare with paper from Jesús).
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.data_analysis.XTB.plot_energies --trajectory_dir MOTOR_MD_XTB/T300_1 --show_plots
+python -m ground_state_md.data_analysis.XTB.plot_energies --trajectory_dir MOTOR_MD_XTB/T300_1 --show_plots
 """
 
 
@@ -60,7 +60,7 @@ def plot_on_one_y_axis(kinetic_energy: np.ndarray, ekin_from_temp: np.ndarray):
 
 def main(trajectory_dir: str, show_plots: bool):
     # setup
-    plot_dir = os.path.expanduser('~/whk/code/md_with_schnet/data_analysis/plots')
+    plot_dir = os.path.expanduser('~/whk/code/ground_state_md/data_analysis/plots')
     data_prefix = os.path.join(set_data_prefix(), trajectory_dir)
     plot_path = os.path.join(plot_dir, f"XTB/kinetic_energy_and_temperature.pdf")
     path = os.path.join(data_prefix, 'energies.txt')

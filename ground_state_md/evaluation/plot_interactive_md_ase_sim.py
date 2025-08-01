@@ -17,7 +17,7 @@ logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.evaluation.plot_interactive_md_ase_sim --model_dir epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 --units angstrom_kcal_per_mol_fs
+python -m ground_state_md.evaluation.plot_interactive_md_ase_sim --model_dir epochs_1000_bs_100_lr_0.0001_seed_42 --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 --units angstrom_kcal_per_mol_fs
 """
 
 def parse_args() -> dict:
@@ -557,7 +557,7 @@ def main(trajectory_dir: str, model_dir: str, units: str, simulation_name: str, 
     
     ####################### 3) Make interactive Plots #########################
     properties, y_labels = prepare_properties_data(log_data)
-    plot_dir = os.path.join("md_with_schnet/plots", model_dir, simulation_name)
+    plot_dir = os.path.join("ground_state_md/plots", model_dir, simulation_name)
     # Ensure the plot directory exists
     os.makedirs(plot_dir, exist_ok=True)
     logger.debug(f"Plot directory: {plot_dir}")

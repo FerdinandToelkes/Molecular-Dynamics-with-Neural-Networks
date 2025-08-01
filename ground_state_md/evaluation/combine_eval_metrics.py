@@ -7,7 +7,7 @@ from ground_state_md.setup_logger import setup_logger
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.evaluation.combine_eval_metrics -mdir epochs_1000_bs_100_lr_0.0001_seed_42 --evaluation_data val
+python -m ground_state_md.evaluation.combine_eval_metrics -mdir epochs_1000_bs_100_lr_0.0001_seed_42 --evaluation_data val
 """
 
 
@@ -30,7 +30,7 @@ def parse_args() -> dict:
 
 def main(trajectory_dir: str, model_dir: str, fold: int, evaluation_data: str) -> None:
     home_dir = os.path.expanduser("~")
-    path_to_runs = os.path.join(home_dir, "whk/code/md_with_schnet/training_and_inference/runs")
+    path_to_runs = os.path.join(home_dir, "whk/code/ground_state_md/training_and_inference/runs")
     unit_systems = ["angstrom_kcal_per_mol_fs", "angstrom_ev_fs", "angstrom_hartree_fs"]
     logger.info(f"Unit systems to be examined: {unit_systems}")
     results = {}

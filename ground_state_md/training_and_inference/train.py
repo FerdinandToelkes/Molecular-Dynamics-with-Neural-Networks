@@ -15,7 +15,7 @@ logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-screen -dmS xtb_train sh -c 'python -m md_with_schnet.training_and_inference.train --trajectory_dir MOTOR_MD_XTB/T300_1 -e 1 -cname train_config_default_transforms --units angstrom_kcal_per_mol_fs; exec bash'
+screen -dmS xtb_train sh -c 'python -m ground_state_md.training_and_inference.train --trajectory_dir MOTOR_MD_XTB/T300_1 -e 1 -cname train_config_default_transforms --units angstrom_kcal_per_mol_fs; exec bash'
 """
 
 def parse_args() -> dict:

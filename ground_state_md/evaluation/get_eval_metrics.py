@@ -21,7 +21,7 @@ BATCH_SIZE = 1
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.evaluation.get_eval_metrics -mdir epochs_1000_bs_100_lr_0.0001_flw_389830.46_elw_3937.68_seed_42 --units angstrom_hartree_fs --evaluation_data test
+python -m ground_state_md.evaluation.get_eval_metrics -mdir epochs_1000_bs_100_lr_0.0001_flw_389830.46_elw_3937.68_seed_42 --units angstrom_hartree_fs --evaluation_data test
 """
 
 
@@ -240,7 +240,7 @@ def main(trajectory_dir: str, units: str, model_dir: str, evaluation_data: str, 
     home_dir = os.path.expanduser("~")
     runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
     model_dir_path = os.path.join(runs_dir_path, units, trajectory_dir, model_dir)
-    model_dir_rel_path = "".join(model_dir_path.split("md_with_schnet/")[1:])
+    model_dir_rel_path = "".join(model_dir_path.split("ground_state_md/")[1:])
     logger.debug(f"Absolute path to the model directory: {model_dir_path}")
 
     # use training config to update the inference config

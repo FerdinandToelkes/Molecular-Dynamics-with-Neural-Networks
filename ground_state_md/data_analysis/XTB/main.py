@@ -15,7 +15,7 @@ logger = setup_logger(logging_level_str="debug")
 # Script to generate plots comparing different properties of an XTB dataset.
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.data_analysis.XTB.main --trajectory_dir MOTOR_MD_XTB/T300_1 --show_plots
+python -m ground_state_md.data_analysis.XTB.main --trajectory_dir MOTOR_MD_XTB/T300_1 --show_plots
 """
 
 
@@ -55,8 +55,8 @@ def combine_plots(plot_dir: str, plot_type: str, comparer_function: callable, ex
 
 def main(trajectory_dir: str, show_plots: bool):
     # setup
-    work_dir = os.path.expanduser('~/whk/code/md_with_schnet/data_analysis/XTB')
-    plot_dir = os.path.expanduser('~/whk/code/md_with_schnet/data_analysis/plots')
+    work_dir = os.path.expanduser('~/whk/code/ground_state_md/data_analysis/XTB')
+    plot_dir = os.path.expanduser('~/whk/code/ground_state_md/data_analysis/plots')
     data_prefix = os.path.join(set_data_prefix(), trajectory_dir)
     target_path = os.path.join(data_prefix, 'md_trajectory.db')
 

@@ -12,7 +12,7 @@ logger = setup_logger("debug")
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.preprocessing.compute_means_and_stds --trajectory_dir MOTOR_MD_XTB/T300_1 --num_atoms=48
+python -m ground_state_md.preprocessing.compute_means_and_stds --trajectory_dir MOTOR_MD_XTB/T300_1 --num_atoms=48
 """
 
 

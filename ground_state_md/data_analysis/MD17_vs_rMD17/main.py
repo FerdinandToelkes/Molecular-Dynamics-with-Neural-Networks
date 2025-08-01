@@ -15,7 +15,7 @@ logger = setup_logger(logging_level_str="debug")
 # Script to generate plots comparing the original MD17 dataset with the revised MD17 dataset.
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.data_analysis.MD17_vs_rMD17.main --molecule_name ethanol --sorted 
+python -m ground_state_md.data_analysis.MD17_vs_rMD17.main --molecule_name ethanol --sorted 
 """
 
 
@@ -58,8 +58,8 @@ def plot_comparisons(plot_dir: str, plot_type: str, comparer_function: callable,
 
 def main(molecule_name: str, sorted: bool, show_plots: bool):
     # setup
-    work_dir = os.path.expanduser('~/whk/code/md_with_schnet/data_analysis/MD17_vs_rMD17')
-    plot_dir = os.path.expanduser('~/whk/code/md_with_schnet/data_analysis/plots')
+    work_dir = os.path.expanduser('~/whk/code/ground_state_md/data_analysis/MD17_vs_rMD17')
+    plot_dir = os.path.expanduser('~/whk/code/ground_state_md/data_analysis/plots')
     data_prefix = set_data_prefix()
 
     # load original and revised MD17 dataset (e.g., Ethanol)

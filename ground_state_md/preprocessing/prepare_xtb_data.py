@@ -16,7 +16,7 @@ logger = setup_logger(logging_level_str="info")
 
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.preprocessing.prepare_xtb_data --trajectory_dir MOTOR_MD_XTB/T300_1 --num_atoms 48 --position_unit angstrom --energy_unit kcal/mol --time_unit fs
+python -m ground_state_md.preprocessing.prepare_xtb_data --trajectory_dir MOTOR_MD_XTB/T300_1 --num_atoms 48 --position_unit angstrom --energy_unit kcal/mol --time_unit fs
 """
 
 def parse_args() -> dict:

@@ -131,13 +131,13 @@ model:
     force_key: ${globals.forces_key}
   postprocessors:
   - _target_: schnetpack.transform.CastTo64
-  - _target_: md_with_schnet.preprocessing.transforms.UndoNormalizePropertyByMean
+  - _target_: ground_state_md.preprocessing.transforms.UndoNormalizePropertyByMean
     property_key: energy
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.UndoNormalizePropertyByMean
+  - _target_: ground_state_md.preprocessing.transforms.UndoNormalizePropertyByMean
     property_key: forces
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.UndoNormalizePropertyByMean
+  - _target_: ground_state_md.preprocessing.transforms.UndoNormalizePropertyByMean
     property_key: _positions
     path_to_stats: ${run.mean_std_path}
 data:
@@ -150,13 +150,13 @@ data:
     energy: null # set in train.py
     forces: null # set in train.py
   transforms:
-  - _target_: md_with_schnet.preprocessing.transforms.NormalizePropertyByMean
+  - _target_: ground_state_md.preprocessing.transforms.NormalizePropertyByMean
     property_key: energy
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.NormalizePropertyByMean
+  - _target_: ground_state_md.preprocessing.transforms.NormalizePropertyByMean
     property_key: forces
     path_to_stats: ${run.mean_std_path}
-  - _target_: md_with_schnet.preprocessing.transforms.NormalizePropertyByMean
+  - _target_: ground_state_md.preprocessing.transforms.NormalizePropertyByMean
     property_key: _positions
     path_to_stats: ${run.mean_std_path}
   - _target_: schnetpack.transform.MatScipyNeighborList

@@ -19,7 +19,7 @@ from ground_state_md.units import convert_time, convert_velocities, get_ase_unit
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m md_with_schnet.training_and_inference.inference_with_ase -mdir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_flw_389830.46_elw_3937.68_seed_42 --units angstrom_kcal_per_mol_fs --md_steps 10000 --time_step 0.5 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m ground_state_md.training_and_inference.inference_with_ase -mdir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_flw_389830.46_elw_3937.68_seed_42 --units angstrom_kcal_per_mol_fs --md_steps 10000 --time_step 0.5 ; exec bash'
 """
 
 
@@ -181,7 +181,7 @@ def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_st
     home_dir = os.path.expanduser("~")
     runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
     model_dir_path = os.path.join(runs_dir_path, units, model_dir)
-    model_dir_rel_path = "".join(model_dir_path.split("md_with_schnet/")[1:])
+    model_dir_rel_path = "".join(model_dir_path.split("ground_state_md/")[1:])
     logger.debug(f"Absolute path to the model directory: {model_dir_path}")
 
     # use training config to update the inference config

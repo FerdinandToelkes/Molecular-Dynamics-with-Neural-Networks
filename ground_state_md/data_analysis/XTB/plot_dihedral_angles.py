@@ -18,7 +18,7 @@ logger = setup_logger(logging_level_str="debug")
 # Script to generate plots comparing the different dihedral angles --trajectory_dir MOTOR_MD_XTB/T300_1 --show_plots(potential etc.).
 # Example command to run the script from within code directory:
 """
-python -m md_with_schnet.data_analysis.XTB.plot_dihedral_angles --trajectory_dir MOTOR_MD_XTB/T300_1
+python -m ground_state_md.data_analysis.XTB.plot_dihedral_angles --trajectory_dir MOTOR_MD_XTB/T300_1
 """
 
 
@@ -91,7 +91,7 @@ def create_interactive_angles_plot(angles: dict, time_steps: np.ndarray, plot_di
 
 def main(trajectory_dir: str, nr_of_configs: int):
     # setup
-    plot_dir = os.path.expanduser('~/whk/code/md_with_schnet/data_analysis/plots/XTB')
+    plot_dir = os.path.expanduser('~/whk/code/ground_state_md/data_analysis/plots/XTB')
     data_prefix = os.path.join(set_data_prefix(), trajectory_dir)
     path = os.path.join(data_prefix, 'multiplot.dat')
 
