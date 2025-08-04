@@ -3,7 +3,7 @@ import os
 
 from ground_state_md.setup_logger import setup_logger
 
-logger = setup_logger("debug")
+logger = setup_logger("info")
 
 
 
@@ -30,6 +30,9 @@ def prepare_last_exited_cycles(data_path: str, computed_cycles: int) -> dict:
 
     # delete all entries in last_exited_cycles that are in excluded_directories
     last_exited_cycles = delete_excluded_directories(last_exited_cycles, excluded_directories)
+
+    # sort them by name
+    last_exited_cycles = dict(sorted(last_exited_cycles.items()))
     return last_exited_cycles
 
 def read_last_exited_cycles(data_path: str) -> dict:

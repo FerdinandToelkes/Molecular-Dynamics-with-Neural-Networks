@@ -100,5 +100,9 @@ TODOS
 - learn how to use trained model for exited md 
 - try different units
 - try different weights
+- add theory section to readme: SchNet, PaiNN, SPaiNN
+
+- Why do errors from tensorboard and from my calculation not match?
+- Shuffle directories before creating .db and save their order into a txt file
 
 

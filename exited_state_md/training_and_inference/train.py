@@ -8,12 +8,13 @@ from ase.db import connect
 from hydra.utils import instantiate, get_class
 from omegaconf import OmegaConf, DictConfig
 
-from exited_state_md.utils import get_split_path, remove_splitting_lock_file, load_config
+from exited_state_md.utils import get_split_path, remove_splitting_lock_file
 from ground_state_md.utils import set_data_prefix, get_num_workers, setup_datamodule
 from ground_state_md.setup_logger import setup_logger
 from ground_state_md.units import get_ase_units_from_str, convert_distances
 from ground_state_md.training_and_inference.train import get_data_paths
 
+from exited_state_md.utils import load_config # because it works with relative paths
 
 logger = setup_logger(logging_level_str="debug")
 
@@ -23,7 +24,7 @@ torch.set_float32_matmul_precision('highest')
 
 # Example command to run the script from within code directory:
 """
-screen -dmS tddft_train sh -c 'python -m exited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut -e 500 ; exec bash'
+screen -dmS tddft_train sh -c 'python -m exited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut -e 100 ; exec bash'
 """
 
 # or smaller for debugging:
@@ -131,8 +132,7 @@ def main(trajectory_dir: str, units: str, batch_size: int, num_epochs: int, lear
     ####################### Basic setup ###########################
     pl.seed_everything(seed, workers=True)
     data_prefix = set_data_prefix()
-    path_to_traj_dir = os.path.join(data_prefix, trajectory_dir)
-    split_file = get_split_path(path_to_traj_dir, fold=0)
+    split_file = get_split_path(data_prefix, trajectory_dir, fold=0)
     path_to_db, path_to_stats = get_data_paths(data_prefix, trajectory_dir, fold, units)
     logger.info(f"Using the following units: {units}")
 
@@ -201,6 +201,9 @@ def main(trajectory_dir: str, units: str, batch_size: int, num_epochs: int, lear
         callbacks=callbacks,
         logger=tb_logger,
     )
+    # log number of parameters in the model
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"Number of trainable parameters in the model: {num_params}")
 
     ####################### 8) Launch training ########################
     # since we have a pl datamodule, it is split automatically into train, val and test sets
@@ -253,4 +256,9 @@ if __name__=="__main__":
 
 # timing on full dataset with one epoch and batch size 32 and highest precision
 # training with 75000, validation with 9000 data points
+
+# n_interactions = 6, n_atom_basis = 50 (n_params approx 20.000)
 # t_total = 153.6782 s
+
+# n_interactions = 3, n_atom_basis = 128 (n_params approx 600.000)
+# t_total approx  190 s

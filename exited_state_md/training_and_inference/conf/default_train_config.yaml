@@ -46,8 +46,8 @@ model:
       n_rbf: 20
       cutoff: ${globals.cutoff}
     _target_: schnetpack.representation.PaiNN
-    n_atom_basis: 50 # increasing this, leads to much more parameters
-    n_interactions: 6
+    n_atom_basis: 128 # dimension of the atom-wise representation
+    n_interactions: 3 # according to the supplements of SPAINN paper 
     shared_interactions: false #!
     shared_filters: false #!
     cutoff_fn:
@@ -66,7 +66,6 @@ model:
     - _target_: spainn.Forces
       energy_key: ${globals.energy_key}
       force_key: ${globals.forces_key}
-      #n_states: ${globals.n_states} 
     - _target_: spainn.Nacs
       nac_key: ${globals.nacs_key}
       n_in: ${model.representation.n_atom_basis}
