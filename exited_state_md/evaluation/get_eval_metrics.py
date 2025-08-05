@@ -125,7 +125,7 @@ def collect_predictions_and_ground_truths(cfg: DictConfig, datamodule: pl.Lightn
         # energy and forces required grads -> detach them
         e_pred = output[cfg.globals.energy_key].detach().cpu().numpy()
         f_pred = output[cfg.globals.forces_key].detach().cpu().numpy()
-        nac_pred = output[cfg.globals.nacs_key].detach().cpu().numpy() if cfg.globals.nacs_key in output else None
+        nac_pred = output[cfg.globals.nacs_key].detach().cpu().numpy() 
         # store predictions and ground truths
         results["predictions"][cfg.globals.energy_key].append(e_pred)
         results["predictions"][cfg.globals.forces_key].append(f_pred)
@@ -167,20 +167,30 @@ def transform_predictions_and_ground_truths_to_numpy(preds_and_gts: dict, cfg_gl
     logger.debug(f"Transformed ground truths shape: {transformed['ground_truths'][energy_key].shape}, {transformed['ground_truths'][forces_key].shape}, {transformed['ground_truths'][nacs_key].shape}")
     return transformed
 
-def check_shapes(preds_and_gts: dict, nr_samples: int):
+def check_shapes(preds_and_gts: dict, nr_samples: int, energy_key: str, forces_key: str, nacs_key: str):
     """ Check the shapes of predictions and ground truths.
     Args:
         preds_and_gts (dict): A dictionary containing predictions and ground truths for energy and forces.
         num_samples (int): Number of samples to check.
+        energy_key (str): Key for energy in the predictions and ground truths.
+        forces_key (str): Key for forces in the predictions and ground truths.
+        nacs_key (str): Key for NACS in the predictions and ground truths.
+    Raises:
+        AssertionError: If the shapes of predictions and ground truths do not match the expected number of samples.
     """
-    assert preds_and_gts["predictions"]["energy"].shape[0] == nr_samples, \
-        f"Predicted energies shape mismatch: {preds_and_gts['predictions']['energy'].shape[0]} != {nr_samples}"
-    assert preds_and_gts["predictions"]["forces"].shape[0] == nr_samples, \
-        f"Predicted forces shape mismatch: {preds_and_gts['predictions']['forces'].shape[0]} != {nr_samples}"
-    assert preds_and_gts["ground_truths"]["energy"].shape[0] == nr_samples, \
-        f"Ground truth energies shape mismatch: {preds_and_gts['ground_truths']['energy'].shape[0]} != {nr_samples}"
-    assert preds_and_gts["ground_truths"]["forces"].shape[0] == nr_samples, \
-        f"Ground truth forces shape mismatch: {preds_and_gts['ground_truths']['forces'].shape[0]} != {nr_samples}"
+    assert preds_and_gts["predictions"][energy_key].shape[0] == nr_samples, \
+        f"Predicted energies shape mismatch: {preds_and_gts['predictions'][energy_key].shape[0]} != {nr_samples}"
+    assert preds_and_gts["predictions"][forces_key].shape[0] == nr_samples, \
+        f"Predicted forces shape mismatch: {preds_and_gts['predictions'][forces_key].shape[0]} != {nr_samples}"
+    assert preds_and_gts["predictions"][nacs_key].shape[0] == nr_samples, \
+        f"Predicted NACS shape mismatch: {preds_and_gts['predictions'][nacs_key].shape[0]} != {nr_samples}"
+    assert preds_and_gts["ground_truths"][energy_key].shape[0] == nr_samples, \
+        f"Ground truth energies shape mismatch: {preds_and_gts['ground_truths'][energy_key].shape[0]} != {nr_samples}"
+    assert preds_and_gts["ground_truths"][forces_key].shape[0] == nr_samples, \
+        f"Ground truth forces shape mismatch: {preds_and_gts['ground_truths'][forces_key].shape[0]} != {nr_samples}"
+    assert preds_and_gts["ground_truths"][nacs_key].shape[0] == nr_samples, \
+        f"Ground truth NACS shape mismatch: {preds_and_gts['ground_truths'][nacs_key].shape[0]} != {nr_samples}"
+    logger.debug("Shapes of predictions and ground truths are correct.")
 
 def compute_mae_with_std_error(preds_and_gts: dict, property: str) -> tuple:
     """ Compute Mean Absolute Error (MAE) and its standard error for a given property.
@@ -190,35 +200,12 @@ def compute_mae_with_std_error(preds_and_gts: dict, property: str) -> tuple:
     Returns:
         tuple: Mean Absolute Error (MAE) and its standard error for the specified property.
     """
+    logger.debug(f"Shape of predictions for {property}: {preds_and_gts['predictions'][property].shape}")
     abs_diff = np.abs(preds_and_gts["predictions"][property] - preds_and_gts["ground_truths"][property])
+    logger.debug(f"Shape of absolute differences for {property}: {abs_diff.shape}")
     mae = np.mean(abs_diff)
     mae_std_error = np.std(abs_diff) / np.sqrt(len(abs_diff))  # Standard error of the mean
-
     return mae, mae_std_error
-
-
-def average_over_batches(datamodule: pl.LightningDataModule, forces_mae: float, energy_mae: float):
-    """ 
-    Average the computed metrics over all batches.
-    Args:
-        datamodule: Data module containing the test data.
-        forces_mae (float): Mean Absolute Error for forces.
-        energy_mae (float): Mean Absolute Error for energy.
-    Returns:
-        tuple: Averaged Mean Absolute Error (MAE) for forces and energy.
-    """
-    num_batches = len(datamodule.test_dataloader())
-    return forces_mae / num_batches, energy_mae / num_batches
-
-def get_batch_mae(pred: np.ndarray, gt: np.ndarray) -> float:
-    """ Compute Mean Absolute Error (MAE) for a batch.
-    Args:
-        pred (np.ndarray): Predicted values.
-        gt (np.ndarray): Ground truth values.
-    Returns:
-        float: Mean Absolute Error for the batch.
-    """
-    return np.mean(np.abs(pred - gt)).item()
 
 
 def main(trajectory_dir: str, units: str, model_dir: str, evaluation_data: str, fold: int, seed: int, num_workers: int):
@@ -246,6 +233,10 @@ def main(trajectory_dir: str, units: str, model_dir: str, evaluation_data: str, 
     cfg = update_config(cfg, model_units, model_dir_path, num_workers)
     logger.info(f"Loaded and updated config:\n{OmegaConf.to_yaml(cfg)}")
 
+    energy_key = cfg.globals.energy_key
+    forces_key = cfg.globals.forces_key
+    nacs_key = cfg.globals.nacs_key
+    logger.info(f"Energy key: {energy_key}, Forces key: {forces_key}, NACS key: {nacs_key}")
     ####################### 2) Prepare Data and Paths #########################
     data_prefix = set_data_prefix()
     split_file = get_split_path(data_prefix, trajectory_dir, fold)
@@ -270,13 +261,10 @@ def main(trajectory_dir: str, units: str, model_dir: str, evaluation_data: str, 
 
     preds_and_gts = collect_predictions_and_ground_truths(cfg, datamodule, model)
     preds_and_gts = transform_predictions_and_ground_truths_to_numpy(preds_and_gts, cfg.globals, nr_atoms)
-    check_shapes(preds_and_gts, len_test)
+    check_shapes(preds_and_gts, len_test, energy_key, forces_key, nacs_key) 
 
     ######################## 4) Compute metrics  ##############################
     logger.info("Computing metrics for the neural network model...")
-    energy_key = cfg.globals.energy_key
-    forces_key = cfg.globals.forces_key
-    nacs_key = cfg.globals.nacs_key
     e_mae_model_units, e_mae_std_err_model_units = compute_mae_with_std_error(preds_and_gts, energy_key)
     f_mae_model_units, f_mae_std_err_model_units = compute_mae_with_std_error(preds_and_gts, forces_key)
     nacs_mae_model_units, nacs_mae_std_err_model_units = compute_mae_with_std_error(preds_and_gts, nacs_key)

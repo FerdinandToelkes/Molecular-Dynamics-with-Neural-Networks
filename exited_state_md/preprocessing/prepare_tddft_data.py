@@ -47,6 +47,7 @@ def parse_args() -> dict:
     parser.add_argument('--position_unit', type=str, default='angstrom', choices=['angstrom', 'bohr'], help='Target unit for positions to transform from atomic units to (default: angstrom)')
     parser.add_argument('--energy_unit', type=str, default='kcal/mol', choices=['kcal/mol', 'hartree', "ev"], help='Target unit for energies to transform from atomic units to (default: kcal/mol)')
     parser.add_argument('--time_unit', type=str, default='fs', choices=['fs', 'aut'], help='Target unit for time to transform from atomic units to (default: fs)')
+    parser.add_argument('--seed', type=int, default=42, help='Seed for random number generator to ensure reproducibility (default: 42)')
     return vars(parser.parse_args())
 
 
@@ -282,7 +283,7 @@ def write_used_dirs_to_info_file(used_dirs: list, info_path: str, num_samples: i
             f.write(f"{geo_dir}\n")
 
 
-def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: str, energy_unit: str, time_unit: str):
+def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: str, energy_unit: str, time_unit: str, seed: int):
     """
     Main function to prepare XTB data in units of Angstrom and kcal/mol for usage in SchNetPack.
     Args:
@@ -292,6 +293,7 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: s
         position_unit (str): Target unit for positions to transform from atomic units to (default: angstrom).
         energy_unit (str): Target unit for energies to transform from atomic units to (default: kcal/mol).
         time_unit (str): Target unit for time to transform from atomic units to (default: fs).
+        seed (int): Seed for random number generator to ensure reproducibility.
     """
     # setup paths to the necessary files
     data_path = os.path.join(set_data_prefix(), target_dir)
@@ -318,7 +320,12 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: s
     atoms_list = []
     property_list = []
     props_all_dirs = None
-    for geo_dir, _last_exited_cycle in geo_dirs_with_last_exited_cycles.items():
+
+    # shuffle the directories before splitting to avoid bias in the training set
+    np.random.seed(seed)  # for reproducibility
+    geo_dirs = list(geo_dirs_with_last_exited_cycles.keys())
+    np.random.shuffle(geo_dirs)  
+    for geo_dir in geo_dirs:
         logger.info(f"Processing GEO folder: {geo_dir}")
         # setup paths to the necessary files
         data_prefix = os.path.join(data_path, geo_dir, "test")
@@ -375,8 +382,7 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int, position_unit: s
     add_metadata_to_dataset(db_path, ase_units, property_unit_dict)
 
     # write the used directories into the info file
-    used_dirs = geo_dirs_with_last_exited_cycles.keys()
-    write_used_dirs_to_info_file(used_dirs, info_path, len(atoms_list), num_atoms, position_unit, energy_unit, time_unit, samples_per_geo_dir)
+    write_used_dirs_to_info_file(geo_dirs, info_path, len(atoms_list), num_atoms, position_unit, energy_unit, time_unit, samples_per_geo_dir)
 
     # get overview of the dataset
     get_overview_of_dataset(new_dataset)

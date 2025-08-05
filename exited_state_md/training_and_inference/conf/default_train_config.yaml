@@ -10,7 +10,7 @@ run:
 
 globals:
   model_path: ${run.path}/best_model
-  cutoff: 10.0 # in atomic units
+  cutoff: 5.0 # in atomic units
   lr: 1e-4
   n_states: 2 # S0, S1
   n_nacs: 1 # S0 -> S1
@@ -46,7 +46,7 @@ model:
       n_rbf: 20
       cutoff: ${globals.cutoff}
     _target_: schnetpack.representation.PaiNN
-    n_atom_basis: 128 # dimension of the atom-wise representation
+    n_atom_basis: 64 # dimension of the atom-wise representation
     n_interactions: 3 # according to the supplements of SPAINN paper 
     shared_interactions: false #!
     shared_filters: false #!

@@ -124,6 +124,16 @@ def main(trajectory_dir: str, units: str, k_fold: int, dirs_for_training: int, d
         np.savez(inner_splits_path, **inner_splits)
         logger.info(f"Saved inner splits from fold {k} to: {inner_splits_path}")
     
+    # create info file for the splits
+    splits_info_path = os.path.join(splits_dir, "splits_info.txt")
+    with open(splits_info_path, 'w') as f:
+        f.write(f"Total number of samples: {total_length}\n")
+        f.write(f"Number of directories: {num_dirs}\n")
+        f.write(f"Samples per directory: {samples_per_geo_dir}\n")
+        f.write(f"Number of folds: {k_fold}\n")
+        f.write(f"Directories for training: {dirs_for_training}\n")
+        f.write(f"Directories for validation: {dirs_for_validation}\n")
+        f.write(f"Directories for testing: {dirs_for_testing}\n")
 
         
 
