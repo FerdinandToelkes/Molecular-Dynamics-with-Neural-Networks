@@ -48,6 +48,7 @@ def get_data_paths(data_prefix: str, trajectory_dir: str, fold: int, units: str)
         data_prefix (str): Prefix for the data directory.
         trajectory_dir (str): Directory containing the trajectory data.
         fold (int): Fold number for cross-validation.
+        units (str): Units for the input data.
     Returns:
         tuple: Paths to the database and statistics files.
     """

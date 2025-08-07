@@ -75,12 +75,12 @@ def main(trajectory_dir: str, units: str, k_fold: int, dirs_for_training: int, d
     data_prefix = set_data_prefix()
     splits_dir = os.path.join(data_prefix, trajectory_dir, 'splits')
     os.makedirs(splits_dir, exist_ok=True)
-    info_name = f"md_trajectory_{units}_info.txt"
+    nr_of_dirs = dirs_for_training + dirs_for_validation + dirs_for_testing
+    info_name = f"md_trajectory_{units}_{nr_of_dirs}_dirs_used_info.txt"
     info_path = os.path.join(data_prefix, trajectory_dir, info_name)
     
     # read the info file to get the number of samples, directories and samples per directory
     total_length, num_dirs, samples_per_geo_dir = get_infos_from_file(info_path)
-
 
     if dirs_for_training + dirs_for_validation + dirs_for_testing != num_dirs:
         raise ValueError(f"Sum of directories for training ({dirs_for_training}), validation ({dirs_for_validation}), and testing ({dirs_for_testing}) does not equal number of directories ({num_dirs}).")
