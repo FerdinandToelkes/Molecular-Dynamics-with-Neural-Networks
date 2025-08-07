@@ -108,8 +108,6 @@ def write_initial_geometry_to_file(path_to_traj_dir: str, initial_geometry: np.n
     logger.debug("Writing initial geometry to file")
     initial_geometry_path = os.path.join(path_to_traj_dir, "geom")
     with open(initial_geometry_path, 'w') as f:
-        f.write(f"{num_atoms}\n")
-        f.write("# Initial geometry in Bohr\n")
         for symbol, nr, m, coords in zip(atomic_symbols, atomic_numbers, atomic_masses, initial_geometry):
             f.write(f"{symbol} {nr} {' '.join(map(str, coords))} {m}\n")
 
@@ -125,8 +123,6 @@ def write_initial_velocities_to_file(path_to_traj_dir: str, initial_velocities: 
     logger.debug("Writing initial velocities to file")
     initial_velocities_path = os.path.join(path_to_traj_dir, "veloc")
     with open(initial_velocities_path, 'w') as f:
-        f.write(f"{num_atoms}\n")
-        f.write("# Initial velocities in Bohr/aut\n")
         for vel in initial_velocities:
             f.write(f"{' '.join(map(str, vel))}\n")
 
@@ -198,7 +194,7 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int):
 
         # copy the info template to the trajectory directory and replace the ezero line with the initial S0 energy
         copy_info_template_to_traj_dir(path_to_traj_dir, properties['initial_s0_energy'])
-
+        return
         
     
 

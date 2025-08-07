@@ -23,7 +23,7 @@ torch.set_float32_matmul_precision('highest')
 
 # Example command to run the script from within code directory:
 """
-screen -dmS tddft_train sh -c 'python -m exited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut -e 1 -flw 0.8 -elw 0.05 -nlw 0.15 -bs 64 ; exec bash'
+screen -dmS tddft_train sh -c 'python -m exited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut -e 200 -flw 0.9 -elw 0.05 -nlw 0.05 -bs 16 ; exec bash'
 """
 
 # or smaller for debugging:

@@ -46,7 +46,7 @@ model:
       n_rbf: 20
       cutoff: ${globals.cutoff}
     _target_: schnetpack.representation.PaiNN
-    n_atom_basis: 64 # dimension of the atom-wise representation
+    n_atom_basis: 256 # dimension of the atom-wise representation
     n_interactions: 3 # according to the supplements of SPAINN paper 
     shared_interactions: false #!
     shared_filters: false #!

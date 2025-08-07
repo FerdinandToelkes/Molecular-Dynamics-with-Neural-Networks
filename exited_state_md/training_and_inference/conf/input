@@ -1,3 +1,8 @@
+# This is only a template for a SHARC input file, the actual input file
+# will be located in the corresponding GEO directory. This file is used
+# as a basis, where the ezero energy offset is set by the 
+# prepare_sharc_input_files.py script.
+
 # read initial geometry from file (has to be in bohr)
 geomfile "geom"
 
@@ -18,14 +23,14 @@ coeff auto
 # Energy offset (in Hartree), has to be computed from initial geometry
 ezero none
 
-tmax 150.0 # total simulation time in fs
-stepsize 0.5 # integration stepsize in fs
+tmax 300.0 # total simulation time in fs
+stepsize 1.0 # integration stepsize in fs
 nsubsteps 25 # substeps for the electronic propagation
 integrator fvv # fixed time step velocity Verlet integrator (default)
 
 surf diagonal # dynamics are run using diagonal potentials
 coupling nacdr # use non-adiabatic couplings (NACs) for the dynamics
-gradcorrect True # apply gradient correction when using NACs
+gradcorrect # apply gradient correction when using NACs
 ekincorrect parallel_nac # use parallel NACs for the energy correction
 reflect_frustrated none # no reflection of trajectories after frustrated hops
 
