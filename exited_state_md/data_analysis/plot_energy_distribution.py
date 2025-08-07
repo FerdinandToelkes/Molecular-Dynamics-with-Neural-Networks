@@ -3,6 +3,7 @@ import argparse
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
 
 from tqdm import tqdm
 from ase.db import connect
@@ -15,7 +16,7 @@ logger = setup_logger(logging_level_str="info")
 # This is the code from the first SPaiNN tutorial, which is used to plot the energy distribution of the prepared dataset.
 # Example command to run the script from within code directory:
 """
-python -m exited_state_md.data_analysis.plot_energy_distribution --trajectory_dir PREPARE_12/spainn_datasets/sandbox_data --units bohr_hartree_aut
+python -m exited_state_md.data_analysis.plot_energy_distribution --trajectory_dir PREPARE_12/spainn_datasets/toy_data --units bohr_hartree_aut --dirs_to_plot 1
 """
 
 def parse_args() -> dict:
@@ -30,6 +31,107 @@ def parse_args() -> dict:
     parser.add_argument("--dirs_to_plot", type=int, default=25, help="Number of GEO directories to plot (default: 25).")
     return vars(parser.parse_args())
 
+def extract_energy_data(db: connect, nr_of_molecules: int) -> pd.DataFrame:
+    """ 
+    Extract energy data from the database.
+    Args:
+        db (connect): ASE database connection.
+        nr_of_molecules (int): Number of molecules to extract.
+    Returns:
+        pd.DataFrame: DataFrame containing molecule data.
+    """
+    table_data = [
+        {
+            'Molecule': db.get_atoms(mols+1).get_chemical_formula(),
+            'S$_0$': db.get(mols+1).data['energy'][0][0],
+            'S$_1$': db.get(mols+1).data['energy'][0][1],
+        }
+        for mols in tqdm(range(nr_of_molecules), desc="Extracting molecules")
+    ]
+    logger.info(f"Extracted {len(table_data)} molecules from the database.")
+    df = pd.DataFrame(table_data)
+    return df
+
+def extract_forces_data(db: connect, nr_of_molecules: int) -> pd.DataFrame:
+    """ 
+    Extract forces data from the database.
+    Args:
+        db (connect): ASE database connection.
+        nr_of_molecules (int): Number of molecules to extract.
+    Returns:
+        pd.DataFrame: DataFrame containing forces data.
+    """
+    table_data = [
+        {
+            'Molecule': db.get_atoms(mols+1).get_chemical_formula(),
+            'Forces': db.get(mols+1).data['forces'],
+        }
+        for mols in tqdm(range(nr_of_molecules), desc="Extracting forces")
+    ]
+    logger.info(f"Extracted forces for {len(table_data)} molecules from the database.")
+    df = pd.DataFrame(table_data)
+    return df
+
+def get_force_amplitudes(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Get the amplitudes of the forces from the DataFrame.
+    Args:
+        df (pd.DataFrame): DataFrame containing forces data.
+    Returns:
+        pd.DataFrame: DataFrame containing force amplitudes.
+    """
+    force_amplitudes = df['Forces'].apply(lambda x: np.linalg.norm(x, axis=1))
+    return pd.DataFrame({'Molecule': df['Molecule'], 'Force Amplitude': force_amplitudes})
+
+def plot_and_save_energy_distribution(df: pd.DataFrame, units: str, dirs_to_plot: int, bins: int):
+    """
+    Plot and save the energy distribution.
+    Args:
+        df (pd.DataFrame): DataFrame containing energy data.
+        units (str): Units of the energy data.
+        dirs_to_plot (int): Number of directories to plot.
+        bins (int): Number of bins for the histogram.
+    """
+    # Create a combined histogram plot
+    sns.histplot(data=df, bins=bins, kde=False, multiple='layer')
+
+    # Set labels and title
+    plt.xlabel('Energy / Hartree')
+    plt.ylabel('Count')
+    plt.title('Distribution of Energies in the Dataset')
+
+    # Save the plot
+    plot_dir_path = os.path.expanduser("~/whk/code/exited_state_md/data_analysis/plots")
+    os.makedirs(plot_dir_path, exist_ok=True)
+    plot_path = os.path.join(plot_dir_path, f"energy_distribution_{units}_first_{dirs_to_plot}_dirs.png")
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    logger.info(f"Energy distribution plot saved to {plot_path}")
+
+def plot_and_save_force_distribution(df: pd.DataFrame, units: str, dirs_to_plot: int, bins: int):
+    """
+    Plot and save the force distribution.
+    Args:
+        df (pd.DataFrame): DataFrame containing forces data.
+        units (str): Units of the forces data.
+        dirs_to_plot (int): Number of directories to plot.
+        bins (int): Number of bins for the histogram.
+    """
+    force_amplitudes = get_force_amplitudes(df)
+
+    # Create a combined histogram plot
+    sns.histplot(data=force_amplitudes, x='Force Amplitude', bins=bins, kde=False, multiple='layer')
+
+    # Set labels and title
+    plt.xlabel('Force Amplitude / Hartree/Bohr')
+    plt.ylabel('Count')
+    plt.title('Distribution of Forces in the Dataset')
+
+    # Save the plot
+    plot_dir_path = os.path.expanduser("~/whk/code/exited_state_md/data_analysis/plots")
+    os.makedirs(plot_dir_path, exist_ok=True)
+    plot_path = os.path.join(plot_dir_path, f"force_distribution_{units}_first_{dirs_to_plot}_dirs.png")
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    logger.info(f"Force distribution plot saved to {plot_path}")
 
 def main(trajectory_dir: str, units: str, dirs_to_plot: int):
     # setup the paths to the necessary files
@@ -45,32 +147,11 @@ def main(trajectory_dir: str, units: str, dirs_to_plot: int):
         logger.warning(f"Database contains only {len(db_spainn)} molecules, but {nr_of_molecules} were requested.")
         nr_of_molecules = len(db_spainn)
 
-    table_data = [
-        {
-            'Molecule': db_spainn.get_atoms(mols+1).get_chemical_formula(),
-            'S$_0$': db_spainn.get(mols+1).data['energy'][0][0],
-            'S$_1$': db_spainn.get(mols+1).data['energy'][0][1],
-        }
-        for mols in tqdm(range(nr_of_molecules), desc="Extracting molecules")
-    ]
-    logger.info(f"Extracted {len(table_data)} molecules from the database.")
+    energy_df = extract_energy_data(db_spainn, nr_of_molecules)
+    plot_and_save_energy_distribution(energy_df, units, dirs_to_plot, bins=60)
 
-    df = pd.DataFrame(table_data)
-
-    # Create a combined histogram plot
-    sns.histplot(data=df, bins=300, kde=False, multiple='layer')
-
-    # Set labels and title
-    plt.xlabel('Energy / Hartree')
-    plt.ylabel('Count')
-    plt.title('Distribution of Energies in the Dataset')
-
-    # Save the plot
-    plot_dir_path = os.path.expanduser("~/whk/code/exited_state_md/data_analysis/plots")
-    os.makedirs(plot_dir_path, exist_ok=True)
-    plot_path = os.path.join(plot_dir_path, f"energy_distribution_{units}_first_{dirs_to_plot}_dirs.png")
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    logger.info(f"Energy distribution plot saved to {plot_path}")
+    forces_df = extract_forces_data(db_spainn, nr_of_molecules)
+    plot_and_save_force_distribution(forces_df, units, dirs_to_plot, bins=60)
 
 
 if __name__=="__main__":

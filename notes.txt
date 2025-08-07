@@ -101,8 +101,18 @@ TODOS
 - try different units
 - try different weights
 - add theory section to readme: SchNet, PaiNN, SPaiNN
+- add seperate computation of errors on S0 as well as S1 for energies and forces
 
-- Why do errors from tensorboard and from my calculation not match?
-- Shuffle directories before creating .db and save their order into a txt file
+
+- Inference with SHARC:
+- create a TRAJ folder for each GEO directory, which contains all necessary input files for SHARC
+TRAJ
+- input (f): use default input file and add the energy of initial configuration to it
+- geom (f): write initial geometry in Bohr (format of columbus)
+- veloc (f): write initial velocities in Bohr/aut (format of columbus)
+- QM (d):
+    - runQM.sh ??
+    - <Interface files> ??
+- restart (d)
 
 

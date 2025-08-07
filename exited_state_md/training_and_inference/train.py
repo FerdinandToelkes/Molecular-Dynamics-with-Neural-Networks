@@ -8,13 +8,12 @@ from ase.db import connect
 from hydra.utils import instantiate, get_class
 from omegaconf import OmegaConf, DictConfig
 
-from exited_state_md.utils import get_split_path, remove_splitting_lock_file
+from exited_state_md.utils import get_split_path, remove_splitting_lock_file, load_config # because it works with relative paths
 from ground_state_md.utils import set_data_prefix, get_num_workers, setup_datamodule
 from ground_state_md.setup_logger import setup_logger
 from ground_state_md.units import get_ase_units_from_str, convert_distances
 from ground_state_md.training_and_inference.train import get_data_paths
 
-from exited_state_md.utils import load_config # because it works with relative paths
 
 logger = setup_logger(logging_level_str="debug")
 
@@ -24,7 +23,7 @@ torch.set_float32_matmul_precision('highest')
 
 # Example command to run the script from within code directory:
 """
-screen -dmS tddft_train sh -c 'python -m exited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut -e 200 -flw 0.6 -elw 0.01 -nlw 0.39 ; exec bash'
+screen -dmS tddft_train sh -c 'python -m exited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut -e 1 -flw 0.8 -elw 0.05 -nlw 0.15 -bs 64 ; exec bash'
 """
 
 # or smaller for debugging:

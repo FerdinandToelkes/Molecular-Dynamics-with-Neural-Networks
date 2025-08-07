@@ -21,7 +21,9 @@ calculator:
   energy_unit: ${data.property_units.energy}
   force_unit: ${data.property_units.forces}
 org_data:
-  _target_: schnetpack.data.AtomsDataModule
+  _target_: spainn.SPAINN
+  n_states: ${globals.n_states}
+  n_nacs: ${globals.n_nacs}
   batch_size: 32
   num_workers: 8
   pin_memory: false # just to be safe

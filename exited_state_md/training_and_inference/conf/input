@@ -1,0 +1,42 @@
+# read initial geometry from file (has to be in bohr)
+geomfile "geom"
+
+# read initial velocities from file (has to be in bohr/atu)
+veloc external 
+velocfile "veloc"
+
+# two singlet states and no doublet and triplet states
+nstates 2 0 0 
+# the two singlet states are also the active states
+acstates 2 0 0
+# Set the initial electronic state as MCH state #2
+state 2 mch
+
+# Let SHARC automatically initialize electronic coefficients 
+coeff auto
+
+# Energy offset (in Hartree), has to be computed from initial geometry
+ezero none
+
+tmax 150.0 # total simulation time in fs
+stepsize 0.5 # integration stepsize in fs
+nsubsteps 25 # substeps for the electronic propagation
+integrator fvv # fixed time step velocity Verlet integrator (default)
+
+surf diagonal # dynamics are run using diagonal potentials
+coupling nacdr # use non-adiabatic couplings (NACs) for the dynamics
+gradcorrect True # apply gradient correction when using NACs
+ekincorrect parallel_nac # use parallel NACs for the energy correction
+reflect_frustrated none # no reflection of trajectories after frustrated hops
+
+# set the decoherence model and strength parameter
+decoherence_scheme edc
+decoherence_param 0.1
+hopping_procedure sharc
+
+# control whether gradients/nacs are computed for all states
+grad_all True
+nac_all True
+nospinorbit True
+
+RNGseed 42
