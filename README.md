@@ -234,6 +234,15 @@ Here is a quick overview of results for training a neural network on the MOTOR_M
 - [Graph Neural Networks Series (Blog post)](https://medium.com/the-modern-scientist/graph-neural-networks-series-part-4-the-gnns-message-passing-over-smoothing-e77ffee523cc)
 - [Lecture Notes on Data Analysis](https://indico.in2p3.fr/event/2086/contributions/22818/attachments/18562/22658/cowan_statnote.pdf)
 
+# Theory
+
+## SchNet
+
+The architecture defining SchNet models is depicted in the figure below which was taken from the SchNet paper:
+
+![Screenshot](readme_images/SchNet_architecture.png)
+
+
 # Unfinished Thoughts on Change of Units
 
 TODO: try to add handwritten document.
