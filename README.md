@@ -14,8 +14,9 @@ This project was part of a six-month, part-time research assistant position unde
    - [Installation](#installation)
    - [Workflow](#workflow)
 4. [Resources](#resources)
-5. [Contributing](#contributing)
-6. [License](#license)
+5. [Theory](#theory)
+6. [Contributing](#contributing)
+7. [License](#license)
 
 # Project Structure
 
@@ -241,6 +242,15 @@ Here is a quick overview of results for training a neural network on the MOTOR_M
 The architecture defining SchNet models is depicted in the figure below which was taken from the SchNet paper:
 
 ![Screenshot](readme_images/SchNet_architecture.png)
+
+Lets begin by talking about the different components of this architecture.
+
+- **Embedding:** In the simplest description, an atom can be identified by its atomic number *Z*. While *Z* is just a single integer, it correlates with a wealth of chemical properties, such as valence electron count, electronegativity, typical bonding patterns, and orbital hybridization, arising from quantum mechanics and periodic trends. To represent this rich information in a way a neural network can use, each atom type *Z* is mapped to a vector, called an embedding. These vectors are initially assigned random values and are optimized during training so the network can learn a representation that captures the relevant chemical behavior for the dataset at hand.
+
+- **Atom-wise Layer:** A linear layer $x^{l+1}_i = W^{l} x^{l}_i + b^l$, where the weights $W^{l}$ and biases $b^l$ are shared across all atoms in layer l. This weight sharing preserves permutation invariance and allows the model to scale to molecules of different sizes.
+ 
+- **Shifted Softplus:** The activation function $\text{ssp}(x) = \ln(0.5 e^x + 0.5)$ introduces non-linearity into the network. Its smoothness and non-zero gradient at $x = 0$ make it a common choice in atomistic neural networks.
+
 
 
 # Unfinished Thoughts on Change of Units
