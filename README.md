@@ -4,16 +4,24 @@ This project was part of a six-month, part-time research assistant position unde
 
 ## PaiNN
 
-One needs to go beyond SchNets architecture to predict vector properties such as non-adiabatic couplings (NACs), as SchNet is limited to predicting scalar properties and those properties who are directly connected to scalar properties (e.g the forces). This is achieved by the polarizable atom interaction neural network (PaiNN). The main idea behind PaiNN is to model a molecule with a graph where each atom is represented by a node which is equipped with a scalar **and** a vectorial representation $s^{t}_i \in \mathbb{R}^{1xF}$ and $\vec{v}^{t}_i \in \mathbb{R}^{3xF}$, where $F$ is the embedding dimension and the three corresponds to the three spacial dimensions. 
+SchNet’s architecture is designed for predicting scalar-valued properties, and can only produce vector properties that are direct derivatives of these scalars (e.g., forces obtained as the negative gradient of the energy). Predicting general vector quantities, such as non-adiabatic couplings (NACs), requires extending this framework. This is achieved by the **Polarizable Atom Interaction Neural Network** (PaiNN).
 
+In PaiNN, a molecule is represented as a graph where each atom is a node equipped with both a scalar feature representation $s^{t}_i \in \mathbb{R}^F$ and a vectorial feature representation $\mathbf{v}^t_i \in \mathbb{R}^{3 \times F}$, where $F$ is the embedding dimension and the first dimension corresponds to the three spatial coordinates.
 
-Once again, one uses a message passing mechanism to model interactions within a local neighborhood. Another vital benefit of adding vectorial representations, is that one can resolve changes in bond angles without increasing the runtime. This is illustrated in the figure below. 
+As in SchNet, PaiNN models local interactions through a message passing mechanism. A key benefit of vectorial features is that they allow the network to capture changes in bond angles without introducing explicit angular terms, thereby avoiding additional computational cost (see figure below).
 
 <p align="center">
-   <img src="readme_images/PaiNN_comparison_message_functions.png" alt="Screenshot SchNet Architecture" width="600"/>
+   <img src="readme_images/PaiNN_comparison_message_functions.png" alt="PaiNN message functions" width="600"/>
 </p>
 
-directional_information_example
+Furthermore, PaiNN can distinguish molecular conformations that differ by rotations around bonds, as shown in the following figure.
+
+
+<p align="center">
+   <img src="readme_images/directional_information_example.png" alt="Directional information" width="600"/>
+</p>
+
+
 
 The updates of scalar and vectorial representation are constructed to ensure rotational invariance and equivariance, respectively.
 
