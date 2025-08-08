@@ -2,6 +2,16 @@
 
 This project was part of a six-month, part-time research assistant position under the supervision of Professor Enrico Tapavicza. The main goal is to speed up the simulation of molecular dynamics (MDs) of a second-generation Feringa-type molecular nanomotor. In our case this is 9-(2’-methyl-2’,3’-dihydro-1’H-cyclopenta[a]naphthalen-1’-ylidene)-9H-xanthene (CPNX) (see for example the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b)). 
 
+## PaiNN
+
+One needs to go beyond SchNets architecture to predict vector properties such as non-adiabatic couplings (NACs), as SchNet is limited to predicting scalar properties and those properties who are directly connected to scalar properties (e.g the forces). This is achieved by the polarizable atom interaction neural network (PaiNN). The main idea behind PaiNN is to model a molecule with a graph where each atom is represented by a node which is equipped with a scalar **and** a vectorial representation $s^{t}_i \in \mathbb{R}^{1xF}$ and $\vec{v}^{t}_i \in \mathbb{R}^{3xF}$, where $F$ is the embedding dimension and the three corresponds to the three spacial dimensions. 
+
+
+Once again, one uses a message passing mechanism to model interactions within a local neighborhood. 
+
+
+The updates of scalar and vectorial representation are constructed to ensure rotational invariance and equivariance, respectively.
+
 ## Outline
 
 1. [Project Structure](#project-structure)
@@ -267,7 +277,7 @@ For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_
 
 The advantage of using an additional neural network to generate filters conditioned on atomic positions is that it allows the model to handle interactions at arbitrary positions in continuous space, whereas conventional convolutional filters in CNNs are designed for fixed, grid-like data structures (e.g., images).
 
-## PaiNN
+
 
 
 
