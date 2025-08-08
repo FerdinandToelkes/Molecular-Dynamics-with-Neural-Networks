@@ -245,11 +245,28 @@ The architecture defining SchNet models is depicted in the figure below which wa
 
 Lets begin by talking about the different components of this architecture.
 
-- **Embedding:** In the simplest description, an atom can be identified by its atomic number *Z*. While *Z* is just a single integer, it correlates with a wealth of chemical properties, such as valence electron count, electronegativity, typical bonding patterns, and orbital hybridization, arising from quantum mechanics and periodic trends. To represent this rich information in a way a neural network can use, each atom type *Z* is mapped to a vector, called an embedding. These vectors are initially assigned random values and are optimized during training so the network can learn a representation that captures the relevant chemical behavior for the dataset at hand.
-
-- **Atom-wise Layer:** A linear layer $x^{l+1}_i = W^{l} x^{l}_i + b^l$, where the weights $W^{l}$ and biases $b^l$ are shared across all atoms in layer l. This weight sharing preserves permutation invariance and allows the model to scale to molecules of different sizes.
- 
+- **Embedding:** In the simplest description, an atom can be identified by its atomic number *Z*. While *Z* is just a single integer, it correlates with a wealth of chemical properties, such as valence electron count, electronegativity, typical bonding patterns, and orbital hybridization, arising from quantum mechanics and periodic trends. To represent this rich information in a way a neural network can use, each atom type *Z_i* is mapped to a vector $x_i^{0} = a_{Z_i}$, called an embedding. These vectors are initially assigned random values and are optimized during training so the network can learn a representation that captures the relevant chemical behavior for the dataset at hand.
+- **Atom-wise Layers:** A linear layer $x^{l+1}_i = W^{l} x^{l}_i + b^l$, where the weights $W^{l}$ and biases $b^l$ are shared across all atoms in layer l. This weight sharing preserves permutation invariance and allows the model to scale to molecules of different sizes.
+- **Dense Layer**: A linear layer without any sharing of weights. 
 - **Shifted Softplus:** The activation function $\text{ssp}(x) = \ln(0.5 e^x + 0.5)$ introduces non-linearity into the network. Its smoothness and non-zero gradient at $x = 0$ make it a common choice in atomistic neural networks.
+- **Sum Pooling:** The atom embeddings $(x_1,\dots,x_n)$ of the molecule are not directly combined while being passed through the network. At the final stage, they are aggregated into a single molecular representation. For extensive properties (e.g., total energy), the outputs of the last atom-wise layer are summed, e.g. $E = \sum{i=1}^n e_i$. For intensive properties (e.g., average energy per atom), they are averaged instead. This aggregation step is referred to as sum pooling.
+
+### Continuous-filter Convolutions to Model Inter-atomic Interactions
+
+To incorporate the influence of atoms on each other, the architecture employs interaction blocks (see the middle panel of the figure above). These blocks have a residual structure and use continuous-filter convolutions to model interactions between atoms within a given cutoff radius.
+
+The convolution filters depend on the atomic positions $(\mathbf{r}_1, \dots, \mathbf{r}n)$, more precisely, on the interatomic distances $r{ij} = \lVert \mathbf{r}_i - \mathbf{r}_j \rVert$. This dependency ensures rotational invariance of the predicted scalar property. 
+
+For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_{ij})$ using $m$ Gaussian radial basis functions (RBFs) with different centers (in our case, $m=300$). An MLP then maps this expanded vector to a convolution filter:
+
+$W(r_{ij}) = \mathrm{MLP}(\varphi(r_{ij}))$  
+
+Finally, the updated atom-wise features are computed as  
+
+$x^{l+1}_i = \sum_j x_j^{l} \circ W^{l}(r_{ij}),$
+
+where $\circ$ denotes element-wise multiplication.
+
 
 
 
