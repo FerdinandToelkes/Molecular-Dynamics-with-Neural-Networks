@@ -239,7 +239,11 @@ Here is a quick overview of results for training a neural network on the MOTOR_M
 
 ## SchNet
 
-The architecture defining SchNet models is depicted in the figure below which was taken from the SchNet paper:
+The SchNet model predicts molecular energies and forces from atomic positions and types. It respects key physical symmetries: energies are rotationally invariant, forces are rotationally equivariant, and both are invariant under translations and permutations of atoms of the same type. Forces are computed in a physically consistent manner by applying automatic differentiation to the predicted energy.
+
+SchNet can be framed as a message passing neural network, where the message function $M$ is implemented using continuous-filter convolutions (see below), and the update function $U$ is element-wise addition.
+
+The architecture of SchNet is shown in the figure below (adapted from the original SchNet paper). In the following, we examine its components in more detail.
 
 ![Screenshot](readme_images/SchNet_architecture.png)
 
@@ -255,10 +259,11 @@ Lets begin by talking about the different components of this architecture.
 
 To incorporate the influence of atoms on each other, the architecture employs interaction blocks (see the middle panel of the figure above). These blocks have a residual structure and use continuous-filter convolutions to model interactions between atoms within a given cutoff radius.
 
-The convolution filters depend on the atomic positions $(\mathbf{r}_1, \dots, \mathbf{r}n)$, more precisely, on the interatomic distances $r{ij} = \lVert \mathbf{r}_i - \mathbf{r}_j \rVert$. This dependency ensures rotational invariance of the predicted scalar property. 
+The convolution filters depend on the atomic positions $(r_1, \dots, r_n)$, more precisely, on the interatomic distances $r_{ij} = \lVert r_i - r_j \rVert$. This dependency ensures rotational invariance of the predicted scalar property. 
 
-For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_{ij})$ using $m$ Gaussian radial basis functions (RBFs) with different centers (in our case, $m=300$). An MLP then maps this expanded vector to a convolution filter $W(r_{ij}) = \mathrm{MLP}(\varphi(r_{ij}))$. Finally, the updated atom-wise features are computed as $x_{i}^{l+1} = \sum_j x_j^{l} \circ W^{l}(r_{ij})$, where $\circ$ denotes element-wise multiplication.
+For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_{ij})$ using $m$ Gaussian radial basis functions (RBFs) with different centers (in our case, $m=300$). An MLP then maps this expanded vector to a convolution filter $W(r_{ij}) = \mathrm{MLP}(\varphi(r_{ij}))$. In our case, the MLP consists of two dense layers, each followed by a shifted softplus function. Finally, the updated atom-wise features are computed as $x_{i}^{l+1} = \sum_j x_j^{l} \circ W^{l}(r_{ij})$, where $\circ$ denotes element-wise multiplication.
 
+The advantage of using an additional neural network to generate filters conditioned on atomic positions is that it allows the model to handle interactions at arbitrary positions in continuous space, whereas conventional convolutional filters in CNNs are designed for fixed, grid-like data structures (e.g., images).
 
 # Unfinished Thoughts on Change of Units
 
