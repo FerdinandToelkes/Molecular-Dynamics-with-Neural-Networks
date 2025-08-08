@@ -7,8 +7,13 @@ This project was part of a six-month, part-time research assistant position unde
 One needs to go beyond SchNets architecture to predict vector properties such as non-adiabatic couplings (NACs), as SchNet is limited to predicting scalar properties and those properties who are directly connected to scalar properties (e.g the forces). This is achieved by the polarizable atom interaction neural network (PaiNN). The main idea behind PaiNN is to model a molecule with a graph where each atom is represented by a node which is equipped with a scalar **and** a vectorial representation $s^{t}_i \in \mathbb{R}^{1xF}$ and $\vec{v}^{t}_i \in \mathbb{R}^{3xF}$, where $F$ is the embedding dimension and the three corresponds to the three spacial dimensions. 
 
 
-Once again, one uses a message passing mechanism to model interactions within a local neighborhood. 
+Once again, one uses a message passing mechanism to model interactions within a local neighborhood. Another vital benefit of adding vectorial representations, is that one can resolve changes in bond angles without increasing the runtime. This is illustrated in the figure below. 
 
+<p align="center">
+   <img src="readme_images/PaiNN_comparison_message_functions.png" alt="Screenshot SchNet Architecture" width="600"/>
+</p>
+
+directional_information_example
 
 The updates of scalar and vectorial representation are constructed to ensure rotational invariance and equivariance, respectively.
 
