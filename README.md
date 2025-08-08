@@ -245,7 +245,9 @@ SchNet can be framed as a message passing neural network, where the message func
 
 The architecture of SchNet is shown in the figure below (adapted from the original SchNet paper). In the following, we examine its components in more detail.
 
-![Screenshot](readme_images/SchNet_architecture.png)
+<p align="center">
+   <img src="readme_images/SchNet_architecture.png" alt="Screenshot SchNet Architecture" width="900"/>
+</p>
 
 Lets begin by talking about the different components of this architecture.
 
