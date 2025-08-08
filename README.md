@@ -259,13 +259,17 @@ Lets begin by talking about the different components of this architecture.
 
 ### Continuous-filter Convolutions to Model Inter-atomic Interactions
 
-To incorporate the influence of atoms on each other, the architecture employs interaction blocks (see the middle panel of the figure above). These blocks have a residual structure and use continuous-filter convolutions to model interactions between atoms within a given cutoff radius.
+To incorporate the influence of atoms on each other, the architecture employs interaction blocks (see the middle panel of the figure above). These blocks have a residual structure and use continuous-filter convolutions to model interactions between atoms within a given cutoff radius. Multiple interaction blocks leads to the propagation of local information beyond the cutoff radius.
 
 The convolution filters depend on the atomic positions $(r_1, \dots, r_n)$, more precisely, on the interatomic distances $r_{ij} = \lVert r_i - r_j \rVert$. This dependency ensures rotational invariance of the predicted scalar property. 
 
 For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_{ij})$ using $m$ Gaussian radial basis functions (RBFs) with different centers (in our case, $m=300$). An MLP then maps this expanded vector to a convolution filter $W(r_{ij}) = \mathrm{MLP}(\varphi(r_{ij}))$. In our case, the MLP consists of two dense layers, each followed by a shifted softplus function. Finally, the updated atom-wise features are computed as $x_{i}^{l+1} = \sum_j x_j^{l} \circ W^{l}(r_{ij})$, where $\circ$ denotes element-wise multiplication.
 
 The advantage of using an additional neural network to generate filters conditioned on atomic positions is that it allows the model to handle interactions at arbitrary positions in continuous space, whereas conventional convolutional filters in CNNs are designed for fixed, grid-like data structures (e.g., images).
+
+## PaiNN
+
+
 
 # Unfinished Thoughts on Change of Units
 
