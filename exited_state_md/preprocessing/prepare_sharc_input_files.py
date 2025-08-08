@@ -92,7 +92,7 @@ def read_in_properties(property_paths, num_atoms) -> dict:
         'atomic_numbers': atomic_numbers
     }
 
-def write_initial_geometry_to_file(path_to_traj_dir: str, initial_geometry: np.ndarray, num_atoms: int, 
+def write_initial_geometry_to_file(path_to_traj_dir: str, initial_geometry: np.ndarray,
                                    atomic_symbols: list, atomic_numbers: list, atomic_masses: list):
     """
     Write the initial geometry to a file in the specified format for SHARC.
@@ -100,7 +100,6 @@ def write_initial_geometry_to_file(path_to_traj_dir: str, initial_geometry: np.n
     Args:
         path_to_traj_dir (str): Path to the trajectory directory.
         initial_geometry (np.ndarray): Array containing initial geometry in atomic units.
-        num_atoms (int): Number of atoms in the simulation.
         atomic_symbols (list): List of atomic symbols.
         atomic_numbers (list): List of atomic numbers.
         atomic_masses (list): List of atomic masses.
@@ -111,14 +110,13 @@ def write_initial_geometry_to_file(path_to_traj_dir: str, initial_geometry: np.n
         for symbol, nr, m, coords in zip(atomic_symbols, atomic_numbers, atomic_masses, initial_geometry):
             f.write(f"{symbol} {nr} {' '.join(map(str, coords))} {m}\n")
 
-def write_initial_velocities_to_file(path_to_traj_dir: str, initial_velocities: np.ndarray, num_atoms: int):
+def write_initial_velocities_to_file(path_to_traj_dir: str, initial_velocities: np.ndarray):
     """
     Write the initial velocities to a file in the specified format for SHARC.
     Format taken from https://sharc-md.org/?page_id=1454#tth_sEc4.3 section 4.3 
     Args:
         path_to_traj_dir (str): Path to the trajectory directory.
         initial_velocities (np.ndarray): Array containing initial velocities in atomic units.
-        num_atoms (int): Number of atoms in the simulation.
     """
     logger.debug("Writing initial velocities to file")
     initial_velocities_path = os.path.join(path_to_traj_dir, "veloc")
@@ -187,10 +185,10 @@ def main(target_dir: str, computed_cycles: int, num_atoms: int):
         logger.debug(f"Atomic masses: {atomic_masses}")
 
         # write initial geometry in Bohr (format of columbus)
-        write_initial_geometry_to_file(path_to_traj_dir, properties["initial_geometry"], num_atoms, atomic_symbols, atomic_numbers, atomic_masses)
+        write_initial_geometry_to_file(path_to_traj_dir, properties["initial_geometry"], atomic_symbols, atomic_numbers, atomic_masses)
 
         # write initial velocities in Bohr/aut (format of columbus)
-        write_initial_velocities_to_file(path_to_traj_dir, properties['initial_velocities'], num_atoms)
+        write_initial_velocities_to_file(path_to_traj_dir, properties['initial_velocities'])
 
         # copy the info template to the trajectory directory and replace the ezero line with the initial S0 energy
         copy_info_template_to_traj_dir(path_to_traj_dir, properties['initial_s0_energy'])

@@ -3,6 +3,8 @@
 # as a basis, where the ezero energy offset is set by the 
 # prepare_sharc_input_files.py script.
 
+printlevel 2
+
 # read initial geometry from file (has to be in bohr)
 geomfile "geom"
 
@@ -28,6 +30,7 @@ stepsize 1.0 # integration stepsize in fs
 nsubsteps 25 # substeps for the electronic propagation
 integrator fvv # fixed time step velocity Verlet integrator (default)
 
+method tsh # trajectory surface hopping method
 surf diagonal # dynamics are run using diagonal potentials
 coupling nacdr # use non-adiabatic couplings (NACs) for the dynamics
 gradcorrect # apply gradient correction when using NACs
@@ -39,9 +42,9 @@ decoherence_scheme edc
 decoherence_param 0.1
 hopping_procedure sharc
 
-# control whether gradients/nacs are computed for all states
-grad_all True
-nac_all True
-nospinorbit True
+# compute gradients/nacs for all states
+grad_all 
+nac_all 
+nospinorbit 
 
 RNGseed 42
