@@ -257,17 +257,7 @@ To incorporate the influence of atoms on each other, the architecture employs in
 
 The convolution filters depend on the atomic positions $(\mathbf{r}_1, \dots, \mathbf{r}n)$, more precisely, on the interatomic distances $r{ij} = \lVert \mathbf{r}_i - \mathbf{r}_j \rVert$. This dependency ensures rotational invariance of the predicted scalar property. 
 
-For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_{ij})$ using $m$ Gaussian radial basis functions (RBFs) with different centers (in our case, $m=300$). An MLP then maps this expanded vector to a convolution filter:
-
-$W(r_{ij}) = \mathrm{MLP}(\varphi(r_{ij}))$  
-
-Finally, the updated atom-wise features are computed as  
-
-$x^{l+1}_i = \sum_j x_j^{l} \circ W^{l}(r_{ij}),$
-
-where $\circ$ denotes element-wise multiplication.
-
-
+For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_{ij})$ using $m$ Gaussian radial basis functions (RBFs) with different centers (in our case, $m=300$). An MLP then maps this expanded vector to a convolution filter $W(r_{ij}) = \mathrm{MLP}(\varphi(r_{ij}))$. Finally, the updated atom-wise features are computed as $x_{i}^{l+1} = \sum_j x_j^{l} \circ W^{l}(r_{ij})$, where $\circ$ denotes element-wise multiplication.
 
 
 # Unfinished Thoughts on Change of Units
