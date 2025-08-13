@@ -43,14 +43,14 @@ The updates of scalar and vectorial representation are constructed to ensure rot
 
 # Project Structure
 
-This project is split into two main parts, namely the **ground_state_md** and **exited_state_md** directories. The training of neural networks (NNs) to predict ground state MDs is done by employing the [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) package, whereas the [SPaiNN](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j) package was used to train NNs for the prediction of exited state trajectories. The main differences between these two tasks are summarized below
+This project is split into two main parts, namely the **ground_state_md** and **exited_state_md** directories. The training of neural networks (NNs) to predict ground state MDs is done by employing the [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) package, whereas the [SPaiNN](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j) package was used to train NNs for the prediction of exited state trajectories. The main differences between these two tasks are summarized below.
 
-| Feature / Task                       | Ground State MD (`ground_state_md`)               | Excited State MD (`exited_state_md`)                      |
+|                                      | Ground State MD (`ground_state_md`)               | Excited State MD (`exited_state_md`)                      |
 |--------------------------------------|---------------------------------------------------|-----------------------------------------------------------|
 | Target Properties                    | Potential energy S0 and resulting forces          | Potential energies S0 and S1, resulting forces and non‑adiabatic couplings S0 -> S1 |
-| Training Data                        | Ground‑state trajectories using xTB with REMD     | Ground MD with xTB + excited‑state MD with TDDFT and FSSH |
+| Training Data                        | Ground‑state trajectories using xTB with REMD     | Excited‑state MD with TDDFT and FSSH based on configurations from ground-state xTB trajectories |
 | ML Framework                         | SchNetPack + ASE Interface                        | SPaiNN (PaiNN + SchNetPack + SHARC interface) |
-| Dynamics Setup                       | Adiabatic MD on a single PES                      | Non‑adiabatic MD using FSSH  (via SHARC)  |
+| Dynamics Setup                       | Adiabatic MD on a single potential energy surface (PES) | Non‑adiabatic MD using FSSH  (via SHARC)  |
 
 Since I started with the code for ground state MD without knowing the exact direction of this project, much of the code for the exited state MD is based on or directly using code from ground_state_md.
 The "deprecated" directory contains every outdated piece of code, that at some point may be removed from this project.
@@ -59,7 +59,7 @@ The "deprecated" directory contains every outdated piece of code, that at some p
 
 ## Data Overview
 
-The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the extended tight binding (xTB) software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms, and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four conformations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data and this clustering. The evolution of the dihedral angles for one of the simulations (T300_1) can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html). As one can see, the configurations of this simulations are mostly in anti-M conformation. Throughout the following we will only focus on the T300_1 data when training our networks.
+The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the extended tight binding (xTB) software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms ($OC_{27}H_{20}$), and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four conformations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data and this clustering. The evolution of the dihedral angles for one of the simulations (T300_1) can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html). As one can see, the configurations of this simulations are mostly in the anti-M conformation. Throughout the following we will only focus on the T300_1 data when training our networks.
 
 
 ## Installation
@@ -128,7 +128,8 @@ python -m ground_state_md.training_and_inference.get_test_metrics \
 ```
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
-screen -dmS inference_xtb sh -c 'python -m ground_state_md.training_and_inference.inference_with_ase \
+screen -dmS inference_xtb sh -c \
+    'python -m ground_state_md.training_and_inference.inference_with_ase \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
@@ -243,6 +244,7 @@ Here is a quick overview of results for training a neural network on the MOTOR_M
 - [SchNetPack documentation](https://schnetpack.readthedocs.io/en/latest/)
 - [SchNetPack GitHub Page](https://github.com/atomistic-machine-learning/schnetpack)
 - [SchNet – A deep learning architecture for molecules and materials](https://pubs.aip.org/aip/jcp/article/148/24/241722/962591/SchNet-A-deep-learning-architecture-for-molecules)
+- [Equivariant Message Passing for the Prediction of Tensorial Properties and Molecular Spectra](https://proceedings.mlr.press/v139/schutt21a/schutt21a.pdf)
 
 ## Exited State Dynamics
 - [SPAINN: equivariant message passing for excited-state nonadiabatic molecular dynamics](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j)
@@ -275,20 +277,20 @@ The architecture of SchNet is shown in the figure below (adapted from the origin
 Lets begin by talking about the different components of this architecture.
 
 - **Embedding:** In the simplest description, an atom can be identified by its atomic number *Z*. While *Z* is just a single integer, it correlates with a wealth of chemical properties, such as valence electron count, electronegativity, typical bonding patterns, and orbital hybridization, arising from quantum mechanics and periodic trends. To represent this rich information in a way a neural network can use, each atom type *Z_i* is mapped to a vector $x_i^{0} = a_{Z_i}$, called an embedding. These vectors are initially assigned random values and are optimized during training so the network can learn a representation that captures the relevant chemical behavior for the dataset at hand.
-- **Atom-wise Layers:** A linear layer $x^{l+1}_i = W^{l} x^{l}_i + b^l$, where the weights $W^{l}$ and biases $b^l$ are shared across all atoms in layer l. This weight sharing preserves permutation invariance and allows the model to scale to molecules of different sizes.
+- **Atom-wise Layers:** A linear layer $x^{l+1}_i = W^{l} x^{l}_i + b^l$, where the weights $W^{l}$ and biases $b^l$ are shared across all atoms in layer $l$. This weight sharing preserves permutation invariance and allows the model to scale to molecules of different sizes.
 - **Dense Layer**: A linear layer without any sharing of weights. 
 - **Shifted Softplus:** The activation function $\text{ssp}(x) = \ln(0.5 e^x + 0.5)$ introduces non-linearity into the network. Its smoothness and non-zero gradient at $x = 0$ make it a common choice in atomistic neural networks.
-- **Sum Pooling:** The atom embeddings $(x_1,\dots,x_n)$ of the molecule are not directly combined while being passed through the network. At the final stage, they are aggregated into a single molecular representation. For extensive properties (e.g., total energy), the outputs of the last atom-wise layer are summed, e.g. $E = \sum{i=1}^n e_i$. For intensive properties (e.g., average energy per atom), they are averaged instead. This aggregation step is referred to as sum pooling.
+- **Sum Pooling:** The atom embeddings $(x_1,\dots,x_n)$ of the molecule are not directly combined while being passed through the network. At the final stage, they are aggregated into a single molecular representation. For extensive properties (e.g., total energy), the outputs of the last atom-wise layer are summed, e.g. $E = \sum_{i=1}^n e_i$. For intensive properties (e.g., average energy per atom), they are averaged instead. This aggregation step is referred to as sum pooling.
 
 ### Continuous-filter Convolutions to Model Inter-atomic Interactions
 
-To incorporate the influence of atoms on each other, the architecture employs interaction blocks (see the middle panel of the figure above). These blocks have a residual structure and use continuous-filter convolutions to model interactions between atoms within a given cutoff radius. Multiple interaction blocks leads to the propagation of local information beyond the cutoff radius.
+To incorporate the influence of atoms on each other, the architecture employs interaction blocks (see the middle panel of the figure above). These blocks have a residual structure and use continuous-filter convolutions to model interactions between atoms within a given cutoff radius. Multiple interaction blocks lead to the propagation of local information beyond the cutoff radius.
 
 The convolution filters depend on the atomic positions $(r_1, \dots, r_n)$, more precisely, on the interatomic distances $r_{ij} = \lVert r_i - r_j \rVert$. This dependency ensures rotational invariance of the predicted scalar property. 
 
-For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_{ij})$ using $m$ Gaussian radial basis functions (RBFs) with different centers (in our case, $m=300$). An MLP then maps this expanded vector to a convolution filter $W(r_{ij}) = \mathrm{MLP}(\varphi(r_{ij}))$. In our case, the MLP consists of two dense layers, each followed by a shifted softplus function. Finally, the updated atom-wise features are computed as $x_{i}^{l+1} = \sum_j x_j^{l} \circ W^{l}(r_{ij})$, where $\circ$ denotes element-wise multiplication.
+For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_{ij})$ using $m$ Gaussian radial basis functions (RBFs) with different centers (in our case, $m=300$). A multilayer perceptron (MLP) then maps this expanded vector to a convolution filter $W(r_{ij}) = \mathrm{MLP}(\varphi(r_{ij}))$. In our case, the MLP consists of two dense layers, each followed by a shifted softplus function. Finally, the updated atom-wise features are computed as $x_{i}^{l+1} = \sum_j x_j^{l} \circ W^{l}(r_{ij})$, where $\circ$ denotes element-wise multiplication.
 
-The advantage of using an additional neural network to generate filters conditioned on atomic positions is that it allows the model to handle interactions at arbitrary positions in continuous space, whereas conventional convolutional filters in CNNs are designed for fixed, grid-like data structures (e.g., images).
+The advantage of using an additional neural network to generate filters conditioned on atomic positions is that it allows the model to handle interactions at arbitrary positions in continuous space, whereas conventional convolutional filters are designed for fixed, grid-like data structures (e.g., images).
 
 
 
