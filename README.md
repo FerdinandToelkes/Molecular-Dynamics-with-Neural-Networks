@@ -32,10 +32,12 @@ The updates of scalar and vectorial representation are constructed to ensure rot
    - [Data Overview](#data-overview)
    - [Installation](#installation)
    - [Workflow](#workflow)
+   - [Results](#results)
 3. [Excited State Molecular Dynamics](#excited-state-molecular-dynamics)
-   - [Data Overview](#data-overview)
-   - [Installation](#installation)
-   - [Workflow](#workflow)
+   - [Data Overview](#excited-state-data-overview)
+   - [Installation](#excited-state-installation)
+   - [Workflow](#excited-state-workflow)
+   - [Results](#excited-state-results)
 4. [Resources](#resources)
 5. [Theory](#theory)
 6. [Contributing](#contributing)
@@ -57,7 +59,7 @@ The "deprecated" directory contains every outdated piece of code, that at some p
 
 # Ground State Molecular Dynamics
 
-## Data Overview
+## Data Overview 
 
 The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the extended tight binding (xTB) software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms ($OC_{27}H_{20}$), and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four conformations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data and this clustering. The evolution of the dihedral angles for one of the simulations (T300_1) can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html). As one can see, the configurations of this simulations are mostly in the anti-M conformation. Throughout the following we will only focus on the T300_1 data when training our networks.
 
@@ -147,9 +149,7 @@ Here is a quick overview of results for training a neural network on the MOTOR_M
  
 # Excited State Molecular Dynamics
 
-## Data Overview
-
-## Data Overview
+## Data Overview <a name="excited-state-data-overview"></a>
 
 The models for predicting excited state trajectories are trained on the same molecule as in the ground state case, but now using excited state data. This data was generated with time-dependent density functional theory (TDDFT) combined with fewest switches surface hopping (FSSH) to model electronic transitions.
 
@@ -159,7 +159,7 @@ An example of the energy profile of such an excited state trajectory can be view
 
 
 
-## Installation
+## Installation <a name="excited-state-installation"></a>
 
 Once you have cloned this project, you can use the environment.yaml file within the excited_state_md folder to build the conda environment needed to execute the project code. The needed commands are as follows:
 
@@ -171,7 +171,7 @@ conda env create -f excited_state_md/environment.yml
 conda activate schnet
 ```
 
-## Workflow
+## Workflow <a name="excited-state-workflow"></a>
 
 Each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = MOTOR_MD_XTB/T300_1.
 
@@ -237,7 +237,7 @@ python -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
     --n_samples 5000 --units angstrom_kcal_per_mol_fs
 ```
 
-## Results
+## Results <a name="excited-state-results"></a>
 
 Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html)
 
