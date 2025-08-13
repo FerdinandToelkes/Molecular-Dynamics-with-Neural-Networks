@@ -16,14 +16,14 @@ from ground_state_md.utils import set_data_prefix, setup_datamodule, get_num_wor
 from ground_state_md.setup_logger import setup_logger
 
 # Similar functions as in ground_state_md.utils but with different (relative) paths
-from exited_state_md.utils import load_config, get_split_path
-from exited_state_md.utils import remove_splitting_lock_file 
+from excited_state_md.utils import load_config, get_split_path
+from excited_state_md.utils import remove_splitting_lock_file 
 
 BATCH_SIZE = 1
 
 # Example command to run the script from within code directory:
 """
-screen -dmS exited_state_eval sh -c 'python -m exited_state_md.evaluation.get_eval_metrics -mdir epochs_100_bs_32_lr_0.0001_flw_0.495_elw_0.01_nlw_0.495_seed_42 --units bohr_hartree_aut --evaluation_data test ; exec bash'
+screen -dmS excited_state_eval sh -c 'python -m excited_state_md.evaluation.get_eval_metrics -mdir epochs_100_bs_32_lr_0.0001_flw_0.495_elw_0.01_nlw_0.495_seed_42 --units bohr_hartree_aut --evaluation_data test ; exec bash'
 """
 
 
@@ -218,7 +218,7 @@ def main(trajectory_dir: str, units: str, model_dir: str, evaluation_data: str, 
     home_dir = os.path.expanduser("~")
     runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
     model_dir_path = os.path.join(runs_dir_path, units, trajectory_dir.replace("/", "_"), model_dir)
-    model_dir_rel_path = "".join(model_dir_path.split("exited_state_md/")[1:])
+    model_dir_rel_path = "".join(model_dir_path.split("excited_state_md/")[1:])
     logger.debug(f"Absolute path to the model directory: {model_dir_path}")
     logger.debug(f"Relative path to the model directory: {model_dir_rel_path}")
 

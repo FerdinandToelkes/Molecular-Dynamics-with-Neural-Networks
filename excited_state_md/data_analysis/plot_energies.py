@@ -10,14 +10,14 @@ pio.renderers.default = 'browser'
 
 from ground_state_md.setup_logger import setup_logger
 from ground_state_md.utils import set_data_prefix
-from exited_state_md.preprocessing.extract_energies import read_ex_energies_file, convert_ex_energies_to_absolute
+from excited_state_md.preprocessing.extract_energies import read_ex_energies_file, convert_ex_energies_to_absolute
 
 
 logger = setup_logger(logging_level_str="debug")
 
 # Example command to run the script from within code directory:
 """
-python3 -m exited_state_md.data_analysis.plot_energies --trajectory_dir PREPARE_12/GEO_100000/test
+python3 -m excited_state_md.data_analysis.plot_energies --trajectory_dir PREPARE_12/GEO_100000/test
 """
 
 
@@ -93,7 +93,7 @@ def create_interactive_energies_plot(energies: dict, index: np.ndarray, plot_dir
 
 def main(trajectory_dir: str, nr_of_configs: int):
     # setup
-    plot_dir = os.path.expanduser('~/whk/code/exited_state_md/data_analysis/plots')
+    plot_dir = os.path.expanduser('~/whk/code/excited_state_md/data_analysis/plots')
     os.makedirs(plot_dir, exist_ok=True)
     data_prefix = os.path.join(set_data_prefix(), trajectory_dir)
     

@@ -16,7 +16,7 @@ logger = setup_logger(logging_level_str="info")
 # This is the code from the first SPaiNN tutorial, which is used to plot the energy distribution of the prepared dataset.
 # Example command to run the script from within code directory:
 """
-python -m exited_state_md.data_analysis.plot_energy_distribution --trajectory_dir PREPARE_12/spainn_datasets/toy_data --units bohr_hartree_aut --dirs_to_plot 1
+python -m excited_state_md.data_analysis.plot_energy_distribution --trajectory_dir PREPARE_12/spainn_datasets/toy_data --units bohr_hartree_aut --dirs_to_plot 1
 """
 
 def parse_args() -> dict:
@@ -101,7 +101,7 @@ def plot_and_save_energy_distribution(df: pd.DataFrame, units: str, dirs_to_plot
     plt.title('Distribution of Energies in the Dataset')
 
     # Save the plot
-    plot_dir_path = os.path.expanduser("~/whk/code/exited_state_md/data_analysis/plots")
+    plot_dir_path = os.path.expanduser("~/whk/code/excited_state_md/data_analysis/plots")
     os.makedirs(plot_dir_path, exist_ok=True)
     plot_path = os.path.join(plot_dir_path, f"energy_distribution_{units}_first_{dirs_to_plot}_dirs.png")
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
@@ -127,7 +127,7 @@ def plot_and_save_force_distribution(df: pd.DataFrame, units: str, dirs_to_plot:
     plt.title('Distribution of Forces in the Dataset')
 
     # Save the plot
-    plot_dir_path = os.path.expanduser("~/whk/code/exited_state_md/data_analysis/plots")
+    plot_dir_path = os.path.expanduser("~/whk/code/excited_state_md/data_analysis/plots")
     os.makedirs(plot_dir_path, exist_ok=True)
     plot_path = os.path.join(plot_dir_path, f"force_distribution_{units}_first_{dirs_to_plot}_dirs.png")
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')

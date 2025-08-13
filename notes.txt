@@ -88,19 +88,14 @@
 - mdlog file again in atomic units
 
 
-Possible Improvements
-- use double when using np.loadtxt in the prepare_tddft_data.py script instead of single float
-
 
 TODOS
 - prepare_tddft_data: 
     - run checks
 - update readme for exited state md
 - add check if metadata matches config (in train.py)
-- learn how to use trained model for exited md 
 - try different units
-- try different weights
-- add theory section to readme: SchNet, PaiNN, SPaiNN
+- add theory section to readme: PaiNN, SPaiNN
 - add seperate computation of errors on S0 as well as S1 for energies and forces
 
 

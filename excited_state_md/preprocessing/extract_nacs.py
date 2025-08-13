@@ -1,9 +1,10 @@
 import os
+
 import argparse
 
 from tqdm import tqdm
 
-from exited_state_md.preprocessing.utils import prepare_last_exited_cycles, set_path_and_remove_old_file
+from excited_state_md.preprocessing.utils import prepare_last_excited_cycles, set_path_and_remove_old_file
 from ground_state_md.utils import set_data_prefix
 from ground_state_md.setup_logger import setup_logger
 
@@ -11,7 +12,7 @@ from ground_state_md.setup_logger import setup_logger
 # Script uses the bash script extract_nacs.sh to extract nacs from the control file for all GEO folders.
 # Example command to run the script from within code directory:
 """
-python3 -m exited_state_md.preprocessing.extract_nacs --target_dir PREPARE_12
+python3 -m excited_state_md.preprocessing.extract_nacs --target_dir PREPARE_12
 """
 
 logger = setup_logger(logging_level_str="info")
@@ -37,15 +38,15 @@ def main(target_dir: str, computed_cycles: int):
     # setup
     data_path = os.path.join(set_data_prefix(), target_dir)
     logger.debug(f"data_path: {data_path}")
-    command_path = os.path.expanduser(f'~/whk/code/exited_state_md/preprocessing/extract_nacs.sh')
+    command_path = os.path.expanduser(f'~/whk/code/excited_state_md/preprocessing/extract_nacs.sh')
     if not os.path.exists(command_path):
         raise FileNotFoundError(f"Command path {command_path} does not exist. Please check the path.")
 
-    # get all valid trajectories and the number of their last exited cycles
-    last_exited_cycles = prepare_last_exited_cycles(data_path, computed_cycles)
+    # get all valid trajectories and the number of their last excited cycles
+    last_excited_cycles = prepare_last_excited_cycles(data_path, computed_cycles)
 
-    # exited cycle and then from ex_gradient file the rest
-    for geo_dir, _last_exited_cycle in tqdm(last_exited_cycles.items(), desc="Extracting nacs"):
+    # excited cycle and then from ex_gradient file the rest
+    for geo_dir, _last_excited_cycle in tqdm(last_excited_cycles.items(), desc="Extracting nacs"):
         path_to_control_file = os.path.join(data_path, geo_dir, "test", "control")
         output_path = set_path_and_remove_old_file(data_path, geo_dir, "nacs.txt")
         

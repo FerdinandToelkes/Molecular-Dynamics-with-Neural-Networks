@@ -8,13 +8,13 @@ import pandas as pd
 
 from tqdm import tqdm
 
-from exited_state_md.preprocessing.utils import prepare_last_exited_cycles, set_path_and_remove_old_file
+from excited_state_md.preprocessing.utils import prepare_last_excited_cycles, set_path_and_remove_old_file
 from ground_state_md.utils import set_data_prefix
 from ground_state_md.setup_logger import setup_logger
 
 # Example command to run the script from within code directory:
 """
-python3 -m exited_state_md.preprocessing.extract_energies --target_dir PREPARE_12
+python3 -m excited_state_md.preprocessing.extract_energies --target_dir PREPARE_12
 """
 
 # (*) We work under the assumption, the only possible active states are S0 and S1, NOT S2.
@@ -308,11 +308,11 @@ def main(target_dir: str, computed_cycles: int, total_cycles: int):
     data_path = os.path.join(set_data_prefix(), target_dir)
     logger.debug(f"data_path: {data_path}")
     
-    # get all valid trajectories and the number of their last exited cycles
-    last_exited_cycles = prepare_last_exited_cycles(data_path, computed_cycles)
+    # get all valid trajectories and the number of their last excited cycles
+    last_excited_cycles = prepare_last_excited_cycles(data_path, computed_cycles)
 
-    # exited cycle and then from ex_gradient file the rest
-    for geo_dir, _last_exited_cycle in tqdm(last_exited_cycles.items(), desc="Extracting energies"):
+    # excited cycle and then from ex_gradient file the rest
+    for geo_dir, _last_excited_cycle in tqdm(last_excited_cycles.items(), desc="Extracting energies"):
         # use turbomole command to extract energies from mdlog files
         output_path = generate_energy_csv_from_mdlog_files(data_path, geo_dir, total_cycles, turbomole_command='log2egy')
 

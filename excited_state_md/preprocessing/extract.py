@@ -3,14 +3,14 @@ import argparse
 
 from tqdm import tqdm
 
-from exited_state_md.preprocessing.utils import prepare_last_exited_cycles, set_path_and_remove_old_file
+from excited_state_md.preprocessing.utils import prepare_last_excited_cycles, set_path_and_remove_old_file
 from ground_state_md.utils import set_data_prefix
 from ground_state_md.setup_logger import setup_logger
 from ground_state_md.preprocessing.extract import get_sorted_mdlog_files, extract_property_from_log_files
 
 # Example command to run the script from within code directory:
 """
-python3 -m exited_state_md.preprocessing.extract --property positions --target_dir PREPARE_12
+python3 -m excited_state_md.preprocessing.extract --property positions --target_dir PREPARE_12
 """
 
 logger = setup_logger(logging_level_str="info")
@@ -49,11 +49,11 @@ def main(target_dir: str, computed_cycles: int, property: str):
     if not os.path.exists(command_path):
         raise FileNotFoundError(f"Command path {command_path} does not exist. Please check the path.")
 
-    # get all valid trajectories and the number of their last exited cycles
-    geo_dirs_with_last_exited_cycles = prepare_last_exited_cycles(data_path, computed_cycles)
+    # get all valid trajectories and the number of their last excited cycles
+    geo_dirs_with_last_excited_cycles = prepare_last_excited_cycles(data_path, computed_cycles)
 
-    # exited cycle and then from ex_gradient file the rest
-    for geo_dir, _last_exited_cycle in tqdm(geo_dirs_with_last_exited_cycles.items(), desc=f"Extracting {property}"):
+    # excited cycle and then from ex_gradient file the rest
+    for geo_dir, _last_excited_cycle in tqdm(geo_dirs_with_last_excited_cycles.items(), desc=f"Extracting {property}"):
         path_to_mdlog_files = os.path.join(data_path, geo_dir, "test")
         output_path = set_path_and_remove_old_file(data_path, geo_dir, f"{property}.txt")
 

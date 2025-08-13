@@ -11,7 +11,7 @@ import schnetpack as spk
 
 import spainn
 
-from exited_state_md.utils import get_split_path, remove_splitting_lock_file
+from excited_state_md.utils import get_split_path, remove_splitting_lock_file
 from ground_state_md.utils import set_data_prefix
 from ground_state_md.setup_logger import setup_logger
 
@@ -21,7 +21,7 @@ logger = setup_logger(logging_level_str="debug")
 
 # Example command to run the script from within code directory:
 """
-python -m exited_state_md.training_and_inference.train_e_f_nac --trajectory_dir PREPARE_12/spainn_datasets/toy_data
+python -m excited_state_md.training_and_inference.train_e_f_nac --trajectory_dir PREPARE_12/spainn_datasets/toy_data
 """
 
 
