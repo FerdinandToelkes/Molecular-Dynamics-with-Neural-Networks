@@ -32,7 +32,7 @@ The updates of scalar and vectorial representation are constructed to ensure rot
    - [Data Overview](#data-overview)
    - [Installation](#installation)
    - [Workflow](#workflow)
-3. [Exited State Molecular Dynamics](#exited-state-molecular-dynamics)
+3. [Excited State Molecular Dynamics](#excited-state-molecular-dynamics)
    - [Data Overview](#data-overview)
    - [Installation](#installation)
    - [Workflow](#workflow)
@@ -43,16 +43,16 @@ The updates of scalar and vectorial representation are constructed to ensure rot
 
 # Project Structure
 
-This project is split into two main parts, namely the **ground_state_md** and **exited_state_md** directories. The training of neural networks (NNs) to predict ground state MDs is done by employing the [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) package, whereas the [SPaiNN](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j) package was used to train NNs for the prediction of exited state trajectories. The main differences between these two tasks are summarized below.
+This project is split into two main parts, namely the **ground_state_md** and **excited_state_md** directories. The training of neural networks (NNs) to predict ground state MDs is done by employing the [SchNetPack](https://github.com/atomistic-machine-learning/schnetpack) package, whereas the [SPaiNN](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j) package was used to train NNs for the prediction of excited state trajectories. The main differences between these two tasks are summarized below.
 
-|                                      | Ground State MD (`ground_state_md`)               | Excited State MD (`exited_state_md`)                      |
+|                                      | Ground State MD (`ground_state_md`)               | Excited State MD (`excited_state_md`)                      |
 |--------------------------------------|---------------------------------------------------|-----------------------------------------------------------|
 | Target Properties                    | Potential energy S0 and resulting forces          | Potential energies S0 and S1, resulting forces and non‑adiabatic couplings S0 -> S1 |
 | Training Data                        | Ground‑state trajectories using xTB with REMD     | Excited‑state MD with TDDFT and FSSH based on configurations from ground-state xTB trajectories |
 | ML Framework                         | SchNetPack + ASE Interface                        | SPaiNN (PaiNN + SchNetPack + SHARC interface) |
 | Dynamics Setup                       | Adiabatic MD on a single potential energy surface (PES) | Non‑adiabatic MD using FSSH  (via SHARC)  |
 
-Since I started with the code for ground state MD without knowing the exact direction of this project, much of the code for the exited state MD is based on or directly using code from ground_state_md.
+Since I started with the code for ground state MD without knowing the exact direction of this project, much of the code for the excited state MD is based on or directly using code from ground_state_md.
 The "deprecated" directory contains every outdated piece of code, that at some point may be removed from this project.
 
 # Ground State Molecular Dynamics
@@ -145,22 +145,29 @@ python -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
 
 Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html)
  
-# Exited State Molecular Dynamics
+# Excited State Molecular Dynamics
 
 ## Data Overview
 
-The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the extended tight binding (xTB) software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms, and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four conformations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data and this clustering. The evolution of the dihedral angles for one of the simulations (T300_1) can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html). As one can see, the configurations of this simulations are mostly in anti-M conformation. Throughout the following we will only focus on the T300_1 data when training our networks.
+## Data Overview
+
+The models for predicting excited state trajectories are trained on the same molecule as in the ground state case, but now using excited state data. This data was generated with time-dependent density functional theory (TDDFT) combined with fewest switches surface hopping (FSSH) to model electronic transitions.
+
+Several excited state trajectories were simulated. Their starting configurations were taken at regular intervals from one long ground state molecular dynamics (MD) simulation using xTB. Each excited state trajectory is stored in a folder named `GEO_i`, where `i` corresponds to the time step of its starting configuration in the underlying ground state MD.
+
+An example of the energy profile of such an excited state trajectory can be viewed [here](https://FerdinandToelkes.github.io/whk/energies_PREPARE_12_GEO_100000_test.html). This example is taken from 'GEO_100000'.
+
 
 
 ## Installation
 
-Once you have cloned this project, you can use the environment.yaml file within the exited_state_md folder to build the conda environment needed to execute the project code. The needed commands are as follows:
+Once you have cloned this project, you can use the environment.yaml file within the excited_state_md folder to build the conda environment needed to execute the project code. The needed commands are as follows:
 
 
 ```bash
 git clone git@github.com:FerdinandToelkes/whk.git
 cd /path/to/cloned/directory
-conda env create -f exited_state_md/environment.yml
+conda env create -f excited_state_md/environment.yml
 conda activate schnet
 ```
 
@@ -246,7 +253,7 @@ Here is a quick overview of results for training a neural network on the MOTOR_M
 - [SchNet – A deep learning architecture for molecules and materials](https://pubs.aip.org/aip/jcp/article/148/24/241722/962591/SchNet-A-deep-learning-architecture-for-molecules)
 - [Equivariant Message Passing for the Prediction of Tensorial Properties and Molecular Spectra](https://proceedings.mlr.press/v139/schutt21a/schutt21a.pdf)
 
-## Exited State Dynamics
+## Excited State Dynamics
 - [SPAINN: equivariant message passing for excited-state nonadiabatic molecular dynamics](https://pubs.rsc.org/en/content/articlepdf/2024/sc/d4sc04164j)
 - [SpaiNN documentation](https://spainn.readthedocs.io/en/latest/index.html)
 - [SpaiNN GitHub Page](https://github.com/CompPhotoChem/SPaiNN)
