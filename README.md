@@ -78,13 +78,13 @@ conda activate schnet
 
 ## Workflow
 
-Each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = MOTOR_MD_XTB/T300_1.
+Each script should include an example of how to execute it at the top. All python3 scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = MOTOR_MD_XTB/T300_1.
 
 ### Preprocessing
 
 - Obtain gradients, positions and velocities from mdlog.i files with the extract.py script:
 ```bash
-python -m ground_state_md.preprocessing.extract \
+python3 -m ground_state_md.preprocessing.extract \
     --property gradients \
     --target_dir path/to/dir/with/mdlog.i/files
 ```
@@ -94,20 +94,20 @@ log2egy > energies.txt
 ```
 - Transform the extracted properties into a .db file (which is the format used within SchNetPack) by employing the prepare_xtb_data.py script
 ```bash
-python -m ground_state_md.preprocessing.prepare_xtb_data \
+python3 -m ground_state_md.preprocessing.prepare_xtb_data \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --num_atoms 48 --position_unit angstrom \
     --energy_unit kcal/mol --time_unit fs
 ```
 - Define how the data later should be splitted into training, validation and test data via the create_splits.py script:
 ```bash
-python -m ground_state_md.preprocessing.create_splits \
+python3 -m ground_state_md.preprocessing.create_splits \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --units angstrom_kcal_per_mol_fs 
 ```
 - If needed, compute the mean and standard deviation of the various properties in the training set via the compute_means_and_stds.py script:
 ```bash
-python -m ground_state_md.preprocessing.compute_means_and_stds \
+python3 -m ground_state_md.preprocessing.compute_means_and_stds \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --num_atoms=48 --units angstrom_kcal_per_mol_fs
 ```
@@ -117,7 +117,7 @@ Note that paths need to be updated depending on the local setup especially of th
 
 - Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the .yml config file if necessary)
 ```bash
-screen -dmS xtb_train sh -c 'python -m ground_state_md.training_and_inference.train \ 
+screen -dmS xtb_train sh -c 'python3 -m ground_state_md.training_and_inference.train \ 
     --trajectory_dir path/to/dir/with/mdlog.i/files --epochs 1000  \ 
     --batch_size 100 --learning_rate 0.0001 --seed 42 \
     --config_name train_config_default_transforms 
@@ -125,19 +125,19 @@ screen -dmS xtb_train sh -c 'python -m ground_state_md.training_and_inference.tr
 ```
 - Use get_test_metrics.py to predict the energies, forces and gradients of the test set with the trained model
 ```bash
-python -m ground_state_md.training_and_inference.get_test_metrics \
+python3 -m ground_state_md.training_and_inference.get_test_metrics \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
 ```
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
 screen -dmS inference_xtb sh -c \
-    'python -m ground_state_md.training_and_inference.inference_with_ase \
+    'python3 -m ground_state_md.training_and_inference.inference_with_ase \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
 ```bash
-python -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
+python3 -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
     --n_samples 5000 --units angstrom_kcal_per_mol_fs
@@ -183,7 +183,7 @@ Now follow the installation 'Building from Source' from the [SPaiNN Documentatio
 
 Furthermore, in step seven I have to copy the file 'sharc.cpython-312-x86_64-linux-gnu.so', since I specified another python version in the environment.yml file than used in the installation guide. I found this change of python versions to be necessary for the installation to succeed.
 
-Moreover, the GitHub directory for SPaiNN was relocated to  , which has to be taken into account in step eleven. Finally, I have to add these lines to my bashrc file, in order to get pysharc to work:
+Moreover, the GitHub directory for SPaiNN was relocated to https://github.com/CompPhotoChem/SPaiNN#, which has to be taken into account in step eleven. Finally, I have to add these lines to my bashrc file, in order to get pysharc to work:
 
 ```bash
 export PATH=$PATH:$SHARC
@@ -191,38 +191,54 @@ export PYTHONPATH=$PYTHONPATH:/loctmp/tof54964/software/sharc/pysharc
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/loctmp/tof54964/software/sharc/lib
 ```
 
+I hope that after all this, everything works!
+
 ## Workflow <a name="excited-state-workflow"></a>
 
-Each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = MOTOR_MD_XTB/T300_1.
+Again, each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = PREPARE_12.
 
 ### Preprocessing
 
-- Obtain gradients, positions and velocities from mdlog.i files with the extract.py script:
+- Since we do not have complete ground state calculations for all GEO folders, we have to determine the GEO folders containing complete data before extracting any properties. As preperation for this, run:
 ```bash
-python -m ground_state_md.preprocessing.extract \
-    --property gradients \
-    --target_dir path/to/dir/with/mdlog.i/files
+python3 -m excited_state_md.preprocessing.get_last_ex_cycle_of_valid_trajs \
+     --target_dir path/to/dir/with/GEO/folders
+``` 
+
+- Obtain positions and velocities from mdlog.i files with the extract.py script for all GEO directories located in target_dir:
+```bash
+python3 -m excited_state_md.preprocessing.extract \
+    --property positions \
+    --target_dir path/to/dir/with/GEO/folders
 ```
-- Obtain energies from mdlog.i files with Turbomole by executing directly in the directory with the mdlog.i files (make sure that Turbomole is installed and enabled):
+- Obtain all energies (including S0, S1 and S2) from ex_energies and mdlog.i files with Turbomole by running (make sure that Turbomole is installed and enabled):
 ```bash
-log2egy > energies.txt
+python3 -m excited_state_md.preprocessing.extract_energies \
+    --target_dir path/to/dir/with/GEO/folders
+```
+- Obtain non-adiabatic couplings (NACs) and S0 and S1 gradients from control, gradient_ex, extra_ground_state_calculations and mdlog.i files for all GEO directories located in target_dir with:
+```bash
+python3 -m excited_state_md.preprocessing.extract_s0_s1_gradients \
+    --target_dir --target_dir path/to/dir/with/GEO/folders \
+python3 -m excited_state_md.preprocessing.extract_nacs \
+    --target_dir --target_dir path/to/dir/with/GEO/folders
 ```
 - Transform the extracted properties into a .db file (which is the format used within SchNetPack) by employing the prepare_xtb_data.py script
 ```bash
-python -m ground_state_md.preprocessing.prepare_xtb_data \
+python3 -m ground_state_md.preprocessing.prepare_xtb_data \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --num_atoms 48 --position_unit angstrom \
     --energy_unit kcal/mol --time_unit fs
 ```
 - Define how the data later should be splitted into training, validation and test data via the create_splits.py script:
 ```bash
-python -m ground_state_md.preprocessing.create_splits \
+python3 -m ground_state_md.preprocessing.create_splits \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --units angstrom_kcal_per_mol_fs 
 ```
 - If needed, compute the mean and standard deviation of the various properties in the training set via the compute_means_and_stds.py script:
 ```bash
-python -m ground_state_md.preprocessing.compute_means_and_stds \
+python3 -m ground_state_md.preprocessing.compute_means_and_stds \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --num_atoms=48 --units angstrom_kcal_per_mol_fs
 ```
@@ -232,7 +248,7 @@ Note that paths need to be updated depending on the local setup especially of th
 
 - Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the .yml config file if necessary)
 ```bash
-screen -dmS xtb_train sh -c 'python -m ground_state_md.training_and_inference.train \ 
+screen -dmS xtb_train sh -c 'python3 -m ground_state_md.training_and_inference.train \ 
     --trajectory_dir path/to/dir/with/mdlog.i/files --epochs 1000  \ 
     --batch_size 100 --learning_rate 0.0001 --seed 42 \
     --config_name train_config_default_transforms 
@@ -240,18 +256,18 @@ screen -dmS xtb_train sh -c 'python -m ground_state_md.training_and_inference.tr
 ```
 - Use get_test_metrics.py to predict the energies, forces and gradients of the test set with the trained model
 ```bash
-python -m ground_state_md.training_and_inference.get_test_metrics \
+python3 -m ground_state_md.training_and_inference.get_test_metrics \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
 ```
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
-screen -dmS inference_xtb sh -c 'python -m ground_state_md.training_and_inference.inference_with_ase \
+screen -dmS inference_xtb sh -c 'python3 -m ground_state_md.training_and_inference.inference_with_ase \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
 ```bash
-python -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
+python3 -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
     --n_samples 5000 --units angstrom_kcal_per_mol_fs
