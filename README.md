@@ -115,7 +115,7 @@ Note that paths need to be updated depending on the local setup especially of th
 
 - Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the .yml config file if necessary)
 ```bash
-screen -dmS xtb_train sh -c 'python -m ground_state_md.neural_net.train \ 
+screen -dmS xtb_train sh -c 'python -m ground_state_md.training_and_inference.train \ 
     --trajectory_dir path/to/dir/with/mdlog.i/files --epochs 1000  \ 
     --batch_size 100 --learning_rate 0.0001 --seed 42 \
     --config_name train_config_default_transforms 
@@ -123,18 +123,18 @@ screen -dmS xtb_train sh -c 'python -m ground_state_md.neural_net.train \
 ```
 - Use get_test_metrics.py to predict the energies, forces and gradients of the test set with the trained model
 ```bash
-python -m ground_state_md.neural_net.get_test_metrics \
+python -m ground_state_md.training_and_inference.get_test_metrics \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
 ```
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
-screen -dmS inference_xtb sh -c 'python -m ground_state_md.neural_net.inference_with_ase \
+screen -dmS inference_xtb sh -c 'python -m ground_state_md.training_and_inference.inference_with_ase \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
 ```bash
-python -m ground_state_md.neural_net.plot_interactive_md_ase_sim \
+python -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
     --n_samples 5000 --units angstrom_kcal_per_mol_fs
@@ -204,7 +204,7 @@ Note that paths need to be updated depending on the local setup especially of th
 
 - Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the .yml config file if necessary)
 ```bash
-screen -dmS xtb_train sh -c 'python -m ground_state_md.neural_net.train \ 
+screen -dmS xtb_train sh -c 'python -m ground_state_md.training_and_inference.train \ 
     --trajectory_dir path/to/dir/with/mdlog.i/files --epochs 1000  \ 
     --batch_size 100 --learning_rate 0.0001 --seed 42 \
     --config_name train_config_default_transforms 
@@ -212,18 +212,18 @@ screen -dmS xtb_train sh -c 'python -m ground_state_md.neural_net.train \
 ```
 - Use get_test_metrics.py to predict the energies, forces and gradients of the test set with the trained model
 ```bash
-python -m ground_state_md.neural_net.get_test_metrics \
+python -m ground_state_md.training_and_inference.get_test_metrics \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
 ```
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
-screen -dmS inference_xtb sh -c 'python -m ground_state_md.neural_net.inference_with_ase \
+screen -dmS inference_xtb sh -c 'python -m ground_state_md.training_and_inference.inference_with_ase \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
 ```bash
-python -m ground_state_md.neural_net.plot_interactive_md_ase_sim \
+python -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
     --n_samples 5000 --units angstrom_kcal_per_mol_fs
