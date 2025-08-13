@@ -2,29 +2,6 @@
 
 This project was part of a six-month, part-time research assistant position under the supervision of Professor Enrico Tapavicza. The main goal is to speed up the simulation of molecular dynamics (MDs) of a second-generation Feringa-type molecular nanomotor. In our case this is 9-(2’-methyl-2’,3’-dihydro-1’H-cyclopenta[a]naphthalen-1’-ylidene)-9H-xanthene (CPNX) (see for example the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b)). 
 
-## PaiNN
-
-SchNet’s architecture is designed for predicting scalar-valued properties, and can only produce vector properties that are direct derivatives of these scalars (e.g., forces obtained as the negative gradient of the energy). Predicting general vector quantities, such as non-adiabatic couplings (NACs), requires extending this framework. This is achieved by the **Polarizable Atom Interaction Neural Network** (PaiNN).
-
-In PaiNN, a molecule is represented as a graph where each atom is a node equipped with both a scalar feature representation $s^{t}_i \in \mathbb{R}^F$ and a vectorial feature representation $\mathbf{v}^t_i \in \mathbb{R}^{3 \times F}$, where $F$ is the embedding dimension and the first dimension corresponds to the three spatial coordinates.
-
-As in SchNet, PaiNN models local interactions through a message passing mechanism. A key benefit of vectorial features is that they allow the network to capture changes in bond angles without introducing explicit angular terms, thereby avoiding additional computational cost (see figure below).
-
-<p align="center">
-   <img src="readme_images/PaiNN_comparison_message_functions.png" alt="PaiNN message functions" width="600"/>
-</p>
-
-Furthermore, PaiNN can distinguish molecular conformations that differ by rotations around bonds, as shown in the following figure.
-
-
-<p align="center">
-   <img src="readme_images/directional_information_example.png" alt="Directional information" width="600"/>
-</p>
-
-
-
-The updates of scalar and vectorial representation are constructed to ensure rotational invariance and equivariance, respectively.
-
 ## Outline
 
 1. [Project Structure](#project-structure)
@@ -336,7 +313,39 @@ For richer context, each distance $r_{ij}$ is expanded into a vector $\varphi(r_
 The advantage of using an additional neural network to generate filters conditioned on atomic positions is that it allows the model to handle interactions at arbitrary positions in continuous space, whereas conventional convolutional filters are designed for fixed, grid-like data structures (e.g., images).
 
 
+## PaiNN
 
+SchNet’s architecture is designed for predicting scalar-valued properties, and can only produce vector properties that are direct derivatives of these scalars (e.g., forces obtained as the negative gradient of the energy). Predicting general vector quantities, such as non-adiabatic couplings (NACs), requires extending this framework. This is achieved by the **Polarizable Atom Interaction Neural Network** (PaiNN).
+
+In PaiNN, a molecule is represented as a graph where each atom is a node equipped with both a scalar feature representation $\mathbf{s}^{t}_i \in \mathbb{R}^F$ and a vectorial feature representation $\vec{\mathbf{v}}^t_i \in \mathbb{R}^{3 \times F}$, where $F$ is the embedding dimension and the first dimension corresponds to the three spatial coordinates.
+
+As in SchNet, PaiNN models local interactions through a message passing mechanism. A key benefit of vectorial features is that they allow the network to capture changes in bond angles without introducing explicit angular terms, thereby avoiding additional computational cost (see figure below).
+
+<p align="center">
+   <img src="readme_images/PaiNN_comparison_message_functions.png" alt="PaiNN message functions" width="600"/>
+</p>
+
+Furthermore, PaiNN can distinguish molecular conformations that differ by rotations around bonds, as shown in the following figure.
+
+
+<p align="center">
+   <img src="readme_images/directional_information_example.png" alt="Directional information" width="600"/>
+</p>
+
+
+The updates of scalar and vectorial representation are constructed to ensure rotational invariance and equivariance, respectively. Because scalar features must remain rotationally invariant and vector features must remain rotationally equivariant, only certain operations are permitted. The following operations are for example allowed when processing directional information (see the [PaiNN paper](https://proceedings.mlr.press/v139/schutt21a/schutt21a.pdf])):
+
+- Any (nonlinear) function of scalars: $\mathbf{f}(s)$
+- Scaling of vectors: $\mathbf{s} \circ \vec{\mathbf{v}}$
+- Linear combinations of equivariant vectors: $\mathbf{W}\vec{\mathbf{v}}$
+- Scalar products: $\mathbf{s} = \langle \vec{\mathbf{v}}_1, \vec{\mathbf{v}}_2 \rangle$
+- Vector products: $\vec{\mathbf{v}}_1 \times \vec{\mathbf{v}}_2 = \mathbf{A}_1 \vec{\mathbf{v}}_2$
+
+The PaiNN architecture is constructed by combining these operations into interaction and update blocks:
+
+<p align="center">
+   <img src="readme_images/PaiNN_architecture.png" alt="PaiNN Architecture" width="600"/>
+</p>
 
 
 # Unfinished Thoughts on Change of Units
