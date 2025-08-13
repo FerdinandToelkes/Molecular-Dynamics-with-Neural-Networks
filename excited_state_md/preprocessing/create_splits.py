@@ -11,12 +11,12 @@ logger = setup_logger(logging_level_str="debug")
 # Script to generate splits for an inner k-fold cross-validation and save them in a ASE compatible format.
 # Example command to run the script from within code directory:
 """
-python -m excited_state_md.preprocessing.create_splits --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut
+python3 -m excited_state_md.preprocessing.create_splits --trajectory_dir PREPARE_12/spainn_datasets --units bohr_hartree_aut
 """
 
 # and for toy data (only first 3 directories):
 """
-python -m excited_state_md.preprocessing.create_splits --trajectory_dir PREPARE_12/spainn_datasets/toy_data --units bohr_hartree_aut --dirs_for_training 1 --dirs_for_validation 1 --dirs_for_testing 1
+python3 -m excited_state_md.preprocessing.create_splits --trajectory_dir PREPARE_12/spainn_datasets/toy_data --units bohr_hartree_aut --dirs_for_training 1 --dirs_for_validation 1 --dirs_for_testing 1
 """
 
 def parse_args() -> dict:
