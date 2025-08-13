@@ -123,11 +123,6 @@ screen -dmS xtb_train sh -c 'python3 -m ground_state_md.training_and_inference.t
     --config_name train_config_default_transforms 
     --units angstrom_kcal_per_mol_fs; exec bash'
 ```
-- Use get_test_metrics.py to predict the energies, forces and gradients of the test set with the trained model
-```bash
-python3 -m ground_state_md.training_and_inference.get_test_metrics \
-    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
-```
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
 screen -dmS inference_xtb sh -c \
@@ -135,13 +130,23 @@ screen -dmS inference_xtb sh -c \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
+
+### Evaluation
+
+- Use get_eval_metrics.py to predict the energies, forces and gradients of the test set with the trained model
+```bash
+python3 -m ground_state_md.evaluation.get_eval_metrics \
+    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
+```
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
 ```bash
-python3 -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
+python3 -m ground_state_md.evaluation.plot_interactive_md_ase_sim \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
     --n_samples 5000 --units angstrom_kcal_per_mol_fs
 ```
+
+TODO: add the other two scripts for eval
 
 ## Results
 
@@ -204,7 +209,6 @@ Again, each script should include an example of how to execute it at the top. Al
 python3 -m excited_state_md.preprocessing.get_last_ex_cycle_of_valid_trajs \
      --target_dir path/to/dir/with/GEO/folders
 ``` 
-
 - Obtain positions and velocities from mdlog.i files with the extract.py script for all GEO directories located in target_dir:
 ```bash
 python3 -m excited_state_md.preprocessing.extract \
@@ -223,58 +227,54 @@ python3 -m excited_state_md.preprocessing.extract_s0_s1_gradients \
 python3 -m excited_state_md.preprocessing.extract_nacs \
     --target_dir --target_dir path/to/dir/with/GEO/folders
 ```
-- Transform the extracted properties into a .db file (which is the format used within SchNetPack) by employing the prepare_xtb_data.py script
+- Transform the extracted properties into a .db file (which is the format used within SPaiNN) by employing the prepare_tddft_data.py script
 ```bash
-python3 -m ground_state_md.preprocessing.prepare_xtb_data \
-    --trajectory_dir path/to/dir/with/mdlog.i/files \
-    --num_atoms 48 --position_unit angstrom \
-    --energy_unit kcal/mol --time_unit fs
+python3 -m excited_state_md.preprocessing.prepare_tddft_data  \
+    --num_atoms 48 --position_unit bohr --energy_unit hartree \
+    --time_unit aut --nr_of_dirs 3
 ```
+where the number of directories, specifies how many excited state trajectories, i.e., how many GEO folders, should be used.
 - Define how the data later should be splitted into training, validation and test data via the create_splits.py script:
 ```bash
-python3 -m ground_state_md.preprocessing.create_splits \
-    --trajectory_dir path/to/dir/with/mdlog.i/files \
-    --units angstrom_kcal_per_mol_fs 
+python3 -m excited_state_md.preprocessing.create_splits --trajectory_dir \
+    PREPARE_12/spainn_datasets --units bohr_hartree_aut --dirs_for_training 1 \
+    --dirs_for_validation 1 --dirs_for_testing 1 
 ```
-- If needed, compute the mean and standard deviation of the various properties in the training set via the compute_means_and_stds.py script:
-```bash
-python3 -m ground_state_md.preprocessing.compute_means_and_stds \
-    --trajectory_dir path/to/dir/with/mdlog.i/files \
-    --num_atoms=48 --units angstrom_kcal_per_mol_fs
-```
-Note that paths need to be updated depending on the local setup especially of the data. 
+Since we did not experiment with normalizing the excited data, we do not compute any means and standard deviations. This should be easily achievable, by employing a slightly updated version of the ground_state_md.preprocessing.compute_means_and_stds script. Note that paths need to be updated depending on the local setup especially of the data. 
 
 ### Training and Inference
 
 - Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the .yml config file if necessary)
 ```bash
-screen -dmS xtb_train sh -c 'python3 -m ground_state_md.training_and_inference.train \ 
-    --trajectory_dir path/to/dir/with/mdlog.i/files --epochs 1000  \ 
-    --batch_size 100 --learning_rate 0.0001 --seed 42 \
-    --config_name train_config_default_transforms 
-    --units angstrom_kcal_per_mol_fs; exec bash'
+screen -dmS tddft_train sh -c \
+    'python -m excited_state_md.training_and_inference.train \
+    --trajectory_dir PREPARE_12/spainn_datasets \
+    --units angstrom_kcal_per_mol_fs -e 200 -flw 0.98 -elw 0.01 \
+    -nlw 0.01 -bs 16 --nacs_key nacs ; exec bash'
 ```
-- Use get_test_metrics.py to predict the energies, forces and gradients of the test set with the trained model
-```bash
-python3 -m ground_state_md.training_and_inference.get_test_metrics \
-    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
-```
+
+TODO: update this and inference script itself -> make it nicer
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
 screen -dmS inference_xtb sh -c 'python3 -m ground_state_md.training_and_inference.inference_with_ase \
     --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
-- Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
+
+### Evaluation
+
+- Use get_eval_metrics.py to predict the energies, forces and gradients of the test set with the trained model
 ```bash
-python3 -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
-    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
-    --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
-    --n_samples 5000 --units angstrom_kcal_per_mol_fs
+screen -dmS excited_state_eval sh -c \
+    'python3 -m excited_state_md.evaluation.get_eval_metrics \
+    -mdir epochs_100_bs_32_lr_0.0001_flw_0.495_elw_0.01_nlw_0.495_seed_42 \
+    --units bohr_hartree_aut --evaluation_data test ; exec bash'
 ```
+
 
 ## Results <a name="excited-state-results"></a>
 
+TODO: update this!
 Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html)
 
 # Resources
