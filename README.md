@@ -146,6 +146,10 @@ python -m ground_state_md.training_and_inference.plot_interactive_md_ase_sim \
 ## Results
 
 Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html)
+
+
+
+
  
 # Excited State Molecular Dynamics
 
@@ -161,14 +165,30 @@ An example of the energy profile of such an excited state trajectory can be view
 
 ## Installation <a name="excited-state-installation"></a>
 
-Once you have cloned this project, you can use the environment.yaml file within the excited_state_md folder to build the conda environment needed to execute the project code. The needed commands are as follows:
+Note, that SPaiNN can (to my knowledge) only be installed on linux. Once you have cloned this project, you can use the environment.yaml file within the excited_state_md folder to build the conda environment needed to execute the project code. The needed commands are as follows:
 
 
 ```bash
 git clone git@github.com:FerdinandToelkes/whk.git
 cd /path/to/cloned/directory
 conda env create -f excited_state_md/environment.yml
-conda activate schnet
+conda activate spainn
+```
+
+Now follow the installation 'Building from Source' from the [SPaiNN Documentation](https://spainn.readthedocs.io/en/latest/installation.html), where we already finsihed the first two steps. When I try to execute the fifth step 'make install', it yields an error. This error is fixed by changing 
+- line 132 to 'size_t nsteps = 0;'
+- line 140 to 'nc_inq_dimlen(ncdat->id, unlim_id, &nsteps)'
+- line 292 to 'size_t nsteps = 0;'
+- line 300 to 'nc_inq_dimlen(ncdat->id, unlim_id, &nsteps)'
+
+Furthermore, in step seven I have to copy the file 'sharc.cpython-312-x86_64-linux-gnu.so', since I specified another python version in the environment.yml file than used in the installation guide. I found this change of python versions to be necessary for the installation to succeed.
+
+Moreover, the GitHub directory for SPaiNN was relocated to  , which has to be taken into account in step eleven. Finally, I have to add these lines to my bashrc file, in order to get pysharc to work:
+
+```bash
+export PATH=$PATH:$SHARC
+export PYTHONPATH=$PYTHONPATH:/loctmp/tof54964/software/sharc/pysharc
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/loctmp/tof54964/software/sharc/lib
 ```
 
 ## Workflow <a name="excited-state-workflow"></a>
