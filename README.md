@@ -348,9 +348,9 @@ The PaiNN architecture is constructed by combining these operations into interac
 </p>
 
 
-# Unfinished Thoughts on Change of Units
+# Thoughts on Change of Units and Transformations on the Data (Unfinished)
 
-TODO: try to add handwritten document.
+When training neural networks, the choice of units for the underlying data is flexible and can be considered a model hyperparameter. Some considerations on the effects of changing units and applying transformations,such as centering the energy, on the training process are discussed [here](readme_images/change_of_units_and_transformations.pdf).
 
 # Contributing
 
