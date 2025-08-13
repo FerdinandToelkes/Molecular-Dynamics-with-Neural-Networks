@@ -6,6 +6,7 @@
 
 # Plots #
 #########
+*.pdf
 *.jpeg
 *.jpg
 

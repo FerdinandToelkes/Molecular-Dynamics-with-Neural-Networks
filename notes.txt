@@ -43,6 +43,7 @@
 
 - "scp -r tof54964@uni54:/loctmp/tof54964/* ." - Copy everything from uni54 to the current directory, has thus to be executed from uni38
 
+- "$SHARC/data_extractor_NetCDF.x -xyz output.dat": convert sharc trajectory (netcdf) to xyz and write it to already existing, but empty, output.xyz
 
 
 # On the fly:
@@ -110,4 +111,11 @@ TRAJ
     - <Interface files> ??
 - restart (d)
 
+- SPaiNN -> also used for larger molecules?
+- SPaiNN: if error for 6 atoms -> scale to 48 atoms
+- try setting velocities with SHARC
+- compare velocity verlet of sharc and turbomole
+- sharc uses wigner sampling for velocities whereas turbomole is classical
+-> let sharc pick velocities
+- has someone looked at unit changes in physical problems for machine learning 
 

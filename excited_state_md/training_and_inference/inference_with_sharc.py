@@ -22,7 +22,7 @@ from excited_state_md.utils import get_split_path, remove_splitting_lock_file, l
 
 # Example command to run the script from within code directory:
 """
-screen -dmS inference_xtb sh -c 'python -m excited_state_md.training_and_inference.inference_with_sharc -mdir epochs_200_bs_32_lr_0.0001_flw_0.6_elw_0.01_nlw_0.39_seed_42 --units bohr_hartree_aut --md_steps 10000 --time_step 0.5 ; exec bash'
+screen -dmS inference_xtb sh -c 'python -m excited_state_md.training_and_inference.inference_with_sharc --sharc_dir PREPARE_12/GEO_100000; exec bash'
 """
 
 
@@ -52,7 +52,7 @@ def main(trajectory_dir: str, sharc_dir: str, units: str, model_dir: str, md_ste
     data_prefix = set_data_prefix()
     print(f"Data prefix: {data_prefix}")
     
-    models = ["./excited_state_md/training_and_inference/runs/bohr_hartree_aut/PREPARE_12_spainn_datasets/epochs_200_bs_64_lr_0.0001_flw_0.8_elw_0.05_nlw_0.15_seed_42/best_model"]
+    models = ["./excited_state_md/training_and_inference/runs/bohr_hartree_aut/PREPARE_12_spainn_datasets/epochs_200_bs_16_lr_0.0001_flw_0.9_elw_0.05_nlw_0.05_seed_42/best_model"]
     th = None # for active learning, e.g., {'energy': 0.004}
     # symbols of sample molecule
     atoms = 'O' + 'C' * 27 + 'H' * 20 

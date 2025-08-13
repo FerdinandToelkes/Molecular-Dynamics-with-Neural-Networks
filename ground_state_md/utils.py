@@ -67,15 +67,20 @@ def set_data_prefix() -> str:
 
     Returns:
         str: Data prefix path.
+    Raises:
+        FileNotFoundError: If the data path does not exist.
     """
     logger.debug("Setting data prefix")
     logger.debug(f"System: {platform.system()}")
     if platform.system() == 'Darwin':
-        return '/Users/ferdinandtolkes/whk/data'
+        path_to_data = '/Users/ferdinandtolkes/whk/data' 
     elif platform.system() == 'Linux':
-        return '/loctmp/tof54964/data'
+        path_to_data = '/loctmp/tof54964/data'
     else:
         raise ValueError('Unknown system. Please set data_prefix manually.')
+    if not os.path.exists(path_to_data):
+            raise FileNotFoundError(f"Data path does not exist: {path_to_data}. Please set change the paths within ground_state_md.utils.data_prefix manually.")
+    return path_to_data
 
 def get_bin_number(data: np.ndarray) -> int:
     """ 
