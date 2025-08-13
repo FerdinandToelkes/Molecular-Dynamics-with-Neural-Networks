@@ -227,7 +227,7 @@ screen -dmS tddft_train sh -c \
     'python -m excited_state_md.training_and_inference.train \
     --trajectory_dir PREPARE_12/spainn_datasets \
     --units angstrom_kcal_per_mol_fs -e 200 -flw 0.98 -elw 0.01 \
-    -nlw 0.01 -bs 16 --nacs_key nacs ; exec bash'
+    -nlw 0.01 -bs 16 --nacs_key smooth_nacs --nr_of_dirs 3 ; exec bash'
 ```
 
 TODO: update this and inference script itself -> make it nicer
@@ -245,7 +245,7 @@ screen -dmS inference_xtb sh -c 'python3 -m ground_state_md.training_and_inferen
 screen -dmS excited_state_eval sh -c \
     'python3 -m excited_state_md.evaluation.get_eval_metrics \
     -mdir epochs_100_bs_32_lr_0.0001_flw_0.495_elw_0.01_nlw_0.495_seed_42 \
-    --units bohr_hartree_aut --evaluation_data test ; exec bash'
+    --units bohr_hartree_aut --evaluation_data test --nr_of_dirs 3 ; exec bash'
 ```
 
 
