@@ -38,7 +38,7 @@ The "deprecated" directory contains every outdated piece of code, that at some p
 
 ## Data Overview 
 
-The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the extended tight binding (xTB) software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms ($OC_{27}H_{20}$), and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four conformations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data and this clustering. The evolution of the dihedral angles for one of the simulations (T300_1) can be viewed [here](https://FerdinandToelkes.github.io/whk/dihedral_angles_MOTOR_MD_XTB_T300_1.html). As one can see, the configurations of this simulations are mostly in the anti-M conformation. Throughout the following we will only focus on the T300_1 data when training our networks.
+The dataset used for training the neural network consists of five replica exchange molecular dynamics (REMD) simulations performed with the extended tight binding (xTB) software. The simulations were carried out on the CPNX nanomotor which consists of 48 atoms ($OC_{27}H_{20}$), and the data includes information about atomic positions, energies, forces and velocities. Different dihedral angles were defined in order to cluster the sampled structures into the following four conformations: "syn-M", "anti-M", "syn-P" and "anti-P". See the [paper](https://pubs.rsc.org/en/content/articlepdf/2025/cp/d5cp01063b) by Lucia-Tamudo et al. for more details on the underlying data and this clustering. The evolution of the dihedral angles for one of the simulations (T300_1) can be viewed [here](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/dihedral_angles_MOTOR_MD_XTB_T300_1.html). As one can see, the configurations of this simulations are mostly in the anti-M conformation. Throughout the following we will only focus on the T300_1 data when training our networks.
 
 
 ## Installation
@@ -47,7 +47,7 @@ Once you have cloned this project, you can use the environment.yaml file within 
 
 
 ```bash
-git clone git@github.com:FerdinandToelkes/whk.git
+git clone git@github.com:FerdinandToelkes/Molecular-Dynamics-with-Neural-Networks.git
 cd /path/to/cloned/directory
 conda env create -f ground_state_md/environment.yml
 conda activate schnet
@@ -127,9 +127,9 @@ TODO: add the other two scripts for eval
 
 ## Results
 
-Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html).
+Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html).
 
-I also held a small presentation about my progress up to this point, which can be viewed [here](readme_images/tapavicza_whk_presentation.pdf) (note that the presentation contains clickable elements, that only work if the slides are downloaded).
+I also held a small presentation about my progress up to this point, which can be viewed [here](readme_images/tapavicza_Molecular-Dynamics-with-Neural-Networks_presentation.pdf) (note that the presentation contains clickable elements, that only work if the slides are downloaded).
 
 
  
@@ -141,7 +141,7 @@ The models for predicting excited state trajectories are trained on the same mol
 
 Several excited state trajectories were simulated. Their starting configurations were taken at regular intervals from one long ground state molecular dynamics (MD) simulation using xTB. Each excited state trajectory is stored in a folder named `GEO_i`, where `i` corresponds to the time step of its starting configuration in the underlying ground state MD.
 
-An example of the energy profile of such an excited state trajectory can be viewed [here](https://FerdinandToelkes.github.io/whk/energies_PREPARE_12_GEO_100000_test.html). This example is taken from 'GEO_100000'.
+An example of the energy profile of such an excited state trajectory can be viewed [here](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/energies_PREPARE_12_GEO_100000_test.html). This example is taken from 'GEO_100000'.
 
 
 
@@ -151,7 +151,7 @@ Note, that SPaiNN can (to my knowledge) only be installed on linux. Once you hav
 
 
 ```bash
-git clone git@github.com:FerdinandToelkes/whk.git
+git clone git@github.com:FerdinandToelkes/Molecular-Dynamics-with-Neural-Networks.git
 cd /path/to/cloned/directory
 conda env create -f excited_state_md/environment.yml
 conda activate spainn
@@ -252,7 +252,7 @@ screen -dmS excited_state_eval sh -c \
 ## Results <a name="excited-state-results"></a>
 
 TODO: update this!
-Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/whk/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html)
+Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html)
 
 # Resources
 
