@@ -30,7 +30,7 @@ faulthandler.enable()
 
 # Example command to run the script from within code directory:
 """
-screen -dmS tddft_train sh -c 'python -m excited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units angstrom_kcal_per_mol_fs -e 200 -flw 0.98 -elw 0.01 -nlw 0.01 -bs 16 --nacs_key nacs ; exec bash'
+screen -dmS tddft_train sh -c 'python -m excited_state_md.training_and_inference.train --trajectory_dir PREPARE_12/spainn_datasets --units angstrom_kcal_per_mol_fs -e 200 -flw 0.98 -elw 0.01 -nlw 0.01 -bs 16 --nacs_key smooth_nacs --nr_of_dirs 3; exec bash'
 """
 
 # or smaller for debugging:

@@ -117,6 +117,7 @@ def collect_predictions_and_ground_truths(cfg: DictConfig, datamodule: pl.Lightn
         "predictions": {cfg.globals.energy_key: [], cfg.globals.forces_key: [], cfg.globals.nacs_key: []}, 
         "ground_truths": {cfg.globals.energy_key: [], cfg.globals.forces_key: [], cfg.globals.nacs_key: []}
     }
+    count = 0
     for batch in tqdm(datamodule, desc="Evaluating model on test data"): 
         e_gt = batch[cfg.globals.energy_key].cpu().numpy()
         f_gt = batch[cfg.globals.forces_key].cpu().numpy()
@@ -134,6 +135,10 @@ def collect_predictions_and_ground_truths(cfg: DictConfig, datamodule: pl.Lightn
         results["ground_truths"][cfg.globals.energy_key].append(e_gt)
         results["ground_truths"][cfg.globals.forces_key].append(f_gt)
         results["ground_truths"][cfg.globals.nacs_key].append(nac_gt)  
+
+        # if count >= 10:
+        #     break
+        # count += 1
 
     return results
 
@@ -193,21 +198,56 @@ def check_shapes(preds_and_gts: dict, nr_samples: int, energy_key: str, forces_k
         f"Ground truth NACS shape mismatch: {preds_and_gts['ground_truths'][nacs_key].shape[0]} != {nr_samples}"
     logger.debug("Shapes of predictions and ground truths are correct.")
 
-def compute_mae_with_std_error(preds_and_gts: dict, property: str) -> tuple:
+def compute_mae_with_std_error(groundtruths: np.ndarray, predictions: np.ndarray) -> tuple:
     """ Compute Mean Absolute Error (MAE) and its standard error for a given property.
     Args:
-        preds_and_gts (dict): A dictionary containing predictions and ground truths for energy and forces.
-        property (str): The property to compute the metrics for ("energy" or "forces").
+        groundtruths (np.ndarray): The ground truth values.
+        predictions (np.ndarray): The predicted values.
     Returns:
         tuple: Mean Absolute Error (MAE) and its standard error for the specified property.
     """
-    logger.debug(f"Shape of predictions for {property}: {preds_and_gts['predictions'][property].shape}")
-    abs_diff = np.abs(preds_and_gts["predictions"][property] - preds_and_gts["ground_truths"][property])
-    logger.debug(f"Shape of absolute differences for {property}: {abs_diff.shape}")
+    logger.debug(f"Shape of predictions: {predictions.shape}")
+    abs_diff = np.abs(predictions - groundtruths)
+    logger.debug(f"Shape of absolute differences: {abs_diff.shape}")
     mae = np.mean(abs_diff)
     mae_std_error = np.std(abs_diff) / np.sqrt(len(abs_diff))  # Standard error of the mean
     return mae, mae_std_error
 
+def compute_mae_with_std_error_per_state(groundtruths: np.ndarray, predictions: np.ndarray) -> dict:
+    """ Compute Mean Absolute Error (MAE) and its standard error for a given property and for each state separately.
+    Args:
+        groundtruths (np.ndarray): The ground truth values.
+        predictions (np.ndarray): The predicted values.
+    Returns:
+        dict: A dictionary containing the MAE and its standard error for the specified property.
+    """
+    logger.debug(f"Shape of predictions: {predictions.shape}")
+    nr_states = predictions.shape[1]  # assuming shape is (n_samples, n_states, ...)
+    abs_diff = np.abs(predictions - groundtruths)
+    logger.debug(f"Shape of absolute differences: {abs_diff.shape}")
+    mae_per_state = {'mae': {}, 'std_error': {}}
+    for state in range(nr_states):
+        mae, mae_std_error = compute_mae_with_std_error(groundtruths[:, state], predictions[:, state])
+        mae_per_state[f"S_{state}"] = {'mae': mae, 'std_error': mae_std_error}
+    return mae_per_state
+
+def convert_mae_dict_units(mae_dict_model_units: dict, convert_function: callable, model_unit: str, target_unit: str) -> dict:
+    """ Convert the MAE and standard error from model units to target units.
+    Args:
+        mae_dict_model_units (dict): The MAE dictionary with standard errors in model units.
+        convert_function (callable): The function to convert units.
+        model_unit (str): The model units.
+        target_unit (str): The target units.
+    Returns:
+        dict: The MAE dictionary with standard errors in specified target units.
+    """
+    nr_states = len(mae_dict_model_units['S_0'])
+    mae_dict = {}
+    for state in range(nr_states):
+        mae = convert_function(mae_dict_model_units[f"S_{state}"]['mae'], model_unit, target_unit)
+        std_error = convert_function(mae_dict_model_units[f"S_{state}"]['std_error'], model_unit, target_unit)
+        mae_dict[f"S_{state}"] = {'mae': mae, 'std_error': std_error}
+    return mae_dict
 
 def main(trajectory_dir: str, units: str, nr_of_dirs: int, model_dir: str, evaluation_data: str, fold: int, seed: int, num_workers: int):
     pl.seed_everything(seed, workers=True)
@@ -262,13 +302,15 @@ def main(trajectory_dir: str, units: str, nr_of_dirs: int, model_dir: str, evalu
 
     preds_and_gts = collect_predictions_and_ground_truths(cfg, datamodule, model)
     preds_and_gts = transform_predictions_and_ground_truths_to_numpy(preds_and_gts, cfg.globals, nr_atoms)
-    check_shapes(preds_and_gts, len_test, energy_key, forces_key, nacs_key) 
+    # check_shapes(preds_and_gts, len_test, energy_key, forces_key, nacs_key) TODO
 
-    ######################## 4) Compute metrics  ##############################
+    ######################## 4) Compute metrics per state  ##############################
     logger.info("Computing metrics for the neural network model...")
-    e_mae_model_units, e_mae_std_err_model_units = compute_mae_with_std_error(preds_and_gts, energy_key)
-    f_mae_model_units, f_mae_std_err_model_units = compute_mae_with_std_error(preds_and_gts, forces_key)
-    nacs_mae_model_units, nacs_mae_std_err_model_units = compute_mae_with_std_error(preds_and_gts, nacs_key)
+    energy_gts, energy_preds = preds_and_gts['ground_truths'][energy_key], preds_and_gts['predictions'][energy_key]
+    e_maes_model_units = compute_mae_with_std_error_per_state(energy_gts, energy_preds)
+    forces_gts, forces_preds = preds_and_gts['ground_truths'][forces_key], preds_and_gts['predictions'][forces_key]
+    f_maes_model_units = compute_mae_with_std_error_per_state(forces_gts, forces_preds)
+    nacs_mae_model_units, nacs_mae_std_err_model_units = compute_mae_with_std_error(preds_and_gts['ground_truths'][nacs_key], preds_and_gts['predictions'][nacs_key])
 
     ######################### 5) Converts metrics to kcal/mol and angstrom ##############################
     ENERGY_UNIT = "kcal/mol"
@@ -287,22 +329,26 @@ def main(trajectory_dir: str, units: str, nr_of_dirs: int, model_dir: str, evalu
     logger.info(f"Model energy unit: {model_energy_unit}, forces unit: {model_forces_unit} and {nacs_key} unit: {model_nacs_unit}")
     logger.info(f"Target energy unit: {ENERGY_UNIT}, forces unit: {FORCE_UNIT} and {nacs_key} unit: {NACS_ENERGY_UNIT}")
 
-    e_mae = convert_energies(e_mae_model_units, model_energy_unit, ENERGY_UNIT)
-    e_mae_std_err = convert_energies(e_mae_std_err_model_units, model_energy_unit, ENERGY_UNIT)
-    f_mae = convert_forces(f_mae_model_units, model_forces_unit, FORCE_UNIT)
-    f_mae_std_err = convert_forces(f_mae_std_err_model_units, model_forces_unit, FORCE_UNIT)
+    e_maes = convert_mae_dict_units(e_maes_model_units, convert_energies, model_energy_unit, ENERGY_UNIT)
+    f_maes = convert_mae_dict_units(f_maes_model_units, convert_forces, model_forces_unit, FORCE_UNIT)
     nacs_mae = convert_forces(nacs_mae_model_units, model_nacs_unit, NACS_ENERGY_UNIT)
     nacs_mae_std_err = convert_forces(nacs_mae_std_err_model_units, model_nacs_unit, NACS_ENERGY_UNIT)
 
     ######################### 6) Log metrics and save them to a csv file ##############################
     # log energies in ev/angstrom and kcal/mol
     logger.info(f"Metrics on {evaluation_data} for nn:")
-    logger.info(f"Energy MAE: {e_mae:.6f} +/- {e_mae_std_err:.6f} {ENERGY_UNIT}")
-    logger.info(f"Forces MAE: {f_mae:.6f} +/- {f_mae_std_err:.6f} {FORCE_UNIT}")
+    for state in e_maes: # S_0, S_1, ...
+        e_mae, e_mae_std_err = e_maes[state]['mae'], e_maes[state]['std_error']
+        f_mae, f_mae_std_err = f_maes[state]['mae'], f_maes[state]['std_error']
+        logger.info(f"{state} energy MAE: {e_mae:.6f} +/- {e_mae_std_err:.6f} {ENERGY_UNIT}")
+        logger.info(f"{state} forces MAE: {f_mae:.6f} +/- {f_mae_std_err:.6f} {FORCE_UNIT}")
     logger.info(f"NACs MAE: {nacs_mae:.6f} +/- {nacs_mae_std_err:.6f} {NACS_ENERGY_UNIT}")
     # log energies in model units
-    logger.info(f"Energy MAE in model units: {e_mae_model_units:.6f} +/- {e_mae_std_err_model_units:.6f} {model_energy_unit}")
-    logger.info(f"Forces MAE in model units: {f_mae_model_units:.6f} +/- {f_mae_std_err_model_units:.6f} {model_forces_unit}")
+    for state in e_maes:
+        e_mae_model_units, e_mae_std_err_model_units = e_maes_model_units[state]['mae'], e_maes_model_units[state]['std_error']
+        f_mae_model_units, f_mae_std_err_model_units = f_maes_model_units[state]['mae'], f_maes_model_units[state]['std_error']
+        logger.info(f"{state} energy MAE in model units: {e_mae_model_units:.6f} +/- {e_mae_std_err_model_units:.6f} {model_energy_unit}")
+        logger.info(f"{state} forces MAE in model units: {f_mae_model_units:.6f} +/- {f_mae_std_err_model_units:.6f} {model_forces_unit}")
     logger.info(f"NACs MAE in model units: {nacs_mae_model_units:.6f} +/- {nacs_mae_std_err_model_units:.6f} {model_nacs_unit}")
 
     # Save the metrics to a csv file
