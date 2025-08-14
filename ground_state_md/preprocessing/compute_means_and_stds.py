@@ -3,12 +3,14 @@ import os
 import pytorch_lightning as pl
 import torch
 from tqdm import tqdm
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from ground_state_md.setup_logger import setup_logger
 from ground_state_md.utils import set_data_prefix, get_split_path, load_config, setup_datamodule
 
 logger = setup_logger("debug")
+
+# Warning: this script hasn't been used for some time and might be outdated, especially how well it handles units different from angstrom, kcal/mol, and fs.
 
 # Example command to run the script from within code directory:
 """
@@ -211,17 +213,7 @@ def main(trajectory_dir: str, fold: int, num_atoms: int, units: str):
     cfg = load_config("preprocessing/conf", "config", "compute_means_and_stds")
     means_stds_path = os.path.join(data_prefix, trajectory_dir, f"means_stds_{units}_fold_{fold}.pt")
     path_to_db = os.path.join(data_prefix, trajectory_dir, f"md_trajectory_{units}.db")
-    if units == "atomic_units":
-        logger.info("Using atomic units for energies and forces.")
-        cfg.data.distance_unit = "Bohr"
-        cfg.data.property_units = {
-            'energy': 'Hartree',
-            'forces': 'Hartree/Bohr',
-        }
-    else:
-        logger.info("Using Angstrom and kcal/mol for energies and forces.")
-        means_stds_path = os.path.join(data_prefix, trajectory_dir, f"means_stds_ang_kcal_mol_fold_{fold}.pt")
-        path_to_db = os.path.join(data_prefix, trajectory_dir, "md_trajectory_ang_kcal_mol.db")
+    means_stds_path = os.path.join(data_prefix, trajectory_dir, f"means_stds_{units}_fold_{fold}.pt")
 
     if not os.path.exists(means_stds_path):
         logger.info(f"Means and standard deviations file does not exist, computing them")

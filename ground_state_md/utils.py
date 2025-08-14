@@ -7,7 +7,6 @@ import torch
 import numpy as np
 import pytorch_lightning as pl
 import os
-import spainn
 
 from schnetpack.datasets import MD17
 from hydra import initialize, compose
@@ -311,7 +310,7 @@ def get_split_path(data_prefix: str, trajectory_dir: str, fold: int = 0) -> str:
     logger.debug(f"Split file: {split_file}")
     return split_file
 
-def setup_datamodule(data_cfg: DictConfig, datapath: str, split_file: str) -> spk.data.AtomsDataModule | spainn.SPAINN:
+def setup_datamodule(data_cfg: DictConfig, datapath: str, split_file: str) -> spk.data.AtomsDataModule:
     """
     Setup the data module for the given configuration.
     Args:

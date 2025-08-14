@@ -55,7 +55,7 @@ conda activate schnet
 
 ## Workflow
 
-Each script should include an example of how to execute it at the top. All python3 scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we have target_dir='MOTOR_MD_XTB/T300_1' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all T300_i folders are located in /loctmp/tof54964/data/MOTOR_MD_XTB/.
+Each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we have target_dir='MOTOR_MD_XTB/T300_1' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all T300_i folders are located in /loctmp/tof54964/data/MOTOR_MD_XTB/.
 
 ### Preprocessing
 
@@ -82,7 +82,7 @@ python3 -m ground_state_md.preprocessing.create_splits \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --units angstrom_kcal_per_mol_fs 
 ```
-- If needed, compute the mean and standard deviation of the various properties in the training set via the compute_means_and_stds.py script:
+- If needed, compute the mean and standard deviation of the various properties in the training set via the compute_means_and_stds.py script (Warning: this script has not been updated to handle different units as well as the others):
 ```bash
 python3 -m ground_state_md.preprocessing.compute_means_and_stds \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
