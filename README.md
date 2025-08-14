@@ -97,7 +97,7 @@ Note that paths need to be updated depending on the local setup especially of th
 screen -dmS xtb_train sh -c 'python3 -m ground_state_md.training_and_inference.train \ 
     --trajectory_dir path/to/dir/with/mdlog.i/files --num_epochs 1  \ 
     --batch_size 100 --learning_rate 0.0001 --seed 42 \
-    --config_name train_config_default_transforms 
+    --config_name train_config_default_transforms \
     --units angstrom_kcal_per_mol_fs; exec bash'
 ```
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
