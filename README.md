@@ -55,7 +55,7 @@ conda activate schnet
 
 ## Workflow
 
-Each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we have target_dir='MOTOR_MD_XTB/T300_1' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all T300_i folders are located in /loctmp/tof54964/data/MOTOR_MD_XTB/.
+Each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we have target_dir='MOTOR_MD_XTB/T300_1' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all T300_i folders are located in /loctmp/tof54964/data/MOTOR_MD_XTB/ and with the T300_i folder, the mdlog files containing the actual data are located. To get more details on the possible arguments of a script, you can execute it with the --help flag.
 
 ### Preprocessing
 
@@ -177,7 +177,7 @@ I hope that after all this, everything works!
 
 ## Workflow <a name="excited-state-workflow"></a>
 
-Again, each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir='PREPARE_12' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all GEO folders are located in /loctmp/tof54964/data/PREPARE_12.
+Again, each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir='PREPARE_12' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all GEO folders are located in /loctmp/tof54964/data/PREPARE_12. To get more details on the possible arguments of a script, you can execute it with the --help flag.
 
 ### Preprocessing
 
