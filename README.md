@@ -100,11 +100,12 @@ screen -dmS xtb_train sh -c 'python3 -m ground_state_md.training_and_inference.t
     --config_name train_config_default_transforms \
     --units angstrom_kcal_per_mol_fs; exec bash'
 ```
+The resulting model is saved within ground_state_md.training_and_interference.runs.angstrom_kcal_per_mol_fs.<path/to/dir/with/mdlog.i/files>.epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42. I apologize for the inconvenience!
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
 screen -dmS inference_xtb sh -c \
     'python3 -m ground_state_md.training_and_inference.inference_with_ase \
-    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
+    --model_dir MOTOR_MD_XTB/T300_1/epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
 
@@ -229,12 +230,13 @@ screen -dmS tddft_train sh -c \
     --units bohr_hartree_aut -e 1 -flw 0.98 -elw 0.01 \
     -nlw 0.01 -bs 16 --nacs_key smooth_nacs --nr_of_dirs 3 ; exec bash'
 ```
+The resulting model is saved within exited_state_md.training_and_interference.runs.bohr_hartree_aut.<path_to_dir_with_mdlog.i_files.smooth_nacs_3_dirs_used_epochs_1_bs_16_lr_0.0001_flw_0.98_elw_0.01_nlw_0.01_seed_42. I am once again very sorry for this inconvenience!
 
 TODO: update this and inference script itself -> make it nicer
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
 ```bash
 screen -dmS inference_xtb sh -c 'python3 -m ground_state_md.training_and_inference.inference_with_ase \
-    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
+    --model_dir MOTOR_MD_XTB/T300_1/epochs_1_bs_100_lr_0.0001_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
 
