@@ -62,7 +62,7 @@ def main(target_dir: str, property: str):
     """
     # setup
     path_to_mdlog_files = os.path.join(set_data_prefix(), target_dir)
-    command_path = os.path.expanduser(f'~/whk/code/ground_state_md/preprocessing/extract_{property}.sh')
+    command_path = os.path.join(os.getcwd(), f'ground_state_md/preprocessing/extract_{property}.sh')
     if not os.path.exists(command_path):
         raise FileNotFoundError(f"Command path {command_path} does not exist. Please check the path.")
 

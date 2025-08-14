@@ -82,7 +82,7 @@ def main(target_dir: str, computed_cycles: int, total_cycles: int, time_step: in
     """
     # setup
     data_path = os.path.join(set_data_prefix(), target_dir)
-    command_path = os.path.expanduser(f'~/whk/code/excited_state_md/preprocessing/extract_gradients.sh')
+    command_path = os.path.join(os.getcwd(), f'excited_state_md/preprocessing/extract_gradients.sh')
     logger.debug(f"data_path: {data_path}")
     
     # get all valid trajectories and the number of their last excited cycles
