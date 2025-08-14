@@ -219,7 +219,7 @@ python3 -m excited_state_md.preprocessing.prepare_tddft_data \
     --num_atoms 48 --position_unit bohr --energy_unit hartree \
     --time_unit aut --nr_of_dirs 3
 ```
-where the number of directories, specifies how many excited state trajectories, i.e., how many GEO folders, should be used.
+The number of directories indicates how many GEO folders are used to generate the .db file. Data from one GEO folder will end up in one of the three sets (training, validation, or test), but not in multiple sets.
 - Define how the data later should be splitted into training, validation and test data via the create_splits.py script:
 ```bash
 python3 -m excited_state_md.preprocessing.create_splits --trajectory_dir \
