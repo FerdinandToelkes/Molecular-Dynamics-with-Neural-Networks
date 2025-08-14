@@ -95,7 +95,7 @@ Note that paths need to be updated depending on the local setup especially of th
 - Use train.py to train a neural network via SchNetPack (adjust parameters via the command line or the .yml config file if necessary)
 ```bash
 screen -dmS xtb_train sh -c 'python3 -m ground_state_md.training_and_inference.train \ 
-    --trajectory_dir path/to/dir/with/mdlog.i/files --epochs 1000  \ 
+    --trajectory_dir path/to/dir/with/mdlog.i/files --num_epochs 1  \ 
     --batch_size 100 --learning_rate 0.0001 --seed 42 \
     --config_name train_config_default_transforms 
     --units angstrom_kcal_per_mol_fs; exec bash'
