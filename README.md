@@ -102,6 +102,7 @@ screen -dmS xtb_train sh -c 'python3 -m ground_state_md.training_and_inference.t
 ```
 The resulting model is saved within ground_state_md.training_and_interference.runs.angstrom_kcal_per_mol_fs.<path/to/dir/with/mdlog.i/files>.epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42. I apologize for the inconvenience!
 - Run inference_with_ase.py to generate a MD trajectory starting from a configuration within the test dataset
+  TODO: make sure this works!!
 ```bash
 screen -dmS inference_xtb sh -c \
     'python3 -m ground_state_md.training_and_inference.inference_with_ase \
@@ -116,6 +117,7 @@ screen -dmS inference_xtb sh -c \
 python3 -m ground_state_md.evaluation.get_eval_metrics \
     --model_dir path/to/dir/with/mdlog.i/files/epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42
 ```
+TODO: make sure this works!!
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
 ```bash
 python3 -m ground_state_md.evaluation.plot_interactive_md_ase_sim \
@@ -123,6 +125,7 @@ python3 -m ground_state_md.evaluation.plot_interactive_md_ase_sim \
     --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
     --n_samples 5000 --units angstrom_kcal_per_mol_fs
 ```
+TODO: make sure this works!!
 
 TODO: add the other two scripts for eval
 
@@ -181,12 +184,12 @@ I hope that after all this, everything works!
 Again, each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir='PREPARE_12' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all GEO folders are located in /loctmp/tof54964/data/PREPARE_12. To get more details on the possible arguments of a script, you can execute it with the --help flag.
 
 ### Preprocessing
-
+Sadly the data structure is very messy, and a lot of specific solutions had to be applied. Thus, this code is not directly useable for differently structured data. For the following commands to execute correctly, a file called from_preprocessing_excluded_directories.txt has to be located, where the GEO folders are located. This file should contain all GEO folders, where we expect the data to be incomplete. Each line should contain exactly one GEO folder. 
 - Since we do not have complete ground state calculations for all GEO folders, we have to determine the GEO folders containing complete data before extracting any properties. As preperation for this, run:
 ```bash
 python3 -m excited_state_md.preprocessing.get_last_ex_cycle_of_valid_trajs \
      --target_dir path/to/dir/with/GEO/folders
-``` 
+```
 - Obtain positions and velocities from mdlog.i files with the extract.py script for all GEO directories located in target_dir:
 ```bash
 python3 -m excited_state_md.preprocessing.extract \
