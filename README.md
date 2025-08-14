@@ -234,7 +234,7 @@ Since we did not experiment with normalizing the excited data, we do not compute
 ```bash
 screen -dmS tddft_train sh -c \
     'python -m excited_state_md.training_and_inference.train \
-    --trajectory_dir PREPARE_12/spainn_datasets/toy_data \
+    --trajectory_dir <path_to_GEO_folders>/spainn_datasets \
     --units bohr_hartree_aut -e 1 -flw 0.98 -elw 0.01 \
     -nlw 0.01 -bs 16 --nacs_key smooth_nacs --nr_of_dirs 3 ; exec bash'
 ```
@@ -254,7 +254,7 @@ screen -dmS inference_xtb sh -c 'python3 -m ground_state_md.training_and_inferen
 ```bash
 screen -dmS excited_state_eval sh -c \
     'python3 -m excited_state_md.evaluation.get_eval_metrics \
-    --trajectory_dir PREPARE_12/spainn_datasets \
+    --trajectory_dir <path_to_GEO_folders>/spainn_datasets \
     --model_dir smooth_nacs_3_dirs_used_epochs_1_bs_16_lr_0.0001_flw_0.98_elw_0.01_nlw_0.01_seed_42 \
     --units bohr_hartree_aut --evaluation_data test --nr_of_dirs 3 ; exec bash'
 ```
