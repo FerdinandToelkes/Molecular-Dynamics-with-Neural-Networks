@@ -200,9 +200,9 @@ python3 -m excited_state_md.preprocessing.extract_energies \
 - Obtain non-adiabatic couplings (NACs) and S0 and S1 gradients from control, gradient_ex, extra_ground_state_calculations and mdlog.i files for all GEO directories located in target_dir with:
 ```bash
 python3 -m excited_state_md.preprocessing.extract_s0_s1_gradients \
-    --target_dir --target_dir path/to/dir/with/GEO/folders \
+    --target_dir path/to/dir/with/GEO/folders \
 python3 -m excited_state_md.preprocessing.extract_nacs \
-    --target_dir --target_dir path/to/dir/with/GEO/folders
+    --target_dir path/to/dir/with/GEO/folders
 ```
 - Transform the extracted properties into a .db file (which is the format used within SPaiNN) by employing the prepare_tddft_data.py script
 ```bash
@@ -214,8 +214,8 @@ where the number of directories, specifies how many excited state trajectories, 
 - Define how the data later should be splitted into training, validation and test data via the create_splits.py script:
 ```bash
 python3 -m excited_state_md.preprocessing.create_splits --trajectory_dir \
-    PREPARE_12/spainn_datasets --units bohr_hartree_aut --dirs_for_training 1 \
-    --dirs_for_validation 1 --dirs_for_testing 1 
+    <path_to_GEO_folders>/spainn_datasets --units bohr_hartree_aut \
+    --dirs_for_training 1 --dirs_for_validation 1 --dirs_for_testing 1
 ```
 Since we did not experiment with normalizing the excited data, we do not compute any means and standard deviations. This should be easily achievable, by employing a slightly updated version of the ground_state_md.preprocessing.compute_means_and_stds script. Note that paths need to be updated depending on the local setup especially of the data. 
 
@@ -225,8 +225,8 @@ Since we did not experiment with normalizing the excited data, we do not compute
 ```bash
 screen -dmS tddft_train sh -c \
     'python -m excited_state_md.training_and_inference.train \
-    --trajectory_dir PREPARE_12/spainn_datasets \
-    --units angstrom_kcal_per_mol_fs -e 200 -flw 0.98 -elw 0.01 \
+    --trajectory_dir PREPARE_12/spainn_datasets/toy_data \
+    --units bohr_hartree_aut -e 1 -flw 0.98 -elw 0.01 \
     -nlw 0.01 -bs 16 --nacs_key smooth_nacs --nr_of_dirs 3 ; exec bash'
 ```
 
@@ -244,7 +244,8 @@ screen -dmS inference_xtb sh -c 'python3 -m ground_state_md.training_and_inferen
 ```bash
 screen -dmS excited_state_eval sh -c \
     'python3 -m excited_state_md.evaluation.get_eval_metrics \
-    -mdir epochs_100_bs_32_lr_0.0001_flw_0.495_elw_0.01_nlw_0.495_seed_42 \
+    --trajectory_dir PREPARE_12/spainn_datasets \
+    --model_dir smooth_nacs_3_dirs_used_epochs_1_bs_16_lr_0.0001_flw_0.98_elw_0.01_nlw_0.01_seed_42 \
     --units bohr_hartree_aut --evaluation_data test --nr_of_dirs 3 ; exec bash'
 ```
 

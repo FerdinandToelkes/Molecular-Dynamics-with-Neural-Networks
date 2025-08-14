@@ -23,7 +23,7 @@ BATCH_SIZE = 1
 
 # Example command to run the script from within code directory:
 """
-screen -dmS excited_state_eval sh -c 'python -m excited_state_md.evaluation.get_eval_metrics -mdir epochs_200_bs_16_lr_0.0001_flw_0.9_elw_0.05_nlw_0.05_seed_42 --units bohr_hartree_aut --evaluation_data val ; exec bash'
+screen -dmS excited_state_eval sh -c 'python -m excited_state_md.evaluation.get_eval_metrics --trajectory_dir PREPARE_12/spainn_datasets --model_dir epochs_200_bs_16_lr_0.0001_flw_0.9_elw_0.05_nlw_0.05_seed_42 --units bohr_hartree_aut --evaluation_data val ; exec bash'
 """
 
 
@@ -256,8 +256,8 @@ def main(trajectory_dir: str, units: str, nr_of_dirs: int, model_dir: str, evalu
     cfg = load_config("training_and_inference/conf", "inference_config", "inference")
 
     # set absolute and relative paths to the model directory
-    home_dir = os.path.expanduser("~")
-    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
+    project_root_dir = os.getcwd()
+    runs_dir_path = os.path.join(project_root_dir, cfg.globals.runs_dir_subpath)
     model_dir_path = os.path.join(runs_dir_path, units, trajectory_dir.replace("/", "_"), model_dir)
     model_dir_rel_path = "".join(model_dir_path.split("excited_state_md/")[1:])
     logger.debug(f"Absolute path to the model directory: {model_dir_path}")

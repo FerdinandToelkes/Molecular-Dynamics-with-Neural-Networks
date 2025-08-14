@@ -178,8 +178,8 @@ def main(trajectory_dir: str, units: str, model_dir: str, md_steps: int, time_st
     cfg = load_config(f"training_and_inference/conf", "inference_config", "inference")
 
     # set absolute and relative paths to the model directory
-    home_dir = os.path.expanduser("~")
-    runs_dir_path = os.path.join(home_dir, cfg.globals.runs_dir_subpath)
+    project_root_dir = os.getcwd()
+    runs_dir_path = os.path.join(project_root_dir, cfg.globals.runs_dir_subpath)
     model_dir_path = os.path.join(runs_dir_path, units, model_dir)
     model_dir_rel_path = "".join(model_dir_path.split("ground_state_md/")[1:])
     logger.debug(f"Absolute path to the model directory: {model_dir_path}")
