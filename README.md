@@ -55,7 +55,7 @@ conda activate schnet
 
 ## Workflow
 
-Each script should include an example of how to execute it at the top. All python3 scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = MOTOR_MD_XTB/T300_1.
+Each script should include an example of how to execute it at the top. All python3 scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we have target_dir='MOTOR_MD_XTB/T300_1' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all T300_i folders are located in /loctmp/tof54964/data/MOTOR_MD_XTB/.
 
 ### Preprocessing
 
@@ -139,7 +139,7 @@ I also held a small presentation about my progress up to this point, which can b
 
 The models for predicting excited state trajectories are trained on the same molecule as in the ground state case, but now using excited state data. This data was generated with time-dependent density functional theory (TDDFT) combined with fewest switches surface hopping (FSSH) to model electronic transitions.
 
-Several excited state trajectories were simulated. Their starting configurations were taken at regular intervals from one long ground state molecular dynamics (MD) simulation using xTB. Each excited state trajectory is stored in a folder named `GEO_i`, where `i` corresponds to the time step of its starting configuration in the underlying ground state MD.
+Several excited state trajectories were simulated. Their starting configurations were taken at regular intervals from one long ground state molecular dynamics (MD) simulation using xTB. Each excited state trajectory is stored in a folder named 'GEO_i', where 'i' corresponds to the time step of its starting configuration in the underlying ground state MD.
 
 An example of the energy profile of such an excited state trajectory can be viewed [here](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/energies_PREPARE_12_GEO_100000_test.html). This example is taken from 'GEO_100000'.
 
@@ -177,7 +177,7 @@ I hope that after all this, everything works!
 
 ## Workflow <a name="excited-state-workflow"></a>
 
-Again, each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir = PREPARE_12.
+Again, each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir='PREPARE_12' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all GEO folders are located in /loctmp/tof54964/data/PREPARE_12.
 
 ### Preprocessing
 
