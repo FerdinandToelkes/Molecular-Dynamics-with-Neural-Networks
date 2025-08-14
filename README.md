@@ -105,7 +105,7 @@ The resulting model is saved within ground_state_md.training_and_interference.ru
 ```bash
 screen -dmS inference_xtb sh -c \
     'python3 -m ground_state_md.training_and_inference.inference_with_ase \
-    --model_dir MOTOR_MD_XTB/T300_1/epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42 \
+    --model_dir path/to/dir/with/mdlog.i/files/epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42 \
     --units angstrom_kcal_per_mol_fs --md_steps 100 --time_step 0.5 ; exec bash'
 ```
 
@@ -114,12 +114,12 @@ screen -dmS inference_xtb sh -c \
 - Use get_eval_metrics.py to predict the energies, forces and gradients of the test set with the trained model
 ```bash
 python3 -m ground_state_md.evaluation.get_eval_metrics \
-    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42
+    --model_dir path/to/dir/with/mdlog.i/files/epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42
 ```
 - Execute ~~order 66~~ the plot_interactive_md_ase_sim.py script in order to gain an overview of the various energies from the two trajectories as well as their correlation 
 ```bash
 python3 -m ground_state_md.evaluation.plot_interactive_md_ase_sim \
-    --model_dir MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42 \
+    --model_dir path/to/dir/with/mdlog.i/files/epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42 \
     --simulation_name  md_sim_steps_5000_time_step_1.0_seed_42 \
     --n_samples 5000 --units angstrom_kcal_per_mol_fs
 ```
