@@ -184,7 +184,12 @@ I hope that after all this, everything works!
 Again, each script should include an example of how to execute it at the top. All python scripts are to be executed from the root directory of the project. The "target_dir" as well as the "trajectory_dir" parameters have to be set relative to the data directory (see also set_data_prefix within utils.py). In my case, we could have target_dir='PREPARE_12' and in set_data_prefix() I have path_to_data='/loctmp/tof54964/data', i.e. all GEO folders are located in /loctmp/tof54964/data/PREPARE_12. To get more details on the possible arguments of a script, you can execute it with the --help flag.
 
 ### Preprocessing
-Sadly the data structure is very messy, and a lot of specific solutions had to be applied. Thus, this code is not directly useable for differently structured data. For the following commands to execute correctly, a file called from_preprocessing_excluded_directories.txt has to be located, where the GEO folders are located. This file should contain all GEO folders, where we expect the data to be incomplete. Each line should contain exactly one GEO folder. 
+Sadly the data structure is very messy, and a lot of specific solutions had to be applied. Thus, this code is not directly useable for differently structured data.
+
+For the following commands to execute correctly, a file called from_preprocessing_excluded_directories.txt has to be located, where the GEO folders are located. This file should contain all GEO folders, where we expect the data to be incomplete. Each line should contain exactly one GEO folder. 
+
+Furthermore, we expect each GEO_i/test/ folder to contain the following files: mdlog.i files, gradient, gradient_ex, control and ex_energies. Finally, we need a folder PREPARE_12/extra_ground_state_calculations containing all GEO folders with retrospectively calculated ground state gradients (they were missing in the original data). These ground state gradients have to be saved in a file called ground_state_gradients.txt. As I promised, this is very messy due to the non optimal structure of the given data.
+
 - Since we do not have complete ground state calculations for all GEO folders, we have to determine the GEO folders containing complete data before extracting any properties. As preperation for this, run:
 ```bash
 python3 -m excited_state_md.preprocessing.get_last_ex_cycle_of_valid_trajs \
