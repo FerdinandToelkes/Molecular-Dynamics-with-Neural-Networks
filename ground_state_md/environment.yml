@@ -8,7 +8,7 @@ dependencies:
   - pip=25.0
 
   - pip:
-      - schnetpack==2.1.1 
+      - schnetpack==2.1.1
       - seaborn==0.13.2
       - statsmodels==0.14.4
       - git+https://github.com/Quantum-Accelerators/xtb_ase.git
@@ -26,4 +26,3 @@ dependencies:
   # - numpy>=2.0.0
   # - hydra-core>=1.1.0
   # - ase>=3.21
-  
