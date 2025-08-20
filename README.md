@@ -126,9 +126,9 @@ python3 -m ground_state_md.evaluation.plot_interactive_md_ase_sim \
     --simulation_name  md_sim_steps_1000_time_step_0.5_seed_42 \
     --units angstrom_kcal_per_mol_fs
 ```
-TODO: make sure this works!!
+- I also implemented a script for facilitating the comparison of model performances between different unit systems. It is called combine_eval_metrics.py and is located in ground_state_md/evaluation. It was just a small helper script and probably has to be updated, dependent on the specific purpose.
 
-TODO: add the other two scripts for eval
+- For a more detailed analysis of the computed trajectories, employ the trajectory_analysis.ipynb notebook.
 
 ## Results
 
