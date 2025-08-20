@@ -263,9 +263,18 @@ screen -dmS excited_state_eval sh -c \
 
 ## Results <a name="excited-state-results"></a>
 
-TODO: update this!
-Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html)
+The last task I completed within this research project was to train a neural network using SPaiNN on the exited state data. The results for a model trained on smooth NACs with epochs=200, batch_sizes=16, learning_rate=0.0001, forces_loss_weight=0.9, energy_loss_weight=0.05, nacs_loss_weight=0.05 and seed=42 are as follows:
 
+| Metric                        | Value ± Std. Error on Validation Set                
+|-------------------------------|-------------------------------- |
+| Energy MAE (kcal/mol)         | 11.234570 ± 0.088508            |              
+| Forces MAE (kcal/mol/Ang)     | 23.149735 ± 0.229969            |           
+| NACs MAE (kcal/mol/Ang )      | 2.333168 ± 0.029598             |           
+| Energy MAE (Hartree)          | 0.017903 ± 0.000141             |
+| Forces MAE (Hartree/Bohr)     | 0.019522 ± 0.000194             |
+| NACs MAE (Hartree/Bohr)       | 0.001968 ± 0.000025             |
+
+There is obviously room for much improvement, which may be achieved by a thorough hyperparameter search, training models on ground and exited state data seperately or improving the data set quality by enforcing diversity of sampled structures.
 # Resources
 
 ## Data
