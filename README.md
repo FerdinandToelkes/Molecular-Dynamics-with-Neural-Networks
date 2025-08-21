@@ -274,7 +274,10 @@ The last task I completed within this research project was to train a neural net
 | Forces MAE (Hartree/Bohr)     | 0.019522 ± 0.000194             |
 | NACs MAE (Hartree/Bohr)       | 0.001968 ± 0.000025             |
 
+The other hyperparameters can be found in [this yaml file](https://github.com/FerdinandToelkes/Molecular-Dynamics-with-Neural-Networks/blob/main/excited_state_md/training_and_inference/conf/default_train_config.yaml). 
+
 There is obviously room for much improvement, which may be achieved by a thorough hyperparameter search, training models on ground and exited state data seperately or improving the data set quality by enforcing diversity of sampled structures.
+
 # Resources
 
 ## Data
