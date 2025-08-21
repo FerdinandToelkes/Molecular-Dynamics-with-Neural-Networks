@@ -107,7 +107,7 @@ screen -dmS inference_xtb sh -c \
     'python3 -m ground_state_md.training_and_inference.inference_with_ase \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --model_dir epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42 \
-    --units angstrom_kcal_per_mol_fs --md_steps 1000 --time_step 0.5 ; exec bash'
+    --units angstrom_kcal_per_mol_fs --md_steps 10 --time_step 0.5 ; exec bash'
 ```
 
 ### Evaluation
@@ -123,8 +123,8 @@ python3 -m ground_state_md.evaluation.get_eval_metrics \
 python3 -m ground_state_md.evaluation.plot_interactive_md_ase_sim \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
     --model_dir epochs_1_bs_100_lr_0.0001_flw_0.99_elw_0.01_seed_42 \
-    --simulation_name  md_sim_steps_1000_time_step_0.5_seed_42 \
-    --units angstrom_kcal_per_mol_fs
+    --simulation_name  md_sim_steps_10_time_step_0.5_seed_42 \
+    --units angstrom_kcal_per_mol_fs --window_sizes 1 5 10
 ```
 - I also implemented a script for facilitating the comparison of model performances between different unit systems. It is called combine_eval_metrics.py and is located in ground_state_md/evaluation. It was just a small helper script and probably has to be updated, dependent on the specific purpose.
 
