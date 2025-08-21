@@ -112,7 +112,7 @@ screen -dmS inference_xtb sh -c \
 
 ### Evaluation
 
-- Use get_eval_metrics.py to predict the energies, forces and gradients of the test set with the trained model
+- Use get_eval_metrics.py to predict the energies and forces of the test set with the trained model
 ```bash
 python3 -m ground_state_md.evaluation.get_eval_metrics \
     --trajectory_dir path/to/dir/with/mdlog.i/files \
@@ -253,7 +253,7 @@ screen -dmS inference_xtb sh -c 'python3 -m ground_state_md.training_and_inferen
 
 ### Evaluation
 
-- Use get_eval_metrics.py to predict the energies, forces and gradients of the test set with the trained model
+- Use get_eval_metrics.py to predict the energies, forces and (smooth) NACs of the test set with the trained model
 ```bash
 screen -dmS excited_state_eval sh -c \
     'python3 -m excited_state_md.evaluation.get_eval_metrics \
