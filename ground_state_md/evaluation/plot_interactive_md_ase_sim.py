@@ -356,7 +356,7 @@ def rolling_corr(a: np.ndarray, b: np.ndarray, window: int) -> np.ndarray:
     if len(a) != len(b):
         raise ValueError("Input arrays must have the same length.")
     if window > len(a):
-        raise ValueError("Window size must be less than or equal to the length of the input arrays.")
+        raise ValueError(f"Window size ({window}) must be less than or equal to the length of the input arrays ({len(a)}).")
 
     # Number of rolling windows
     n = len(a) - window + 1
