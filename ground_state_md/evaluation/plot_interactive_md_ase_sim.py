@@ -35,6 +35,7 @@ def parse_args() -> dict:
     # analysis setup
     parser.add_argument("-ns", "--n_samples", type=int, default=-1, help="Number of samples to analyze (default: -1). If set to a negative number, all samples will be analyzed.")
     parser.add_argument("-fs", "--first_sample", type=int, default=0, help="First sample to analyze (default: 0)")
+    parser.add_argument("-ws", "--window_sizes", type=int, nargs='+', default=[100, 250, 500, 1000], help="List of window sizes for rolling correlation analysis (default: [100, 250, 500, 1000])")
     return vars(parser.parse_args())
 
 
@@ -508,7 +509,7 @@ def create_interactive_rolling_corr_plot(rolling_data: dict, window_sizes: list,
 
 
 
-def main(trajectory_dir: str, model_dir: str, units: str, simulation_name: str, n_samples: int, first_sample: int):
+def main(trajectory_dir: str, model_dir: str, units: str, simulation_name: str, n_samples: int, first_sample: int, window_sizes: list):
     ####################### 1) Compose the config ###########################
     cfg = load_config(f"training_and_inference/conf", "inference_config", "inference")
 
@@ -564,8 +565,6 @@ def main(trajectory_dir: str, model_dir: str, units: str, simulation_name: str, 
         y_labels=y_labels,
         plot_dir=plot_dir
     )
-
-    window_sizes = [100, 250, 500, 1000]
     
     # Create an interactive scatter plot with a dropdown for window sizes
     create_interactive_window_scatter(

@@ -19,6 +19,7 @@ from ground_state_md.units import convert_time, convert_velocities, get_ase_unit
 
 from excited_state_md.utils import get_split_path, remove_splitting_lock_file, load_config # because it works with relative paths
 
+# Note: My work ended here, i.e., this script is not complete.
 
 # Example command to run the script from within code directory:
 """
