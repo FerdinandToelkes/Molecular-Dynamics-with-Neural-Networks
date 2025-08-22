@@ -136,7 +136,7 @@ Note, that these are only very simple examples! For nicer results, the number of
 
 Here is a quick overview of results for training a neural network on the MOTOR_MD_XTB/T300_1 dataset. We used the trained model to run a MD and the plots show a comparison between the model's prediction for the energies with predictions made by xTB that can be viewed [here](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_properties_plot.html) and the corresponding rolling correlation between the energies, that is displayed in [this plot](https://FerdinandToelkes.github.io/Molecular-Dynamics-with-Neural-Networks/angstrom_kcal_per_mol_fs/MOTOR_MD_XTB/T300_1/epochs_1000_bs_100_lr_0.0001_seed_42/md_sim_steps_5000_time_step_1.0_seed_42/interactive_rolling_corr_plot.html). The underlying model was trained for 1000 epochs with a batch size of 100 and with the default hyperparameters, that can be found in [this yaml file](https://github.com/FerdinandToelkes/Molecular-Dynamics-with-Neural-Networks/blob/main/ground_state_md/training_and_inference/conf/train_config_default_transforms.yaml).
 
-I also held a small presentation about my progress up to this point, which can be viewed [here](readme_images/tapavicza_Molecular-Dynamics-with-Neural-Networks_presentation.pdf) (note that the presentation contains clickable elements, that only work if the slides are downloaded).
+I also held a small presentation about my progress up to this point, which can be viewed [here](readme_images/tapavicza_whk_presentation.pdf) (note that the presentation contains clickable elements, that only work if the slides are downloaded).
 
 
  
