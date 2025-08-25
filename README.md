@@ -367,7 +367,7 @@ The updates of scalar and vectorial representation are constructed to ensure rot
 - Scalar products: $\mathbf{s} = \langle \vec{\mathbf{v}}_1, \vec{\mathbf{v}}_2 \rangle$
 - Vector products: $\vec{\mathbf{v}}_1 \times \vec{\mathbf{v}}_2 = \mathbf{A}_1 \vec{\mathbf{v}}_2$
 
-The PaiNN architecture is constructed by combining these operations into interaction and update blocks:
+The PaiNN architecture is constructed by combining these operations into message and update blocks:
 
 <p align="center">
    <img src="readme_images/PaiNN_architecture.png" alt="PaiNN Architecture" width="600"/>
