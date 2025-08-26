@@ -374,9 +374,11 @@ The PaiNN architecture is constructed by combining these operations into message
 </p>
 
 
-# Thoughts on Change of Units and Transformations on the Data (Unfinished)
+# Thoughts on Change of Units and Transformations on the Data 
 
-When training neural networks, the choice of units for the underlying data is flexible and can be considered a model hyperparameter. Some considerations on the effects of changing units and applying transformations,such as centering the energy, on the training process are discussed [here](readme_images/change_of_units_and_transformations.pdf).
+When training neural networks, the choice of units for the underlying data is flexible and can be considered a model hyperparameter. Some of my own considerations on the effects of changing units and applying transformations, such as centering the energy, on the training process are discussed [here](readme_images/change_of_units_and_transformations.pdf). 
+
+The issue of changing relative loss weights when transforming units is also briefly addressed in the paper by [Unke, Olive T., et al.](https://www.nature.com/articles/s41467-021-27504-0.pdf). In addition, the group led by Villar and Soledad is rigorously investigating strategies for handling units in machine learning. Their recent work, [Towards fully covariant machine learning](https://arxiv.org/pdf/2301.13724), presents a set of guidelines for machine learning (Chapter 9) and illustrates their application to data normalization (Chapter 10).
 
 # Contributing
 
