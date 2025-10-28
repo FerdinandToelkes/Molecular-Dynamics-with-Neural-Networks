@@ -362,10 +362,10 @@ Furthermore, PaiNN can distinguish molecular conformations that differ by rotati
 The updates of scalar and vectorial representation are constructed to ensure rotational invariance and equivariance, respectively. Because scalar features must remain rotationally invariant and vector features must remain rotationally equivariant, only certain operations are permitted. The following operations are for example allowed when processing directional information (see the [PaiNN paper](https://proceedings.mlr.press/v139/schutt21a/schutt21a.pdf)):
 
 - Any (nonlinear) function of scalars: $\mathbf{f}(s)$
-- Scaling of vectors: $\mathbf{s} \circ \vec{\mathbf{v}}$
-- Linear combinations of equivariant vectors: $\mathbf{W}\vec{\mathbf{v}}$
-- Scalar products: $\mathbf{s} = \langle \vec{\mathbf{v}}_1, \vec{\mathbf{v}}_2 \rangle$
-- Vector products: $\vec{\mathbf{v}}_1 \times \vec{\mathbf{v}}_2 = \mathbf{A}_1 \vec{\mathbf{v}}_2$
+- Scaling of vectors: $\mathbf{s} \cdot \mathbf{v}$
+- Linear combinations of equivariant vectors: $\mathbf{W}\mathbf{v}$
+- Scalar products: $\mathbf{s} = \langle \mathbf{v}_1, \mathbf{v}_2 \rangle$
+- Vector products: $\mathbf{v}_1 \times \mathbf{v}_2 = \mathbf{A}_1 \mathbf{v}_2$
 
 The PaiNN architecture is constructed by combining these operations into message and update blocks:
 
