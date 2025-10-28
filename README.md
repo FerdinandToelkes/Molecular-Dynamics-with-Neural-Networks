@@ -343,7 +343,7 @@ The advantage of using an additional neural network to generate filters conditio
 
 SchNet’s architecture is designed for predicting scalar-valued properties, and can only produce vector properties that are direct derivatives of these scalars (e.g., forces obtained as the negative gradient of the energy). Predicting general vector quantities, such as non-adiabatic couplings (NACs), requires extending this framework. This is achieved by the **Polarizable Atom Interaction Neural Network** (PaiNN).
 
-In PaiNN, a molecule is represented as a graph where each atom is a node equipped with both a scalar feature representation $\mathbf{s}^{t}_i \in \mathbb{R}^F$ and a vectorial feature representation $\vec{\mathbf{v}}^t_i \in \mathbb{R}^{3 \times F}$, where $F$ is the embedding dimension and the first dimension corresponds to the three spatial coordinates.
+In PaiNN, a molecule is represented as a graph where each atom is a node equipped with both a scalar feature representation $\mathbf{s}^{t}_i \in \mathbb{R}^F$ and a vectorial feature representation $\mathbf{v}^t_i \in \mathbb{R}^{3 \times F}$, where $F$ is the embedding dimension and the first dimension corresponds to the three spatial coordinates.
 
 As in SchNet, PaiNN models local interactions through a message passing mechanism. A key benefit of vectorial features is that they allow the network to capture changes in bond angles without introducing explicit angular terms, thereby avoiding additional computational cost (see figure below).
 
